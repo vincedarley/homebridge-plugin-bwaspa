@@ -27,6 +27,8 @@
     "no-console": ["warn"], // use the provided Homebridge log method instead
     "lines-between-class-members": ["warn", "always", {"exceptAfterSingleLine": true}],
     "@typescript-eslint/explicit-function-return-type": "off",
-    "@typescript-eslint/no-non-null-assertion": "off"
+    "@typescript-eslint/no-non-null-assertion": "off",
+    "no-unused-vars": "off",
+    "@typescript-eslint/no-unused-vars": "error"  
   }
 }

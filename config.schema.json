@@ -1,6 +1,7 @@
 {
-  "pluginAlias": "ExampleHomebridgePlugin",
+  "pluginAlias": "Balboa-Spa",
   "pluginType": "platform",
+  "headerDisplay": "This plugin works with Balboa-Spa wifi modules. Each pump, lights, etc are exposed HomeKit as separate accessories.",
   "singular": true,
   "schema": {
     "type": "object",
@@ -9,7 +10,87 @@
         "title": "Name",
         "type": "string",
         "required": true,
-        "default": "Example Dynamic Platform"
+        "default": "My Hot Tub"
+      },
+      "host": {
+        "title": "IP Address",
+        "type": "string",
+        "default": "192.168.1.151",
+        "required": true,
+        "format": "hostname"
+      },
+      "devices": {
+        "title": "Devices",
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "title": "Device name",
+              "type": "string",
+              "default": "my Pump or light or...",
+              "required": true
+            },
+            "pumpRange": {
+              "title": "Pump speed range (required for pumps)",
+              "type": "integer",
+              "maximum": 2,
+              "oneOf": [
+                {
+                  "title": "Off or High",
+                  "enum": [
+                    1
+                  ]
+                },
+                {
+                  "title": "Off or Low or High",
+                  "enum": [
+                    2
+                  ]
+                }
+              ],
+              "required": false
+            },
+            "deviceType": {
+              "title": "Device type",
+              "type": "string",
+              "default": "Lights",
+              "oneOf": [
+                {
+                  "title": "Pump 1",
+                  "enum": [
+                    "Pump 1"
+                  ]
+                },
+                {
+                  "title": "Pump 2",
+                  "enum": [
+                    "Pump 2"
+                  ]
+                },
+                {
+                  "title": "Pump 3",
+                  "enum": [
+                    "Pump 3"
+                  ]
+                },
+                {
+                  "title": "Lights",
+                  "enum": [
+                    "Lights"
+                  ]
+                },
+                {
+                  "title": "Temperature Sensor",
+                  "enum": [
+                    "Temperature Sensor"
+                  ]
+                }
+              ],
+              "required": true
+            }
+          }
+        }
       }
     }
   }
