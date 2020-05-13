@@ -8,8 +8,7 @@
 
 # Homebridge Balboa Spa Plugin
 
-This plugin will connect some Balboa Spas over their wifi, and expose a set of controls (pumps, lights) and its temperature
-in HomeKit.
+This plugin will connect some Balboa Spas over their wifi, and expose a set of controls (pumps, lights) and its temperature, and temperature control, in HomeKit.  It also exposes a "Leak Sensor" which acts as a sensor for whether the heater water flow in the spa is all good.
 
 Configure the plugin with Homebridge ConfigUI
 
@@ -42,6 +41,14 @@ Configure the plugin with Homebridge ConfigUI
                 {
                     "name": "Spa Temperature",
                     "deviceType": "Temperature Sensor"
+                },
+                {
+                    "name": "Temperature Control",
+                    "deviceType": "Thermostat"
+                },
+                {
+                    "name": "Flow",
+                    "deviceType": "Water Flow Problem Sensor"
                 }
             ],
             "platform": "Balboa-Spa"
@@ -52,10 +59,15 @@ It supports pumps that are single speed (off or high) and 2-speed (off or low or
 
 ## Limitations?
 
-I don't currently enable control of the spa's temperature or heating mode.  Nor if you have more than 3 pumps.  These could all be
-added without very much work.
+The "Thermostat" device type exposes control of the spa's target temperature and high (="HEAT" in Home app) vs low (="COOL" in Home app), heating mode.  The Spa's current temperature is visible both in the Thermostat device and in the read-only Temperature Sensor. Up to you if you want/need both devices.
+
+You can control one light and up to 4 pumps. The code does not know how many pumps your spa has. I believe that is possible, given the Balboa Spa app knows that, but am not sure how.
+
+The pumps have a minStep of 50% or 100% depending on their number of speed settings. I think this should work correctly.
 
 Lights are simply on/off.  Balboa provide no capability to control the colour.  So this limitation will never be rectified.
+
+The flow sensor has 3 states: normal (all good), failed (which triggers a "leak" alarm - and you should be able to configure Home to send you a notification when this happens), or low water flow which triggers a status fault with the sensor.  Currently the sensor only updates once an hour.  So even when fixed it won't reset for some time without restarting homebridge.
 
 ## Thanks
 

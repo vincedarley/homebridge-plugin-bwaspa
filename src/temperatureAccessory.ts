@@ -2,6 +2,7 @@ import { CharacteristicEventTypes } from 'homebridge';
 import type { Service, PlatformAccessory, CharacteristicGetCallback} from 'homebridge';
 
 import { SpaHomebridgePlatform } from './platform';
+import { VERSION } from './settings';
 
 /**
  * A read-only temperature sensor for the Spa.
@@ -18,7 +19,7 @@ export class TemperatureAccessory {
     this.accessory.getService(this.platform.Service.AccessoryInformation)!
       .setCharacteristic(this.platform.Characteristic.Manufacturer, 'Balboa')
       .setCharacteristic(this.platform.Characteristic.Model, 'Default-Model')
-      .setCharacteristic(this.platform.Characteristic.SerialNumber, 'Default-Serial');
+      .setCharacteristic(this.platform.Characteristic.SerialNumber, VERSION);
 
     // get the TemperatureSensor service if it exists, otherwise create a new TemperatureSensor service
     // you can create multiple services for each accessory
@@ -56,8 +57,7 @@ export class TemperatureAccessory {
    */
   get(callback: CharacteristicGetCallback) {
 
-    // implement your own code to check if the device is on
-    const temperature = this.platform.spa.get_current_temp();
+    const temperature = this.platform.spa.getCurrentTemp();
 
     this.platform.log.debug('Get Temperature Characteristic ->', temperature);
 

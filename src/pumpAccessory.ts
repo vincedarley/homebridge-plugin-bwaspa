@@ -2,6 +2,7 @@ import { CharacteristicEventTypes } from 'homebridge';
 import type { Service, PlatformAccessory, CharacteristicValue, CharacteristicSetCallback, CharacteristicGetCallback} from 'homebridge';
 
 import { SpaHomebridgePlatform } from './platform';
+import { VERSION } from './settings';
 
 /**
  * Control a 1- or 2- speed pump as a "fan"
@@ -20,7 +21,7 @@ export class PumpAccessory {
   // Where we have a 1 speed pump, only 'Off' and 'High' are used.
   private readonly speeds: string[] = ["Off", "Low", "High"];
   // Always 1 or 2
-  speedSettings : number;
+  numSpeedSettings : number;
 
   constructor(
     private readonly platform: SpaHomebridgePlatform,
@@ -32,7 +33,7 @@ export class PumpAccessory {
     this.accessory.getService(this.platform.Service.AccessoryInformation)!
       .setCharacteristic(this.platform.Characteristic.Manufacturer, 'Balboa')
       .setCharacteristic(this.platform.Characteristic.Model, 'Default-Model')
-      .setCharacteristic(this.platform.Characteristic.SerialNumber, 'Default-Serial');
+      .setCharacteristic(this.platform.Characteristic.SerialNumber, VERSION);
 
     // get the LightBulb service if it exists, otherwise create a new LightBulb service
     // you can create multiple services for each accessory
@@ -41,10 +42,10 @@ export class PumpAccessory {
     // set the service name, this is what is displayed as the default name on the Home app
     // in this example we are using the name we stored in the `accessory.context` in the `discoverDevices` method.
     this.service.setCharacteristic(this.platform.Characteristic.Name, accessory.context.device.name);
-    this.speedSettings = accessory.context.device.pumpRange;
-    if (this.speedSettings != 1 && this.speedSettings != 2) {
-      this.platform.log.warn("Bad speed settings:", this.speedSettings, " should be 1 or 2.");
-      this.speedSettings = 1;
+    this.numSpeedSettings = accessory.context.device.pumpRange;
+    if (this.numSpeedSettings != 1 && this.numSpeedSettings != 2) {
+      this.platform.log.warn("Bad speed settings:", this.numSpeedSettings, " should be 1 or 2.");
+      this.numSpeedSettings = 1;
     }
 
     // register handlers for the On/Off Characteristic
@@ -55,6 +56,7 @@ export class PumpAccessory {
     // register handlers for the Brightness Characteristic
     this.service.getCharacteristic(this.platform.Characteristic.RotationSpeed)
       .on(CharacteristicEventTypes.SET, this.setRotationSpeed.bind(this))        // SET - bind to the 'setRotationSpeed` method below
+      .setProps({minStep: (this.numSpeedSettings == 1 ? 100.0 : 50.0)})
       .on(CharacteristicEventTypes.GET, this.getRotationSpeed.bind(this));       // GET - bind to the 'getRotationSpeed` method below
 
   }
@@ -92,7 +94,6 @@ export class PumpAccessory {
    */
   getOn(callback: CharacteristicGetCallback) {
 
-    // implement your own code to check if the device is on
     const isOn = this.getSpeed() != 0;
   
     this.platform.log.debug('Get Pump Characteristic On ->', isOn);
@@ -109,8 +110,7 @@ export class PumpAccessory {
    */
   setRotationSpeed(value: CharacteristicValue, callback: CharacteristicSetCallback) {
 
-    // implement your own code to set the brightness
-    const speed = Math.round((value as number)*this.speedSettings/100.0);
+    const speed = Math.round((value as number)*this.numSpeedSettings/100.0);
     this.setSpeed(speed);
     this.platform.log.debug('Set Pump Characteristic Speed -> ', value, ' which is ', this.speeds[speed]);
 
@@ -124,7 +124,7 @@ export class PumpAccessory {
    */
   getRotationSpeed(callback: CharacteristicSetCallback) {
     const speed = this.getSpeed();
-    const value = (100.0*speed)/this.speedSettings;
+    const value = (100.0*speed)/this.numSpeedSettings;
     this.platform.log.debug('Get Pump Characteristic Speed -> ', value, ' which is ', this.speeds[speed]);
 
     // you must call the callback function
@@ -132,25 +132,11 @@ export class PumpAccessory {
   }
 
   private getSpeed() {
-    var speed = 0;
-    if (this.pumpNumber == 1) {
-      speed = this.speeds.indexOf(this.platform.spa.get_pump1());
-    } else if (this.pumpNumber == 2) {
-      speed = this.speeds.indexOf(this.platform.spa.get_pump2());
-    } else if (this.pumpNumber == 3) {
-      speed = this.speeds.indexOf(this.platform.spa.get_pump3());
-    }
-    return speed;
+    return this.speeds.indexOf(this.platform.spa.get_pump(this.pumpNumber));
   }
 
   private setSpeed(speed: number) {
-    if (this.pumpNumber == 1) {
-      this.platform.spa.set_pump1(this.speeds[speed]);
-    } else if (this.pumpNumber == 2) {
-      this.platform.spa.set_pump2(this.speeds[speed]);
-    } else if (this.pumpNumber == 3) {
-      this.platform.spa.set_pump3(this.speeds[speed]);
-    }
+    this.platform.spa.set_pump(this.pumpNumber, this.speeds[speed]);
     if (speed != 0) {
       this.states.lastSpeed = speed;
     }

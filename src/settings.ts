@@ -7,3 +7,5 @@ export const PLATFORM_NAME = 'Balboa-Spa';
  * This must match the name of your plugin as defined the package.json
  */
 export const PLUGIN_NAME = 'homebridge-balboa-spa';
+
+export const VERSION = '1.3.1';

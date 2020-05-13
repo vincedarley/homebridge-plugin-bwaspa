@@ -2,6 +2,7 @@ import { CharacteristicEventTypes } from 'homebridge';
 import type { Service, PlatformAccessory, CharacteristicValue, CharacteristicSetCallback, CharacteristicGetCallback} from 'homebridge';
 
 import { SpaHomebridgePlatform } from './platform';
+import { VERSION } from './settings';
 
 /**
  * LightsAccessory
@@ -20,7 +21,7 @@ export class LightsAccessory {
     this.accessory.getService(this.platform.Service.AccessoryInformation)!
       .setCharacteristic(this.platform.Characteristic.Manufacturer, 'Balboa')
       .setCharacteristic(this.platform.Characteristic.Model, 'Default-Model')
-      .setCharacteristic(this.platform.Characteristic.SerialNumber, 'Default-Serial');
+      .setCharacteristic(this.platform.Characteristic.SerialNumber, VERSION);
 
     // get the LightBulb service if it exists, otherwise create a new LightBulb service
     // you can create multiple services for each accessory
@@ -51,7 +52,7 @@ export class LightsAccessory {
   setOn(value: CharacteristicValue, callback: CharacteristicSetCallback) {
 
     // Turn the light on or off
-    this.platform.spa.set_light(value as boolean);
+    this.platform.spa.setLightState(value as boolean);
     this.platform.log.debug('Set Lights Characteristic On ->', value);
 
     // you must call the callback function
@@ -74,7 +75,7 @@ export class LightsAccessory {
   getOn(callback: CharacteristicGetCallback) {
 
     // Read whether the light is on or off
-    const isOn = this.platform.spa.get_light();
+    const isOn = this.platform.spa.getIsLightOn();
     this.platform.log.debug('Get Lights Characteristic On ->', isOn);
 
     // you must call the callback function

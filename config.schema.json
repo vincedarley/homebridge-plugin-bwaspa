@@ -75,6 +75,12 @@
                   ]
                 },
                 {
+                  "title": "Pump 4",
+                  "enum": [
+                    "Pump 4"
+                  ]
+                },
+                {
                   "title": "Lights",
                   "enum": [
                     "Lights"
@@ -84,6 +90,18 @@
                   "title": "Temperature Sensor",
                   "enum": [
                     "Temperature Sensor"
+                  ]
+                },
+                {
+                  "title": "Temperature Control",
+                  "enum": [
+                    "Thermostat"
+                  ]
+                },
+                {
+                  "title": "Water Flow Problem Sensor",
+                  "enum": [
+                    "Water Flow Problem Sensor"
                   ]
                 }
               ],

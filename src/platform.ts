@@ -5,10 +5,12 @@ import { PLATFORM_NAME, PLUGIN_NAME } from './settings';
 import { PumpAccessory } from './pumpAccessory';
 import { LightsAccessory } from './lightsAccessory';
 import { TemperatureAccessory } from './temperatureAccessory';
+import { ThermostatAccessory } from './thermostatAccessory';
+import { WaterFlowProblemAccessory } from './waterFlowProblemAccessory';
 import { SpaClient } from './spaClient';
 
 /**
- * HomebridgePlatform
+ * SpaHomebridgePlatform
  * This class is the main constructor for your plugin, this is where you should
  * parse the user config and discover/register accessories with Homebridge.
  */
@@ -122,12 +124,24 @@ export class SpaHomebridgePlatform implements DynamicPlatformPlugin {
         new PumpAccessory(this, accessory,3);
         break;
       }
+      case "Pump 4": {
+        new PumpAccessory(this, accessory,4);
+        break;
+      }
       case "Lights": {
         new LightsAccessory(this, accessory);
         break;
       }
       case "Temperature Sensor": {
         new TemperatureAccessory(this, accessory);
+        break;
+      }
+      case "Thermostat": {
+        new ThermostatAccessory(this, accessory);
+        break;
+      }
+      case "Water Flow Problem Sensor": {
+        new WaterFlowProblemAccessory(this, accessory);
         break;
       }
       default: {
