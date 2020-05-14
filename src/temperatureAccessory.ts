@@ -25,10 +25,6 @@ export class TemperatureAccessory {
     // you can create multiple services for each accessory
     this.service = this.accessory.getService(this.platform.Service.TemperatureSensor) ?? this.accessory.addService(this.platform.Service.TemperatureSensor);
 
-    // To avoid "Cannot add a Service with the same UUID another Service without also defining a unique 'subtype' property." error,
-    // when creating multiple services of the same type, you need to use the following syntax to specify a name and subtype id:
-    // this.accessory.getService('NAME') ?? this.accessory.addService(this.platform.Service.TemperatureSensor, 'NAME', 'USER_DEFINED_SUBTYPE');
-
     // set the service name, this is what is displayed as the default name on the Home app
     // in this example we are using the name we stored in the `accessory.context` in the `discoverDevices` method.
     this.service.setCharacteristic(this.platform.Characteristic.Name, accessory.context.device.name);
@@ -36,7 +32,7 @@ export class TemperatureAccessory {
     // each service must implement at-minimum the "required characteristics" for the given service type
     // see https://developers.homebridge.io/#/service/TemperatureSensor
 
-    // register handlers for the On/Off Characteristic
+    // register handlers for the Get Characteristic
     this.service.getCharacteristic(this.platform.Characteristic.CurrentTemperature)
       .on(CharacteristicEventTypes.GET, this.get.bind(this));               // GET - bind to the `getOn` method below
 
@@ -56,14 +52,9 @@ export class TemperatureAccessory {
    * this.service.updateCharacteristic(this.platform.Characteristic.get, true)
    */
   get(callback: CharacteristicGetCallback) {
-
     const temperature = this.platform.spa.getCurrentTemp();
-
     this.platform.log.debug('Get Temperature Characteristic ->', temperature);
 
-    // you must call the callback function
-    // the first argument should be null if there were no errors
-    // the second argument should be the value to return
     callback(null, temperature);
   }
 

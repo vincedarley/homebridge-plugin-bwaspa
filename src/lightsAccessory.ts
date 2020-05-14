@@ -27,10 +27,6 @@ export class LightsAccessory {
     // you can create multiple services for each accessory
     this.service = this.accessory.getService(this.platform.Service.Lightbulb) ?? this.accessory.addService(this.platform.Service.Lightbulb);
 
-    // To avoid "Cannot add a Service with the same UUID another Service without also defining a unique 'subtype' property." error,
-    // when creating multiple services of the same type, you need to use the following syntax to specify a name and subtype id:
-    // this.accessory.getService('NAME') ?? this.accessory.addService(this.platform.Service.Lightbulb, 'NAME', 'USER_DEFINED_SUBTYPE');
-
     // set the service name, this is what is displayed as the default name on the Home app
     // in this example we are using the name we stored in the `accessory.context` in the `discoverDevices` method.
     this.service.setCharacteristic(this.platform.Characteristic.Name, accessory.context.device.name);
@@ -50,12 +46,10 @@ export class LightsAccessory {
    * These are sent when the user changes the state of an accessory, for example, turning on a Light bulb.
    */
   setOn(value: CharacteristicValue, callback: CharacteristicSetCallback) {
-
     // Turn the light on or off
     this.platform.spa.setLightState(value as boolean);
     this.platform.log.debug('Set Lights Characteristic On ->', value);
 
-    // you must call the callback function
     callback(null);
   }
 
@@ -73,14 +67,10 @@ export class LightsAccessory {
    * this.service.updateCharacteristic(this.platform.Characteristic.On, true)
    */
   getOn(callback: CharacteristicGetCallback) {
-
     // Read whether the light is on or off
     const isOn = this.platform.spa.getIsLightOn();
     this.platform.log.debug('Get Lights Characteristic On ->', isOn);
 
-    // you must call the callback function
-    // the first argument should be null if there were no errors
-    // the second argument should be the value to return
     callback(null, isOn);
   }
 

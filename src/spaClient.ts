@@ -16,17 +16,18 @@ export class SpaClient {
     socket: any;
     lightIsOn: boolean;
     currentTemp: number;
-    targetTemp: number;
+    targetTempModeHigh: number;
+    targetTempModeLow: number;
     hour: number;
     minute: number;
-    heating_mode: string;
+    heatingMode: string;
     temp_CorF: string;
     tempRangeIsHigh: boolean;
     pumps: string[];
     priming: boolean;
-    time_scale: string;
+    time_12or24: string;
     isHeatingNow: boolean;
-    circ_pump: boolean;
+    circulationPump: boolean;
     flow: string;
 
     constructor(public readonly log: Logger, public readonly host: string) {
@@ -34,17 +35,29 @@ export class SpaClient {
         this.currentTemp = 0;
         this.hour = 12;
         this.minute = 0;
-        this.heating_mode = "";
+        this.heatingMode = "";
         this.temp_CorF = "";
         this.tempRangeIsHigh = true;
         this.pumps = ["","","",""];
-        this.targetTemp = 0;
+        this.targetTempModeLow = 2*18;
+        this.targetTempModeHigh = 2*38;
         this.priming = false;
-        this.time_scale = "12 Hr";
+        this.time_12or24 = "12 Hr";
         this.isHeatingNow = false;
-        this.circ_pump = false;
+        this.circulationPump = false;
         this.flow = FLOW_STATES[0];
         this.socket = SpaClient.get_socket(log, host);
+
+        // Wait 20 seconds after startup to send a request to check for any faults
+        setTimeout( function() {
+            SpaClient.instance.send_request_for_faults_log();
+            // And then request again once each hour.
+            // TODO: Check that this works even if there's been a socket error in
+            // the meantime and the socket has been regenerated.
+            setInterval( function() {
+                SpaClient.instance.send_request_for_faults_log();
+            }, 60 * 60 * 1000);
+        }, 20000);
     }
 
     static getSpaClient(log: Logger, host: string) {
@@ -64,39 +77,39 @@ export class SpaClient {
         }, function() {
             log.debug('Successfully connected to Spa at ', host, " on port 4257");
         });
-        // listen for new messages
+        // listen for new messages from the spa. These can be replies to messages
+        // We have sent, or can be the standard sending of status that the spa
+        // seems to do every second.
         SpaClient.sock.on('data', function(data: any) {
             var bufView = new Uint8Array(data);
-            SpaClient.instance.read_msg(bufView);
-            log.debug(SpaClient.instance.stateToString());
+            const somethingChanged = SpaClient.instance.read_msg(bufView);
+            if (somethingChanged) {
+                // Only log state when something has changed.
+                log.debug(SpaClient.instance.stateToString());
+            }
         });
         SpaClient.sock.on('end', function() {
             log.debug("SpaClient:disconnected:");
         });
+        // If we get an error, then retry
         SpaClient.sock.on('error', (error: any) => {
             log.debug(error);
             log.debug("Retrying in 20s");
             setTimeout( function() {
-                SpaClient.get_socket(log, host);
-            }, 20000)
+                SpaClient.instance.socket.end();
+                SpaClient.instance.socket = SpaClient.get_socket(log, host);
+            }, 20000);
         });
 
-        // Wait 20 seconds after startup to send a request for any faults
-        setTimeout( function() {
-            SpaClient.instance.send_faults_message();
-            // And then request again once each hour
-            setInterval( function() {
-                SpaClient.instance.send_faults_message();
-            }, 60 * 60 * 1000);
-        }, 20000)
         return SpaClient.sock;
     }
+
     /**
      * Message starts and ends with 0x7e. Needs a checksum.
      * @param type 
      * @param payload 
      */
-    send_message(type: Uint8Array, payload: Uint8Array) {
+    sendMessageToSpa(type: Uint8Array, payload: Uint8Array) {
         var length = (5 + payload.length);
         var typepayload = this.concat(type, payload);
         var checksum = this.compute_checksum(new Uint8Array([length]), typepayload);
@@ -110,7 +123,8 @@ export class SpaClient {
     }
 
     getTargetTemp() {
-        return this.convertTemperature(true, this.targetTemp);
+        return this.convertTemperature(true, this.tempRangeIsHigh 
+            ? this.targetTempModeHigh : this.targetTempModeLow);
     }
     getTempIsCorF() {
         return this.temp_CorF;
@@ -129,7 +143,7 @@ export class SpaClient {
         return this.isHeatingNow;
     }
     get_heating_mode() {
-        return this.heating_mode;
+        return this.heatingMode;
     }
     getCurrentTemp() {
         return this.convertTemperature(true, this.currentTemp);
@@ -138,14 +152,15 @@ export class SpaClient {
         if ((this.lightIsOn === value)) {
             return;
         }
-        this.send_toggle_message(17);
+        this.send_toggle_message(0x11);
         this.lightIsOn = value;
     }
+
     setTempRangeIsHigh(isHigh: boolean) {
         if ((this.tempRangeIsHigh === isHigh)) {
             return;
         }
-        // TODO: don't know how to flip this.;
+        this.send_toggle_message(0x50);
         this.tempRangeIsHigh = isHigh;
     }
 
@@ -153,11 +168,12 @@ export class SpaClient {
         return this.flow;
     }
 
-    get_pump(index: number) {
+    getPumpSpeed(index: number) {
         // Pumps are numbered 1,2,3,... by Balboa
         return this.pumps[index-1];
     }
-    set_pump(index: number, value: string) {
+
+    setPumpSpeed(index: number, value: string) {
         // Pumps are numbered 1,2,3,... by Balboa
         if ((this.pumps[index-1] === value)) {
             return;
@@ -190,12 +206,19 @@ export class SpaClient {
     }
 
     setTargetTemperature(temp: number) {
-        this.targetTemp = this.convertTemperature(false, temp);
-        this.send_message(SetTargetTempRequest, new Uint8Array([this.targetTemp]));
+        var sendTemp;
+        if (this.tempRangeIsHigh) {
+            this.targetTempModeHigh = this.convertTemperature(false, temp);
+            sendTemp = this.targetTempModeHigh;
+        } else {
+            this.targetTempModeLow = this.convertTemperature(false, temp);
+            sendTemp = this.targetTempModeLow;
+        }
+        this.sendMessageToSpa(SetTargetTempRequest, new Uint8Array([sendTemp]));
     }
 
     send_config_request() {
-        this.send_message(ConfigRequest, new Uint8Array());
+        this.sendMessageToSpa(ConfigRequest, new Uint8Array());
     }
 
     send_toggle_message(item: number) {
@@ -208,16 +231,16 @@ export class SpaClient {
         // # 0x06 - pump 3
         // # 0x07 - pump 4 -- I assume this is true... not tested.
         // # 0x11 - light 1
+        // # 0x3c - hold
         // # 0x51 - heating mode
         // # 0x50 - temperature range
-        // # 0x3c - hold
         this.log.debug("Sending message " + item);
-        this.send_message(ToggleItemRequest, new Uint8Array([item, 0x00]));
+        this.sendMessageToSpa(ToggleItemRequest, new Uint8Array([item, 0x00]));
     }
 
-    send_faults_message() {
+    send_request_for_faults_log() {
         this.log.debug("Checking for any Spa faults");
-        this.send_message(GetFaultsRequest, new Uint8Array([0x20, 0xff, 0x00]));   
+        this.sendMessageToSpa(GetFaultsRequest, new Uint8Array([0x20, 0xff, 0x00]));   
     }
 
     // Celsius temperatures are communicated by the Spa in half degrees.
@@ -239,20 +262,27 @@ export class SpaClient {
 
     stateToString() {
         var s = "Temp: " + this.temperatureToString(this.currentTemp) 
-        + ", Target Temp: " + this.temperatureToString(this.targetTemp) 
+        + ", Target Temp(H): " + this.temperatureToString(this.targetTempModeHigh) 
+        + ", Target Temp(L): " + this.temperatureToString(this.targetTempModeLow) 
         + ", Time: " + this.timeToString(this.hour, this.minute) + "\n"
         + "Priming: " + this.priming.toString()
-        + ", Heating Mode: " + this.heating_mode 
+        + ", Heating Mode: " + this.heatingMode 
         + ", Temp Scale: " + this.temp_CorF
-        + ", Time Scale: " + this.time_scale + "\n" 
+        + ", Time Scale: " + this.time_12or24 + "\n" 
         + "Heating: " + this.isHeatingNow 
         + ", Temp Range: " + (this.tempRangeIsHigh ? "High" : "Low")
         + ", Pumps: " + this.pumps
-        + ", Circ Pump: " + this.circ_pump
+        + ", Circ Pump: " + this.circulationPump
         + ", Light: " + this.lightIsOn
         return s;
     }
 
+    /**
+     * Return true if anything important has changed as a result of the message
+     * received.
+     * 
+     * @param chunk 
+     */
     read_msg(chunk: Uint8Array) {
         if (chunk.length < 2) {
             return false;
@@ -263,15 +293,27 @@ export class SpaClient {
         }
         if (chunk[2] == 0xff && chunk[3] == 0xaf && chunk [4] == 0x13) {
             // "0xff 0xaf 0x13" = our primary state
-            this.readStateFromBytes(chunk.slice(5));
+            return this.readStateFromBytes(chunk.slice(5));
         } else if (chunk[2] == 0x0a && chunk[3] == 0xbf && chunk [4] == 0x28) {
-            this.readFaults(chunk.slice(5));
+            // "0x0a 0xbf 0x28" = faults log
+            return this.readFaults(chunk.slice(5));
         } else {
-            this.log.error("Not understood a received message:", chunk.toString());
+            // Various messages about controls, filters, etc. In theory we could
+            // choose to implement more things here, but limited value in it.
+            this.log.info("Not understood a received spa message ", 
+            "(likely user interacting with the screen controls):", chunk.toString());
         }
-        return true;
+        return false;
     }
 
+    lastStateBytes = new Uint8Array(1);
+
+    /**
+     * Interpret the standard response, which we are sent about every 1 second, covering
+     * all of the primary state of the spa.
+     * 
+     * Return true if anything important has changed (i.e. ignore the time changing!)
+     */
     readStateFromBytes(bytes: Uint8Array) {
         // If current_temp = UNKNOWN_TEMPERATURE_VALUE (255), then the Spa is still not fully initialised
         // (but is not necessarily in "priming" state). Need to wait, really - after some seconds the
@@ -279,16 +321,17 @@ export class SpaClient {
         // Probably better to say the temperature is unknown, if homekit supports that.  The Balboa
         // app, for what it's worth, also is confused when current temp = 255.
         this.currentTemp = bytes[2];
+        // Seems like priming goes through different states, so not sure this simplicity is correct
         this.priming = ((bytes[1] & 1) === 1);
         this.hour = bytes[3];
         this.minute = bytes[4];
-        this.heating_mode = ["Ready", "Rest", "Ready in Rest"][bytes[5]];
-        var flag3 = bytes[9];
-        this.temp_CorF = (((flag3 & 1) === 0) ? "Fahrenheit" : "Celsius");
-        this.time_scale = (((flag3 & 2) === 0) ? "12 Hr" : "24 Hr");
-        var flag4 = bytes[10];
-        this.isHeatingNow = ((flag4 & 48) !== 0);
-        this.tempRangeIsHigh = (((flag4 & 4) === 0) ? false : true);
+        this.heatingMode = ["Ready", "Rest", "Ready in Rest"][bytes[5]];
+        var unitsFlags = bytes[9];
+        this.temp_CorF = (((unitsFlags & 1) === 0) ? "Fahrenheit" : "Celsius");
+        this.time_12or24 = (((unitsFlags & 2) === 0) ? "12 Hr" : "24 Hr");
+        var tempFlags = bytes[10];
+        this.isHeatingNow = ((tempFlags & 48) !== 0);
+        this.tempRangeIsHigh = (((tempFlags & 4) === 0) ? false : true);
         var pump_status = bytes[11];
         // How can we determine the number of pumps automatically?  The Balboa
         // app knows that, so it is possible.
@@ -297,13 +340,30 @@ export class SpaClient {
         this.pumps[2] = PUMP_STATES[((pump_status & (16+32)) >> 4)];
         this.pumps[3] = PUMP_STATES[((pump_status & (64+128)) >> 6)];
         // Not sure if this circ_pump index or logic is correct.
-        this.circ_pump = ((bytes[13] & 2) !== 0);
+        this.circulationPump = ((bytes[13] & 2) !== 0);
         this.lightIsOn = ((bytes[14] & 3) === 3);
-        this.targetTemp = bytes[20];
+        if (this.tempRangeIsHigh) {
+            this.targetTempModeHigh = bytes[20];
+        } else {
+            this.targetTempModeLow = bytes[20];
+        }
+        // Store this for next time
+        const oldBytes = this.lastStateBytes;
+        this.lastStateBytes = bytes;
+        // Return true if any values have changed
+        if (oldBytes.length != this.lastStateBytes.length) return true;
+        for (var i = 0; i < oldBytes.length; i++) {
+            if (i != 3 && i != 4) {
+                if (oldBytes[i] !== this.lastStateBytes[i]) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     /**
-     * 	Get log of faults
+     * 	Get log of faults. Return true if there were faults of relevance
      */ 
     readFaults(bytes: Uint8Array) {
         var daysAgo = bytes[3];
@@ -322,7 +382,8 @@ export class SpaClient {
         
         if (daysAgo > 1) {
             // Don't do anything for older faults.  Perhaps > 0??
-            return;
+            this.log.debug("No recent faults. Last fault ", daysAgo, " days ago of type ", code);
+            return false;
         }
 
         // Check if there are any new faults and report them.  I've chosen just to do 
@@ -338,7 +399,11 @@ export class SpaClient {
             this.flow = FLOW_STATES[code-15];
             // It may also make sense to switch the thermostat control accessory into 
             // a state of 'cooling' or 'off' when water flow fails.
+            this.log.debug("Recent, relevant fault found: ", daysAgo, " days ago of type ", code);
+            return true;
         }
+        this.log.debug("Recent, but not relevant fault found: ", daysAgo, " days ago of type ", code);
+        return false;
     }
 }
 

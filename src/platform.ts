@@ -31,7 +31,7 @@ export class SpaHomebridgePlatform implements DynamicPlatformPlugin {
     if (!config || !Array.isArray(config.devices)) {
       log.warn('No configuration found for %s', PLUGIN_NAME);
     }
-
+    
     this.log.debug('Finished initializing platform:', this.config.name);
     this.devices = config.devices || [];
 
@@ -113,19 +113,19 @@ export class SpaHomebridgePlatform implements DynamicPlatformPlugin {
     const deviceType = accessory.context.device.deviceType;
     switch (deviceType) {
       case "Pump 1": {
-        new PumpAccessory(this, accessory,1);
+        new PumpAccessory(this, accessory, 1);
         break;
       }
       case "Pump 2": {
-        new PumpAccessory(this, accessory,2);
+        new PumpAccessory(this, accessory, 2);
         break;
       }
       case "Pump 3": {
-        new PumpAccessory(this, accessory,3);
+        new PumpAccessory(this, accessory, 3);
         break;
       }
       case "Pump 4": {
-        new PumpAccessory(this, accessory,4);
+        new PumpAccessory(this, accessory, 4);
         break;
       }
       case "Lights": {

@@ -5,7 +5,7 @@ import { SpaHomebridgePlatform } from './platform';
 import { VERSION } from './settings';
 
 /**
- * Control a 1- or 2- speed pump as a "fan"
+ * Control a 1- or 2- speed pump as a homekit "fan"
  */
 export class PumpAccessory {
   private service: Service;
@@ -35,7 +35,7 @@ export class PumpAccessory {
       .setCharacteristic(this.platform.Characteristic.Model, 'Default-Model')
       .setCharacteristic(this.platform.Characteristic.SerialNumber, VERSION);
 
-    // get the LightBulb service if it exists, otherwise create a new LightBulb service
+    // get the Fan service if it exists, otherwise create a new Fan service
     // you can create multiple services for each accessory
     this.service = this.accessory.getService(this.platform.Service.Fan) ?? this.accessory.addService(this.platform.Service.Fan);
 
@@ -53,7 +53,7 @@ export class PumpAccessory {
       .on(CharacteristicEventTypes.SET, this.setOn.bind(this))                // SET - bind to the `setOn` method below
       .on(CharacteristicEventTypes.GET, this.getOn.bind(this));               // GET - bind to the `getOn` method below
 
-    // register handlers for the Brightness Characteristic
+    // register handlers for the RotationSpeed Characteristic
     this.service.getCharacteristic(this.platform.Characteristic.RotationSpeed)
       .on(CharacteristicEventTypes.SET, this.setRotationSpeed.bind(this))        // SET - bind to the 'setRotationSpeed` method below
       .setProps({minStep: (this.numSpeedSettings == 1 ? 100.0 : 50.0)})
@@ -66,8 +66,6 @@ export class PumpAccessory {
    * Turns the device on or off.
    */
   setOn(value: CharacteristicValue, callback: CharacteristicSetCallback) {
-
-    // implement your own code to turn your device on/off
     if (value as boolean) {
       this.setSpeed(this.states.lastSpeed);
     } else {
@@ -75,7 +73,6 @@ export class PumpAccessory {
     }
     this.platform.log.debug('Set Pump Characteristic On ->', value);
 
-    // you must call the callback function
     callback(null);
   }
 
@@ -93,14 +90,9 @@ export class PumpAccessory {
    * this.service.updateCharacteristic(this.platform.Characteristic.On, true)
    */
   getOn(callback: CharacteristicGetCallback) {
-
     const isOn = this.getSpeed() != 0;
-  
     this.platform.log.debug('Get Pump Characteristic On ->', isOn);
 
-    // you must call the callback function
-    // the first argument should be null if there were no errors
-    // the second argument should be the value to return
     callback(null, isOn);
   }
 
@@ -109,12 +101,10 @@ export class PumpAccessory {
    * These are sent when the user changes the state of an accessory, for example, changing the Brightness
    */
   setRotationSpeed(value: CharacteristicValue, callback: CharacteristicSetCallback) {
-
     const speed = Math.round((value as number)*this.numSpeedSettings/100.0);
     this.setSpeed(speed);
     this.platform.log.debug('Set Pump Characteristic Speed -> ', value, ' which is ', this.speeds[speed]);
 
-    // you must call the callback function
     callback(null);
   }
 
@@ -127,16 +117,15 @@ export class PumpAccessory {
     const value = (100.0*speed)/this.numSpeedSettings;
     this.platform.log.debug('Get Pump Characteristic Speed -> ', value, ' which is ', this.speeds[speed]);
 
-    // you must call the callback function
     callback(null, value);
   }
 
   private getSpeed() {
-    return this.speeds.indexOf(this.platform.spa.get_pump(this.pumpNumber));
+    return this.speeds.indexOf(this.platform.spa.getPumpSpeed(this.pumpNumber));
   }
 
   private setSpeed(speed: number) {
-    this.platform.spa.set_pump(this.pumpNumber, this.speeds[speed]);
+    this.platform.spa.setPumpSpeed(this.pumpNumber, this.speeds[speed]);
     if (speed != 0) {
       this.states.lastSpeed = speed;
     }

@@ -25,10 +25,6 @@ export class ThermostatAccessory {
     // you can create multiple services for each accessory
     this.service = this.accessory.getService(this.platform.Service.Thermostat) ?? this.accessory.addService(this.platform.Service.Thermostat);
 
-    // To avoid "Cannot add a Service with the same UUID another Service without also defining a unique 'subtype' property." error,
-    // when creating multiple services of the same type, you need to use the following syntax to specify a name and subtype id:
-    // this.accessory.getService('NAME') ?? this.accessory.addService(this.platform.Service.TemperatureSensor, 'NAME', 'USER_DEFINED_SUBTYPE');
-
     // set the service name, this is what is displayed as the default name on the Home app
     // in this example we are using the name we stored in the `accessory.context` in the `discoverDevices` method.
     this.service.setCharacteristic(this.platform.Characteristic.Name, accessory.context.device.name);
@@ -36,26 +32,47 @@ export class ThermostatAccessory {
     // each service must implement at-minimum the "required characteristics" for the given service type
     // see https://developers.homebridge.io/#/service/Thermostat
 
-    // register handlers for the On/Off Characteristic
+    // register handlers for the required Characteristics
     this.service.getCharacteristic(this.platform.Characteristic.CurrentTemperature)
-      .on(CharacteristicEventTypes.GET, this.getCurrentTemperature.bind(this));               // GET - bind to the `getOn` method below
+      .on(CharacteristicEventTypes.GET, this.getCurrentTemperature.bind(this));               
     this.service.getCharacteristic(this.platform.Characteristic.TargetTemperature)
       .on(CharacteristicEventTypes.SET, this.setTargetTemperature.bind(this))
-      .setProps({
-        minValue: 20.0,
-        maxValue: 40.0,
-        minStep: 0.5
-      })
-      .on(CharacteristicEventTypes.GET, this.getTargetTemperature.bind(this));               // GET - bind to the `getOn` method below
+      .on(CharacteristicEventTypes.GET, this.getTargetTemperature.bind(this));               
+    this.setTargetTempMinMax();
     this.service.getCharacteristic(this.platform.Characteristic.TemperatureDisplayUnits)
       .on(CharacteristicEventTypes.GET, this.getTemperatureDisplayUnits.bind(this)); 
     this.service.getCharacteristic(this.platform.Characteristic.CurrentHeatingCoolingState)
       .on(CharacteristicEventTypes.GET, this.getHeatingCoolingState.bind(this)); 
+    // Adjust properties to only allow Off and Heat (not Cool or Auto which are irrelevant)
     this.service.getCharacteristic(this.platform.Characteristic.TargetHeatingCoolingState)
-      .on(CharacteristicEventTypes.SET, this.setTargetHeatingCoolingState.bind(this))                // SET - bind to the `setOn` method below
-      .on(CharacteristicEventTypes.GET, this.getTargetHeatingCoolingState.bind(this));               // GET - bind to the `getOn` method below
+      .on(CharacteristicEventTypes.SET, this.setTargetHeatingCoolingState.bind(this)).setProps({
+        minValue: 0,
+        maxValue: 1,
+        validValues: [0,1]
+      })
+      .on(CharacteristicEventTypes.GET, this.getTargetHeatingCoolingState.bind(this));
   }
-   
+  
+    // In "high" mode (the normal mode, which we call "Heat" for this Homekit thermostat), 
+    // the target temperature can be between 26.5 and 40 celsius.
+    // In "low" mode (useful for holidays or days when we're not using the spa, which we
+    // call "Off" for this Homekit thermostat), target can be between 10 and 36 celsius.  
+  setTargetTempMinMax() {
+    if (this.platform.spa.getTempRangeIsHigh()) {
+      this.service.getCharacteristic(this.platform.Characteristic.TargetTemperature).setProps({
+        minValue: 26.5,
+        maxValue: 40.0,
+        minStep: 0.5
+      });
+    } else {
+      this.service.getCharacteristic(this.platform.Characteristic.TargetTemperature).setProps({
+        minValue: 10.0,
+        maxValue: 36.0,
+        minStep: 0.5
+      });
+    }
+  }
+
   /**
    * Handle the "GET" requests from HomeKit
    * These are sent when HomeKit wants to know the current state of the accessory, for example, checking if a Light bulb is on.
@@ -70,83 +87,57 @@ export class ThermostatAccessory {
    * this.service.updateCharacteristic(this.platform.Characteristic.get, true)
    */
   getCurrentTemperature(callback: CharacteristicGetCallback) {
-
     const temperature = this.platform.spa.getCurrentTemp();
-
     this.platform.log.debug('Get Current Temperature Characteristic ->', temperature);
 
-    // you must call the callback function
-    // the first argument should be null if there were no errors
-    // the second argument should be the value to return
     callback(null, temperature);
   }
 
   getTemperatureDisplayUnits(callback: CharacteristicGetCallback) {
-
     const cOrF = this.platform.spa.getTempIsCorF();
     const units = cOrF == "Fahrenheit" ? Characteristic.TemperatureDisplayUnits.FAHRENHEIT : Characteristic.TemperatureDisplayUnits.CELSIUS;
-
     this.platform.log.debug('Get Temperature Display Units Characteristic ->', units);
 
-    // you must call the callback function
-    // the first argument should be null if there were no errors
-    // the second argument should be the value to return
     callback(null, units);
   }
 
   getHeatingCoolingState(callback: CharacteristicGetCallback) {
-
     const heating = this.platform.spa.getIsHeatingNow();
-
     this.platform.log.debug('Get Heating Cooling State Characteristic ->', heating);
 
-    // you must call the callback function
-    // the first argument should be null if there were no errors
-    // the second argument should be the value to return
     callback(null, heating);
   }
 
   getTargetHeatingCoolingState(callback: CharacteristicGetCallback) {
-
     const mode = this.platform.spa.getTempRangeIsHigh();
-    const heating = mode ? Characteristic.TargetHeatingCoolingState.HEAT : Characteristic.TargetHeatingCoolingState.COOL;
-
+    const heating = mode ? Characteristic.TargetHeatingCoolingState.HEAT : Characteristic.TargetHeatingCoolingState.OFF;
     this.platform.log.debug('Get Target Heating Cooling State Characteristic ->', heating);
 
-    // you must call the callback function
-    // the first argument should be null if there were no errors
-    // the second argument should be the value to return
     callback(null, heating);
   }
 
   setTargetHeatingCoolingState(value: CharacteristicValue, callback: CharacteristicSetCallback) {
-
     const heating = (value == Characteristic.TargetHeatingCoolingState.HEAT);
     this.platform.spa.setTempRangeIsHigh(heating);
     this.platform.log.debug('Set Target Heating Cooling State Characteristic ->', heating);
-
-    // you must call the callback function
+    // Adjust the allowed range
+    this.setTargetTempMinMax();
+    // Do we need to change the target temperature, or will HomeKit pick that up automatically
+    // in a moment?
     callback(null);
   }
 
   getTargetTemperature(callback: CharacteristicGetCallback) {
-
     const temperature = this.platform.spa.getTargetTemp();
-
     this.platform.log.debug('Get Target Temperature Characteristic ->', temperature);
 
-    // you must call the callback function
-    // the first argument should be null if there were no errors
-    // the second argument should be the value to return
     callback(null, temperature);
   }
 
   setTargetTemperature(value: CharacteristicValue, callback: CharacteristicSetCallback) {
-
     this.platform.spa.setTargetTemperature(value as number);
     this.platform.log.debug('Set Target Temperature Characteristic ->', value);
 
-    // you must call the callback function
     callback(null);
   }
 
