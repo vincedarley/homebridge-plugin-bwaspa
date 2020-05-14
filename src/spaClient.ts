@@ -2,8 +2,14 @@ import * as crc from "crc";
 import type { Logger } from 'homebridge';
 
 const UNKNOWN_TEMPERATURE_VALUE = 255;
-const PUMP_STATES = ["Off", "Low", "High"];
-const FLOW_STATES = ["Good", "Low", "Failed"];
+export const PUMP_OFF = "Off";
+export const PUMP_LOW = "Low";
+export const PUMP_HIGH = "High";
+export const PUMP_STATES = [PUMP_OFF, PUMP_LOW, PUMP_HIGH];
+export const FLOW_GOOD = "Good";
+export const FLOW_LOW = "Low";
+export const FLOW_FAILED = "Failed";
+export const FLOW_STATES = [FLOW_GOOD, FLOW_LOW, FLOW_FAILED];
 
 const ToggleItemRequest = new Uint8Array([0x0a, 0xbf, 0x11]);
 const ConfigRequest = new Uint8Array([0x0a, 0xbf, 0x04]);
@@ -180,10 +186,10 @@ export class SpaClient {
         }
         // Pump1 = toggle '4', Pump2 = toggle '5', etc.
         const id = index+3;
-        if (((value === "High") && (this.pumps[index-1] === "Off"))) {
+        if (((value === PUMP_HIGH) && (this.pumps[index-1] === PUMP_OFF))) {
             this.send_toggle_message(id);
             this.send_toggle_message(id);
-        } else if (((value === "Off") && (this.pumps[index-1] === "Low"))) {
+        } else if (((value === PUMP_OFF) && (this.pumps[index-1] === PUMP_LOW))) {
             this.send_toggle_message(id);
             this.send_toggle_message(id);
         } else {
@@ -349,12 +355,15 @@ export class SpaClient {
         }
         // Store this for next time
         const oldBytes = this.lastStateBytes;
-        this.lastStateBytes = bytes;
+        this.lastStateBytes = new Uint8Array(bytes);
         // Return true if any values have changed
         if (oldBytes.length != this.lastStateBytes.length) return true;
         for (var i = 0; i < oldBytes.length; i++) {
-            if (i != 3 && i != 4) {
+            // Bytes 3,4 are the time, and byte 24 seems to change in pretty haphazard ways
+            if (i != 3 && i != 4 && i != 24) {
                 if (oldBytes[i] !== this.lastStateBytes[i]) {
+                    // this.log.debug("OLD:", oldBytes.toString());
+                    // this.log.debug("NEW:", this.lastStateBytes.toString());
                     return true;
                 }
             }
@@ -380,6 +389,9 @@ export class SpaClient {
         " Temp A:", this.convertTemperature(true, bytes[8]), 
         " Temp B:", this.convertTemperature(true, bytes[9]));
         
+        // Set flow to good, but possibly over-ride right below
+        this.flow = FLOW_GOOD;
+
         if (daysAgo > 1) {
             // Don't do anything for older faults.  Perhaps > 0??
             this.log.debug("No recent faults. Last fault ", daysAgo, " days ago of type ", code);

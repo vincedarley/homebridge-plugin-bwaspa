@@ -3,6 +3,7 @@ import type { Service, PlatformAccessory, CharacteristicValue, CharacteristicSet
 
 import { SpaHomebridgePlatform } from './platform';
 import { VERSION } from './settings';
+import { FLOW_FAILED, FLOW_GOOD } from './spaClient';
 
 /**
  * A thermostat temperature control for the Spa.
@@ -42,15 +43,15 @@ export class ThermostatAccessory {
     this.service.getCharacteristic(this.platform.Characteristic.TemperatureDisplayUnits)
       .on(CharacteristicEventTypes.GET, this.getTemperatureDisplayUnits.bind(this)); 
     this.service.getCharacteristic(this.platform.Characteristic.CurrentHeatingCoolingState)
-      .on(CharacteristicEventTypes.GET, this.getHeatingCoolingState.bind(this)); 
+      .on(CharacteristicEventTypes.GET, this.getHeatingState.bind(this)); 
     // Adjust properties to only allow Off and Heat (not Cool or Auto which are irrelevant)
     this.service.getCharacteristic(this.platform.Characteristic.TargetHeatingCoolingState)
-      .on(CharacteristicEventTypes.SET, this.setTargetHeatingCoolingState.bind(this)).setProps({
+      .on(CharacteristicEventTypes.SET, this.setTargetHeatingState.bind(this)).setProps({
         minValue: 0,
-        maxValue: 1,
-        validValues: [0,1]
+        maxValue: 2,
+        validValues: [0,1,2]
       })
-      .on(CharacteristicEventTypes.GET, this.getTargetHeatingCoolingState.bind(this));
+      .on(CharacteristicEventTypes.GET, this.getTargetHeatingState.bind(this));
   }
   
     // In "high" mode (the normal mode, which we call "Heat" for this Homekit thermostat), 
@@ -58,19 +59,28 @@ export class ThermostatAccessory {
     // In "low" mode (useful for holidays or days when we're not using the spa, which we
     // call "Off" for this Homekit thermostat), target can be between 10 and 36 celsius.  
   setTargetTempMinMax() {
-    if (this.platform.spa.getTempRangeIsHigh()) {
-      this.service.getCharacteristic(this.platform.Characteristic.TargetTemperature).setProps({
-        minValue: 26.5,
-        maxValue: 40.0,
-        minStep: 0.5
-      });
-    } else {
-      this.service.getCharacteristic(this.platform.Characteristic.TargetTemperature).setProps({
-        minValue: 10.0,
-        maxValue: 36.0,
-        minStep: 0.5
-      });
-    }
+    this.service.getCharacteristic(this.platform.Characteristic.TargetTemperature).setProps({
+      minValue: 10.0,
+      maxValue: 40.0,
+      minStep: 0.5
+    });
+    // Code below seems not to work with HomeKit to dynamically change the valid range.
+    // So we just set the broadest range above and will then have to validate if the user
+    // tries to change to illegal values.
+
+    // if (this.platform.spa.getTempRangeIsHigh()) {
+    //   this.service.getCharacteristic(this.platform.Characteristic.TargetTemperature).setProps({
+    //     minValue: 26.5,
+    //     maxValue: 40.0,
+    //     minStep: 0.5
+    //   });
+    // } else {
+    //   this.service.getCharacteristic(this.platform.Characteristic.TargetTemperature).setProps({
+    //     minValue: 10.0,
+    //     maxValue: 36.0,
+    //     minStep: 0.5
+    //   });
+    // }
   }
 
   /**
@@ -95,35 +105,65 @@ export class ThermostatAccessory {
 
   getTemperatureDisplayUnits(callback: CharacteristicGetCallback) {
     const cOrF = this.platform.spa.getTempIsCorF();
-    const units = cOrF == "Fahrenheit" ? Characteristic.TemperatureDisplayUnits.FAHRENHEIT : Characteristic.TemperatureDisplayUnits.CELSIUS;
-    this.platform.log.debug('Get Temperature Display Units Characteristic ->', units);
+    const units = (cOrF == "Fahrenheit" 
+    ? Characteristic.TemperatureDisplayUnits.FAHRENHEIT : Characteristic.TemperatureDisplayUnits.CELSIUS);
+    this.platform.log.debug('Get Temperature Display Units Characteristic ->', cOrF, " ", units);
 
     callback(null, units);
   }
 
-  getHeatingCoolingState(callback: CharacteristicGetCallback) {
+  getHeatingState(callback: CharacteristicGetCallback) {
     const heating = this.platform.spa.getIsHeatingNow();
-    this.platform.log.debug('Get Heating Cooling State Characteristic ->', heating);
+    this.platform.log.debug('Get Heating State Characteristic ->', heating);
 
-    callback(null, heating);
+    callback(null, heating ? Characteristic.CurrentHeatingCoolingState.HEAT
+      : Characteristic.CurrentHeatingCoolingState.OFF);
   }
 
-  getTargetHeatingCoolingState(callback: CharacteristicGetCallback) {
+  getTargetHeatingState(callback: CharacteristicGetCallback) {
     const mode = this.platform.spa.getTempRangeIsHigh();
-    const heating = mode ? Characteristic.TargetHeatingCoolingState.HEAT : Characteristic.TargetHeatingCoolingState.OFF;
-    this.platform.log.debug('Get Target Heating Cooling State Characteristic ->', heating);
+    // might want "LOW" or "FAILED" here, rather than just the latter.
+    const flowError = (this.platform.spa.getFlowState() == FLOW_FAILED);
+    var result;
+    if (flowError) {
+      result = Characteristic.TargetHeatingCoolingState.OFF;
+    } else {
+      result = mode ? Characteristic.TargetHeatingCoolingState.HEAT 
+      : Characteristic.TargetHeatingCoolingState.COOL;
+    }
+    this.platform.log.debug('Get Target Heating State Characteristic ->', 
+    mode ? "HEAT" : "COOL", " Flow error(", flowError, ") ", result);
 
-    callback(null, heating);
+    callback(null, result);
   }
 
-  setTargetHeatingCoolingState(value: CharacteristicValue, callback: CharacteristicSetCallback) {
+  setTargetHeatingState(value: CharacteristicValue, callback: CharacteristicSetCallback) {
+    if (value == Characteristic.TargetHeatingCoolingState.OFF) {
+      // Check if this makes sense or if we should reject the change.
+      if (this.platform.spa.getFlowState() == FLOW_GOOD) {
+        this.platform.log.debug("Spa doesn't allow turned heating off. Reverting.");
+        callback(new Error("Spa doesn't allow turned heating off. Reverting."));
+        // value = Characteristic.TargetHeatingCoolingState.COOL;
+        // this.service.getCharacteristic(this.platform.Characteristic.TargetHeatingCoolingState)
+        //   .updateValue(Characteristic.TargetHeatingCoolingState.COOL);
+        return;
+      }
+    } else if (this.platform.spa.getFlowState() == FLOW_FAILED) {
+      // Can only be in the "off" state
+      callback(new Error("Water flow has failed. Heating off"));
+      return;
+    }
+    // HEAT means "high".  If users chooses "cool" or "off", we treat those as "low"
     const heating = (value == Characteristic.TargetHeatingCoolingState.HEAT);
     this.platform.spa.setTempRangeIsHigh(heating);
-    this.platform.log.debug('Set Target Heating Cooling State Characteristic ->', heating);
+    this.platform.log.debug('Set Target Heating State Characteristic ->', heating ? "HEAT" : "COOL", 
+    " ", value, " (and need to adjust valid range)");
     // Adjust the allowed range
     this.setTargetTempMinMax();
-    // Do we need to change the target temperature, or will HomeKit pick that up automatically
-    // in a moment?
+    // We need to change the target temperature (which the Spa adjust automatically when switching
+    // from High to Low), else it will take a while for HomeKit to pick that up automatically.
+    this.service.getCharacteristic(this.platform.Characteristic.TargetTemperature)
+          .updateValue(this.platform.spa.getTargetTemp());
     callback(null);
   }
 
@@ -135,8 +175,33 @@ export class ThermostatAccessory {
   }
 
   setTargetTemperature(value: CharacteristicValue, callback: CharacteristicSetCallback) {
-    this.platform.spa.setTargetTemperature(value as number);
-    this.platform.log.debug('Set Target Temperature Characteristic ->', value);
+    var temp = value as number;
+    if (this.platform.spa.getTempRangeIsHigh()) {
+      if (temp < 26.5) {
+        temp = 26.5;
+        // TODO: This line doesn't actually seem to update homekit.  Unless we can find
+        // a way to do this, we'll have to keep the line underneath to reject the change 
+        // with an error in the callback.
+        this.service.getCharacteristic(this.platform.Characteristic.TargetTemperature)
+          .updateValue(temp);
+        callback(new Error("Temperature out of bounds [26.5,40.0]"));
+        return;
+      }
+    } else {
+      if (temp > 36.0) {
+        temp = 36.0;
+        // TODO: This line doesn't actually seem to update homekit.  Unless we can find
+        // a way to do this, we'll have to keep the line underneath to reject the change 
+        // with an error in the callback.
+        this.service.getCharacteristic(this.platform.Characteristic.TargetTemperature)
+          .updateValue(temp);
+        callback(new Error("Temperature out of bounds [10.0,36.0]"));
+        return;
+      }
+    }
+    this.platform.spa.setTargetTemperature(temp);
+    this.platform.log.debug('Set Target Temperature Characteristic ->', temp, 
+      " (may be different to ", value, ")");
 
     callback(null);
   }

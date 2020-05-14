@@ -59,19 +59,22 @@ It supports pumps that are single speed (off or high) and 2-speed (off or low or
 
 ## Limitations?
 
-The "Thermostat" device type exposes control of the spa's target temperature and high (="HEAT" in Home app) vs low (="Off" in Home app), heating mode (flipping between high/low not yet supported).  The Spa's current temperature is visible both in the Thermostat device and in the read-only Temperature Sensor. Up to you if you want/need both devices.
-
 You can control one light and up to 4 pumps. The code does not know how many pumps your spa has - you define that in the items you set up in your config. I believe it would be possible to automate this, given the Balboa Spa app knows it, but am not sure how.
 
 The pumps have a minStep of 50% or 100% depending on their number of speed settings that you define in the config. I think this should work correctly.  Again theoretically I imagine this could be automated.
 
 Lights are simply on/off.  Balboa provide no capability to control the colour.  So this limitation will never be rectified.
 
+The "Thermostat" device type exposes control of the spa's target temperature and high (="HEAT" in Home app) vs low (="Cool" in Home app), heating mode.  The target temperature is separate for the two modes
+and the valid ranges are also different.  If the flow sensor indicates water flow has failed, then the thermostat is "off".  You cannot turn it off yourself - it is not a valid state for the spa itself.
+
+The Spa's current temperature is visible both in the Thermostat device and in the read-only Temperature Sensor. Up to you if you want/need both devices.
+
 The flow sensor has 3 states: normal (all good), failed (which triggers a "leak" alarm - and you should be able to configure Home to send you a notification when this happens), or low water flow which triggers a status fault with the sensor.  This is useful to alert you if filters need cleaning (when they are dirty the flow slows/fails, heating is turned off, and the spa cools down).  The Balboa app doesn't alert you to any problems there, so this capability is very useful. Currently the sensor code only updates once an hour.  So even when you fix the issue (change filters, reset spa, etc) it won't reset in Homekit for some time without you manually restarting homebridge - this could be improved in the code in the future.
 
 ## Thanks
 
-The homebridge plugin template project was the basis for this, and some Python code for connecting to balboa helped a lot.  The
-node-red/MQTT/Balboa implementation served as some inspiration, but I really wanted something simpler to install and configure, and customise more precisely to deal with things like faults.
+The homebridge plugin template project was the basis for this, and some Python code for connecting to balboa helped a lot in education about the communication protocols.  The
+node-red/MQTT/Balboa implementation served as some inspiration, but I really wanted something simpler to install and configure, and customise more precisely to deal with things like faults and temperature controls.
 
 My first Typescript or Homebridge project...
