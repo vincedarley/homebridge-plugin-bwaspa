@@ -1,4 +1,4 @@
-import { CharacteristicEventTypes, Characteristic } from 'homebridge';
+import { CharacteristicEventTypes } from 'homebridge';
 import type { Service, PlatformAccessory, CharacteristicValue, CharacteristicSetCallback, CharacteristicGetCallback} from 'homebridge';
 
 import { SpaHomebridgePlatform } from './platform';
@@ -106,7 +106,7 @@ export class ThermostatAccessory {
   getTemperatureDisplayUnits(callback: CharacteristicGetCallback) {
     const cOrF = this.platform.spa.getTempIsCorF();
     const units = (cOrF == "Fahrenheit" 
-    ? Characteristic.TemperatureDisplayUnits.FAHRENHEIT : Characteristic.TemperatureDisplayUnits.CELSIUS);
+    ? this.platform.Characteristic.TemperatureDisplayUnits.FAHRENHEIT : this.platform.Characteristic.TemperatureDisplayUnits.CELSIUS);
     this.platform.log.debug('Get Temperature Display Units Characteristic ->', cOrF, " ", units);
 
     callback(null, units);
@@ -116,8 +116,8 @@ export class ThermostatAccessory {
     const heating = this.platform.spa.getIsHeatingNow();
     this.platform.log.debug('Get Heating State Characteristic ->', heating);
 
-    callback(null, heating ? Characteristic.CurrentHeatingCoolingState.HEAT
-      : Characteristic.CurrentHeatingCoolingState.OFF);
+    callback(null, heating ? this.platform.Characteristic.CurrentHeatingCoolingState.HEAT
+      : this.platform.Characteristic.CurrentHeatingCoolingState.OFF);
   }
 
   getTargetHeatingState(callback: CharacteristicGetCallback) {
@@ -126,10 +126,10 @@ export class ThermostatAccessory {
     const flowError = (this.platform.spa.getFlowState() == FLOW_FAILED);
     var result;
     if (flowError) {
-      result = Characteristic.TargetHeatingCoolingState.OFF;
+      result = this.platform.Characteristic.TargetHeatingCoolingState.OFF;
     } else {
-      result = mode ? Characteristic.TargetHeatingCoolingState.HEAT 
-      : Characteristic.TargetHeatingCoolingState.COOL;
+      result = mode ? this.platform.Characteristic.TargetHeatingCoolingState.HEAT 
+      : this.platform.Characteristic.TargetHeatingCoolingState.COOL;
     }
     this.platform.log.debug('Get Target Heating State Characteristic ->', 
     mode ? "HEAT" : "COOL", " Flow error(", flowError, ") ", result);
@@ -138,7 +138,7 @@ export class ThermostatAccessory {
   }
 
   setTargetHeatingState(value: CharacteristicValue, callback: CharacteristicSetCallback) {
-    if (value == Characteristic.TargetHeatingCoolingState.OFF) {
+    if (value == this.platform.Characteristic.TargetHeatingCoolingState.OFF) {
       // Check if this makes sense or if we should reject the change.
       if (this.platform.spa.getFlowState() == FLOW_GOOD) {
         this.platform.log.debug("Spa doesn't allow turned heating off. Reverting.");
@@ -154,7 +154,7 @@ export class ThermostatAccessory {
       return;
     }
     // HEAT means "high".  If users chooses "cool" or "off", we treat those as "low"
-    const heating = (value == Characteristic.TargetHeatingCoolingState.HEAT);
+    const heating = (value == this.platform.Characteristic.TargetHeatingCoolingState.HEAT);
     this.platform.spa.setTempRangeIsHigh(heating);
     this.platform.log.debug('Set Target Heating State Characteristic ->', heating ? "HEAT" : "COOL", 
     " ", value, " (and need to adjust valid range)");
