@@ -54,7 +54,7 @@
             "deviceType": {
               "title": "Device type",
               "type": "string",
-              "default": "Lights",
+              "default": "Lights 1",
               "oneOf": [
                 {
                   "title": "Pump 1",
@@ -81,9 +81,27 @@
                   ]
                 },
                 {
-                  "title": "Lights",
+                  "title": "Pump 5",
                   "enum": [
-                    "Lights"
+                    "Pump 5"
+                  ]
+                },
+                {
+                  "title": "Pump 6",
+                  "enum": [
+                    "Pump 6"
+                  ]
+                },
+                {
+                  "title": "Lights 1",
+                  "enum": [
+                    "Lights 1"
+                  ]
+                },
+                {
+                  "title": "Lights 2",
+                  "enum": [
+                    "Lights 2"
                   ]
                 },
                 {

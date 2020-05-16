@@ -15,6 +15,7 @@ export class LightsAccessory {
   constructor(
     private readonly platform: SpaHomebridgePlatform,
     private readonly accessory: PlatformAccessory,
+    private readonly lightNumber : number
   ) {
 
     // set accessory information
@@ -47,7 +48,7 @@ export class LightsAccessory {
    */
   setOn(value: CharacteristicValue, callback: CharacteristicSetCallback) {
     // Turn the light on or off
-    this.platform.spa.setLightState(value as boolean);
+    this.platform.spa.setLightState(this.lightNumber, value as boolean);
     this.platform.log.debug('Set Lights Characteristic On ->', value);
 
     callback(null);
@@ -68,7 +69,7 @@ export class LightsAccessory {
    */
   getOn(callback: CharacteristicGetCallback) {
     // Read whether the light is on or off
-    const isOn = this.platform.spa.getIsLightOn();
+    const isOn = this.platform.spa.getIsLightOn(this.lightNumber);
     this.platform.log.debug('Get Lights Characteristic On ->', isOn);
 
     callback(null, isOn);

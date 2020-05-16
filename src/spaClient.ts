@@ -26,13 +26,13 @@ const ConfigReply = new Uint8Array([0x0a,0xbf,0x94]);
 const ControlConfig1Request = new Uint8Array([0x0a, 0xbf, 0x22]);
 const ControlConfig1Reply = new Uint8Array([0x0a,0xbf,0x24]);
 const ControlConfig2Request = new Uint8Array([0x0a, 0xbf, 0x2e]);
-const ControlConfig2Reply = new Uint8Array([0x0a,0xbf,0x2e]);
+const ControlConfig2Reply = new Uint8Array([0x0a,0xbf,0x25]);
 
 export class SpaClient {
     static instance: SpaClient;
     static sock: any;
     socket: any;
-    lightIsOn: boolean;
+    lightIsOn: boolean[];
     currentTemp: number;
     targetTempModeHigh: number;
     targetTempModeLow: number;
@@ -49,14 +49,14 @@ export class SpaClient {
     flow: string;
 
     constructor(public readonly log: Logger, public readonly host: string) {
-        this.lightIsOn = false;
+        this.lightIsOn = [false,false];
         this.currentTemp = 0;
         this.hour = 12;
         this.minute = 0;
         this.heatingMode = "";
         this.temp_CorF = "";
         this.tempRangeIsHigh = true;
-        this.pumps = ["","","",""];
+        this.pumps = [PUMP_OFF,PUMP_OFF,PUMP_OFF,PUMP_OFF,PUMP_OFF,PUMP_OFF];
         this.targetTempModeLow = 2*18;
         this.targetTempModeHigh = 2*38;
         this.priming = false;
@@ -159,10 +159,13 @@ export class SpaClient {
         message = this.concat(message, typepayload);
         message = this.concat(message, new Uint8Array([checksum]));
         message = this.concat(message, prefixSuffix);
-        this.log.debug(purpose, "Writing:" + message.toString())
+        this.log.debug(purpose, "Writing:" + this.readable(message));
         SpaClient.sock.write(message);
     }
 
+    readable(message: Uint8Array) {
+        return Buffer.from(message).toString('hex').match(/.{1,2}/g);
+    }
     getTargetTemp() {
         return this.convertTemperature(true, this.tempRangeIsHigh 
             ? this.targetTempModeHigh : this.targetTempModeLow);
@@ -177,8 +180,8 @@ export class SpaClient {
         return hour.toString().padStart(2, '0') + ":" 
         + minute.toString().padStart(2, '0');
     }
-    getIsLightOn() {
-        return this.lightIsOn;
+    getIsLightOn(index: number) {
+        return this.lightIsOn[index];
     }
     getIsHeatingNow() {
         return this.isHeatingNow;
@@ -189,12 +192,15 @@ export class SpaClient {
     getCurrentTemp() {
         return this.convertTemperature(true, this.currentTemp);
     }
-    setLightState(value: boolean) {
-        if ((this.lightIsOn === value)) {
+
+    setLightState(index: number, value: boolean) {
+        if ((this.lightIsOn[index] === value)) {
             return;
         }
-        this.send_toggle_message(0x11);
-        this.lightIsOn = value;
+        // Lights numbered 1,2
+        const id = 0x11+index-1;
+        this.send_toggle_message(id);
+        this.lightIsOn[index] = value;
     }
 
     setTempRangeIsHigh(isHigh: boolean) {
@@ -275,14 +281,13 @@ export class SpaClient {
             this.log.error("Toggle only a single byte; had " + item);
             return;
         }
-        // # 0x04 - pump 1
-        // # 0x05 - pump 2
-        // # 0x06 - pump 3
-        // # 0x07 - pump 4 -- I assume this is true... not tested.
-        // # 0x11 - light 1
+        // # 0x04 to 0x09 - pumps 1-6
+        // # 0x11-0x12 - lights 1-2
         // # 0x3c - hold
         // # 0x51 - heating mode
         // # 0x50 - temperature range
+        // # 0x0e - mister (unsupported at present)
+        // # 0x0c - blower (unsupported at present)
         this.sendMessageToSpa("Toggle item " + item, ToggleItemRequest, new Uint8Array([item, 0x00]));
     }
 
@@ -354,19 +359,19 @@ export class SpaClient {
             return this.readFaults(contents);
         } else if (this.equal(msgType, ControlConfig1Reply)) {
             // TODO: interpret this
-            this.log.info("Control config 1 reply:", chunk.toString());
+            this.log.info("Control config 1 reply:", this.readable(contents));
         } else if (this.equal(msgType, ControlConfig2Reply)) {
             // TODO: interpret this
-            this.log.info("Control config 2 reply:", chunk.toString());
+            this.log.info("Control config 2 reply:", this.readable(contents));
         } else if (this.equal(msgType, ConfigReply)) {
             // TODO: interpret this
-            this.log.info("Config reply:", chunk.toString());
+            this.log.info("Config reply:", this.readable(contents));
         } else {
             // Various messages about controls, filters, etc. In theory we could
             // choose to implement more things here, but limited value in it.
             this.log.info("Not understood a received spa message ", 
             "(likely user interacting with the screen controls):", msgType.toString(), 
-            " contents: ", contents.toString());
+            " contents: ", this.readable(contents));
         }
         return false;
     }
@@ -397,16 +402,21 @@ export class SpaClient {
         var tempFlags = bytes[10];
         this.isHeatingNow = ((tempFlags & 48) !== 0);
         this.tempRangeIsHigh = (((tempFlags & 4) === 0) ? false : true);
-        var pump_status = bytes[11];
+        var pump_status1234 = bytes[11];
         // How can we determine the number of pumps automatically?  The Balboa
         // app knows that, so it is possible.
-        this.pumps[0] = PUMP_STATES[(pump_status & (1+2))];
-        this.pumps[1] = PUMP_STATES[((pump_status & (4+8)) >> 2)];
-        this.pumps[2] = PUMP_STATES[((pump_status & (16+32)) >> 4)];
-        this.pumps[3] = PUMP_STATES[((pump_status & (64+128)) >> 6)];
+        this.pumps[0] = PUMP_STATES[(pump_status1234 & (1+2))];
+        this.pumps[1] = PUMP_STATES[((pump_status1234 & (4+8)) >> 2)];
+        this.pumps[2] = PUMP_STATES[((pump_status1234 & (16+32)) >> 4)];
+        this.pumps[3] = PUMP_STATES[((pump_status1234 & (64+128)) >> 6)];
+        // pumps 5,6 are untested by me.
+        var pump_status56 = bytes[12];
+        this.pumps[5] = PUMP_STATES[(pump_status56 & (1+2))];
+        this.pumps[6] = PUMP_STATES[((pump_status56 & (4+8)) >> 2)];
         // Not sure if this circ_pump index or logic is correct.
         this.circulationPump = ((bytes[13] & 2) !== 0);
-        this.lightIsOn = ((bytes[14] & 3) === 3);
+        this.lightIsOn[0] = ((bytes[14] & (1+2)) === (1+2));
+        this.lightIsOn[1] = ((bytes[14] & (4+8)) === (4+8));
         if (this.tempRangeIsHigh) {
             this.targetTempModeHigh = bytes[20];
         } else {

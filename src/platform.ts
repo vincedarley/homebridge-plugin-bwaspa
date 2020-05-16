@@ -86,7 +86,7 @@ export class SpaHomebridgePlatform implements DynamicPlatformPlugin {
         // check that the device has not already been registered by checking the
         // cached devices we stored in the `configureAccessory` method above
         if (!this.accessories.find(accessory => accessory.UUID === uuid)) {
-          this.log.info('Registering new accessory:', device.name , ' of type ', device.deviceType);
+          this.log.info('Registering new accessory:', device.name , 'of type', device.deviceType);
           // create a new accessory
           const accessory = new this.api.platformAccessory(device.name, uuid);
 
@@ -133,8 +133,20 @@ export class SpaHomebridgePlatform implements DynamicPlatformPlugin {
         new PumpAccessory(this, accessory, 4);
         break;
       }
-      case "Lights": {
-        new LightsAccessory(this, accessory);
+      case "Pump 5": {
+        new PumpAccessory(this, accessory, 5);
+        break;
+      }
+      case "Pump 6": {
+        new PumpAccessory(this, accessory, 6);
+        break;
+      }
+      case "Lights 1": {
+        new LightsAccessory(this, accessory, 1);
+        break;
+      }
+      case "Lights 2": {
+        new LightsAccessory(this, accessory, 2);
         break;
       }
       case "Temperature Sensor": {
@@ -150,7 +162,7 @@ export class SpaHomebridgePlatform implements DynamicPlatformPlugin {
         break;
       }
       default: {
-        this.log.warn('Unknown accessory type ', deviceType);
+        this.log.warn('Unknown accessory type', deviceType);
       }
     }
 
