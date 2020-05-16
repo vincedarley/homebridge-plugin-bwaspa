@@ -11,10 +11,22 @@ export const FLOW_LOW = "Low";
 export const FLOW_FAILED = "Failed";
 export const FLOW_STATES = [FLOW_GOOD, FLOW_LOW, FLOW_FAILED];
 
-const ToggleItemRequest = new Uint8Array([0x0a, 0xbf, 0x11]);
-const ConfigRequest = new Uint8Array([0x0a, 0xbf, 0x04]);
-const SetTargetTempRequest = new Uint8Array([0x0a, 0xbf, 0x20]);
 const GetFaultsRequest = new Uint8Array([0x0a, 0xbf, 0x22]);
+const GetFaultsReply = new Uint8Array([0x0a,0xbf,0x28]);
+// This one is sent to us automatically every second
+const StateReply = new Uint8Array([0xff,0xaf,0x13]);
+// These two either don't have a reply or we don't care about it.
+const ToggleItemRequest = new Uint8Array([0x0a, 0xbf, 0x11]);
+const SetTargetTempRequest = new Uint8Array([0x0a, 0xbf, 0x20]);
+// These we send once, but don't actually currently make use of the results
+// Need to investigate how to interpret them. I assume they would be able 
+// to tell us how many pumps (with how many speeds), etc.
+const ConfigRequest = new Uint8Array([0x0a, 0xbf, 0x04]);
+const ConfigReply = new Uint8Array([0x0a,0xbf,0x94]);
+const ControlConfig1Request = new Uint8Array([0x0a, 0xbf, 0x22]);
+const ControlConfig1Reply = new Uint8Array([0x0a,0xbf,0x24]);
+const ControlConfig2Request = new Uint8Array([0x0a, 0xbf, 0x2e]);
+const ControlConfig2Reply = new Uint8Array([0x0a,0xbf,0x2e]);
 
 export class SpaClient {
     static instance: SpaClient;
@@ -64,6 +76,28 @@ export class SpaClient {
                 SpaClient.instance.send_request_for_faults_log();
             }, 60 * 60 * 1000);
         }, 20000);
+
+        // Some testing things:
+        setTimeout( function() {
+            SpaClient.instance.send_control_config_request();
+        }, 25000);
+        setTimeout( function() {
+            SpaClient.instance.send_control_config_2_request();
+        }, 28000);
+        setTimeout( function() {
+            SpaClient.instance.send_config_request();
+        }, 31000);
+    }
+
+    shutdownSpaConnection() {
+        // Not sure I understand enough about these sockets to be sure
+        // of best way to clean them up.
+        this.log.debug("Shutting down Spa socket");
+        if (SpaClient.instance != null && SpaClient.instance.socket != null) {
+            SpaClient.instance.socket.close();
+            SpaClient.instance.socket.end();
+            SpaClient.instance.socket = null;
+        }
     }
 
     static getSpaClient(log: Logger, host: string) {
@@ -76,12 +110,12 @@ export class SpaClient {
     static get_socket(log: Logger, host: string) {
         var net = require('net');
 
-        log.debug("Connecting to Spa at ", host, " on port 4257");
+        log.debug("Connecting to Spa at", host, "on port 4257");
         SpaClient.sock = net.connect({
             port: 4257, 
             host: host
         }, function() {
-            log.debug('Successfully connected to Spa at ', host, " on port 4257");
+            log.debug('Successfully connected to Spa at', host, "on port 4257");
         });
         // listen for new messages from the spa. These can be replies to messages
         // We have sent, or can be the standard sending of status that the spa
@@ -100,9 +134,10 @@ export class SpaClient {
         // If we get an error, then retry
         SpaClient.sock.on('error', (error: any) => {
             log.debug(error);
-            log.debug("Retrying in 20s");
+            log.debug("Closing old socket, retrying in 20s");
+            
+            SpaClient.instance.shutdownSpaConnection();
             setTimeout( function() {
-                SpaClient.instance.socket.end();
                 SpaClient.instance.socket = SpaClient.get_socket(log, host);
             }, 20000);
         });
@@ -112,19 +147,20 @@ export class SpaClient {
 
     /**
      * Message starts and ends with 0x7e. Needs a checksum.
+     * @param purpose purely for logging clarity
      * @param type 
      * @param payload 
      */
-    sendMessageToSpa(type: Uint8Array, payload: Uint8Array) {
+    sendMessageToSpa(purpose: string, type: Uint8Array, payload: Uint8Array) {
         var length = (5 + payload.length);
         var typepayload = this.concat(type, payload);
         var checksum = this.compute_checksum(new Uint8Array([length]), typepayload);
-        var prefix = new Uint8Array([0x7e]);
-        var message = this.concat(prefix, new Uint8Array([length]));
+        var prefixSuffix = new Uint8Array([0x7e]);
+        var message = this.concat(prefixSuffix, new Uint8Array([length]));
         message = this.concat(message, typepayload);
         message = this.concat(message, new Uint8Array([checksum]));
-        message = this.concat(message, prefix);
-        //this.log.debug("Writing:" + message.toString())
+        message = this.concat(message, prefixSuffix);
+        this.log.debug(purpose, "Writing:" + message.toString())
         SpaClient.sock.write(message);
     }
 
@@ -220,11 +256,19 @@ export class SpaClient {
             this.targetTempModeLow = this.convertTemperature(false, temp);
             sendTemp = this.targetTempModeLow;
         }
-        this.sendMessageToSpa(SetTargetTempRequest, new Uint8Array([sendTemp]));
+        this.sendMessageToSpa("SetTargetTempRequest", SetTargetTempRequest, new Uint8Array([sendTemp]));
     }
 
     send_config_request() {
-        this.sendMessageToSpa(ConfigRequest, new Uint8Array());
+        this.sendMessageToSpa("ConfigRequest", ConfigRequest, new Uint8Array());
+    }
+
+    send_control_config_request() {
+        this.sendMessageToSpa("ControlConfigRequest", ControlConfig1Request, new Uint8Array([0x02, 0x00, 0x00]));
+    }
+
+    send_control_config_2_request() {
+        this.sendMessageToSpa("ControlConfig2Request", ControlConfig2Request, new Uint8Array([0x04, 0x00, 0x00]));
     }
 
     send_toggle_message(item: number) {
@@ -240,13 +284,11 @@ export class SpaClient {
         // # 0x3c - hold
         // # 0x51 - heating mode
         // # 0x50 - temperature range
-        this.log.debug("Sending message " + item);
-        this.sendMessageToSpa(ToggleItemRequest, new Uint8Array([item, 0x00]));
+        this.sendMessageToSpa("Toggle item " + item, ToggleItemRequest, new Uint8Array([item, 0x00]));
     }
 
     send_request_for_faults_log() {
-        this.log.debug("Checking for any Spa faults");
-        this.sendMessageToSpa(GetFaultsRequest, new Uint8Array([0x20, 0xff, 0x00]));   
+        this.sendMessageToSpa("Checking for any Spa faults", GetFaultsRequest, new Uint8Array([0x20, 0xff, 0x00]));   
     }
 
     // Celsius temperatures are communicated by the Spa in half degrees.
@@ -283,31 +325,49 @@ export class SpaClient {
         return s;
     }
 
+    // Just for message reply types which we know are of length 3.
+    equal(a: Uint8Array, b: Uint8Array) {
+        return (a[0] === b[0] && a[1] === b[1] && a[2] === b[2]);
+    }
+
     /**
      * Return true if anything important has changed as a result of the message
      * received.
      * 
-     * @param chunk 
+     * @param chunk - first and last bytes are 0x7e. Second byte is message length.
+     * Second-last byte is the checksum.  Then bytes 3,4,5 are the message type.
+     * Everything in between is the content.
      */
     read_msg(chunk: Uint8Array) {
         if (chunk.length < 2) {
             return false;
         }
+        // Length is the length of the message, which excludes the checksum and 0x7e end.
         var length = chunk[1];
         if (length == 0) {
             return false;
         }
-        if (chunk[2] == 0xff && chunk[3] == 0xaf && chunk [4] == 0x13) {
-            // "0xff 0xaf 0x13" = our primary state
-            return this.readStateFromBytes(chunk.slice(5));
-        } else if (chunk[2] == 0x0a && chunk[3] == 0xbf && chunk [4] == 0x28) {
-            // "0x0a 0xbf 0x28" = faults log
-            return this.readFaults(chunk.slice(5));
+        var contents = chunk.slice(5, length);
+        var msgType = chunk.slice(2,5);
+        if (this.equal(msgType,StateReply)) {
+            return this.readStateFromBytes(contents);
+        } else if (this.equal(msgType, GetFaultsReply)) {
+            return this.readFaults(contents);
+        } else if (this.equal(msgType, ControlConfig1Reply)) {
+            // TODO: interpret this
+            this.log.info("Control config 1 reply:", chunk.toString());
+        } else if (this.equal(msgType, ControlConfig2Reply)) {
+            // TODO: interpret this
+            this.log.info("Control config 2 reply:", chunk.toString());
+        } else if (this.equal(msgType, ConfigReply)) {
+            // TODO: interpret this
+            this.log.info("Config reply:", chunk.toString());
         } else {
             // Various messages about controls, filters, etc. In theory we could
             // choose to implement more things here, but limited value in it.
             this.log.info("Not understood a received spa message ", 
-            "(likely user interacting with the screen controls):", chunk.toString());
+            "(likely user interacting with the screen controls):", msgType.toString(), 
+            " contents: ", contents.toString());
         }
         return false;
     }
@@ -359,8 +419,8 @@ export class SpaClient {
         // Return true if any values have changed
         if (oldBytes.length != this.lastStateBytes.length) return true;
         for (var i = 0; i < oldBytes.length; i++) {
-            // Bytes 3,4 are the time, and byte 24 seems to change in pretty haphazard ways
-            if (i != 3 && i != 4 && i != 24) {
+            // Bytes 3,4 are the time
+            if (i != 3 && i != 4) {
                 if (oldBytes[i] !== this.lastStateBytes[i]) {
                     // this.log.debug("OLD:", oldBytes.toString());
                     // this.log.debug("NEW:", this.lastStateBytes.toString());
@@ -383,18 +443,18 @@ export class SpaClient {
         // This is just the most recent fault.  We can query for others too.
         // (I believe by replacing 0xff in the request with a number) 
         this.log.debug("Fault Entries:", bytes[0], "Num:", bytes[1]+1,
-        " Error code:", code, " Days ago:", daysAgo,
-        " Time:", this.timeToString(hour, minute),
-        " Heat mode ", bytes[6], " Set temp ", this.convertTemperature(true, bytes[7]), 
-        " Temp A:", this.convertTemperature(true, bytes[8]), 
-        " Temp B:", this.convertTemperature(true, bytes[9]));
+        "Error code:", code, "Days ago:", daysAgo,
+        "Time:", this.timeToString(hour, minute),
+        "Heat mode:", bytes[6], "Set temp:", this.convertTemperature(true, bytes[7]), 
+        "Temp A:", this.convertTemperature(true, bytes[8]), 
+        "Temp B:", this.convertTemperature(true, bytes[9]));
         
         // Set flow to good, but possibly over-ride right below
         this.flow = FLOW_GOOD;
 
         if (daysAgo > 1) {
             // Don't do anything for older faults.  Perhaps > 0??
-            this.log.debug("No recent faults. Last fault ", daysAgo, " days ago of type ", code);
+            this.log.debug("No recent faults. Last fault", daysAgo, "days ago of type", code);
             return false;
         }
 
@@ -411,10 +471,10 @@ export class SpaClient {
             this.flow = FLOW_STATES[code-15];
             // It may also make sense to switch the thermostat control accessory into 
             // a state of 'cooling' or 'off' when water flow fails.
-            this.log.debug("Recent, relevant fault found: ", daysAgo, " days ago of type ", code);
+            this.log.debug("Recent, relevant fault found:", daysAgo, "days ago of type", code);
             return true;
         }
-        this.log.debug("Recent, but not relevant fault found: ", daysAgo, " days ago of type ", code);
+        this.log.debug("Recent, but not relevant fault found:", daysAgo, "days ago of type", code);
         return false;
     }
 }

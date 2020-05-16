@@ -47,6 +47,11 @@ export class SpaHomebridgePlatform implements DynamicPlatformPlugin {
       // run the method to discover / register your devices as accessories
       this.discoverDevices();
     });
+
+    this.api.on(APIEvent.SHUTDOWN, () => {
+      log.debug('Closing down homebridge - closing our connection to the Spa...');
+      this.spa.shutdownSpaConnection();
+    });
   }
 
   /**

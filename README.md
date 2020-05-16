@@ -63,6 +63,18 @@ You can control one light and up to 4 pumps. The code does not know how many pum
 
 The pumps have a minStep of 50% or 100% depending on their number of speed settings that you define in the config. I think this should work correctly.  Again theoretically I imagine this could be automated.
 
+If you wish to help on either of the above potential automations, please take a look in the homebridge log for lines like this:
+
+```
+[My Hot Tub] ControlConfigRequest Writing:126,8,10,191,34,2,0,0,137,126
+[My Hot Tub] Control config 1 reply: 126,26,10,191,36,100,225,36,0,77,83,52,48,69,32,32,32,1,195,71,150,54,3,10,68,0,25,126
+
+[My Hot Tub] ConfigRequest Writing:126,5,10,191,4,119,126
+[My Hot Tub] Config reply: 126,30,10,191,148,2,20,128,0,21,39,63,155,149,0,0,0,0,0,0,0,0,0,21,39,255,255,63,155,149,29,126
+```
+
+and submit those details (which will probably contain slightly different numbers) in an issue on github, along with the physical configuration of your spa (number of pumps, speed settings, etc). Hopefully with a bit more data we can interpret the above successfully.
+
 Lights are simply on/off.  Balboa provide no capability to control the colour.  So this limitation will never be rectified.
 
 The "Thermostat" device type exposes control of the spa's target temperature and high (="HEAT" in Home app) vs low (="Cool" in Home app), heating mode.  The target temperature is separate for the two modes
