@@ -94,7 +94,6 @@ export class SpaClient {
         // of best way to clean them up.
         this.log.debug("Shutting down Spa socket");
         if (SpaClient.instance != null && SpaClient.instance.socket != null) {
-            SpaClient.instance.socket.close();
             SpaClient.instance.socket.end();
             SpaClient.instance.socket = null;
         }
