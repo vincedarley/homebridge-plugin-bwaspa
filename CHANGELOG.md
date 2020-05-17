@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.8.3 (17.05.2020)
+- Fix for lights, now we support one or two lights
+
+## 1.8.2 (17.05.2020)
+- Fix for single-speed pumps
+
 ## 1.8.1 (17.05.2020)
 - Updated README
 - Check for spa faults every 10 minutes

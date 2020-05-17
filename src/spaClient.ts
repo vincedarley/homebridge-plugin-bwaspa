@@ -192,7 +192,7 @@ export class SpaClient {
         + minute.toString().padStart(2, '0');
     }
     getIsLightOn(index: number) {
-        return this.lightIsOn[index];
+        return this.lightIsOn[index-1];
     }
     getIsHeatingNow() {
         return this.isHeatingNow;
@@ -205,13 +205,13 @@ export class SpaClient {
     }
 
     setLightState(index: number, value: boolean) {
-        if ((this.lightIsOn[index] === value)) {
+        if ((this.lightIsOn[index-1] === value)) {
             return;
         }
         // Lights numbered 1,2
         const id = 0x11+index-1;
         this.send_toggle_message(id);
-        this.lightIsOn[index] = value;
+        this.lightIsOn[index-1] = value;
     }
 
     setTempRangeIsHigh(isHigh: boolean) {

@@ -102,7 +102,9 @@ export class PumpAccessory {
    * These are sent when the user changes the state of an accessory, for example, changing the Brightness
    */
   setRotationSpeed(value: CharacteristicValue, callback: CharacteristicSetCallback) {
-    const speed = Math.round((value as number)*this.numSpeedSettings/100.0);
+    // value is 0-100, and we want to convert that, irrespective of the number of
+    // speeds we have to 0-2 (a 1-speed pump just swaps from 0 to 2 directly);
+    const speed = Math.round((value as number)/50.0);
     this.setSpeed(speed);
     this.platform.log.debug('Set Pump Characteristic Speed -> ', value, ' which is ', this.speeds[speed]);
 
@@ -115,7 +117,9 @@ export class PumpAccessory {
    */
   getRotationSpeed(callback: CharacteristicSetCallback) {
     const speed = this.getSpeed();
-    const value = (100.0*speed)/this.numSpeedSettings;
+    // As above we convert the speed of 0-2 to a value of 0-100, irrespective
+    // of the number of speeds the pump has
+    const value = (100.0*speed)/2;
     this.platform.log.debug('Get Pump Characteristic Speed -> ', value, ' which is ', this.speeds[speed]);
 
     callback(null, value);
