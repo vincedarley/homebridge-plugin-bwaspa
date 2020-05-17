@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## 1.8.3 (17.05.2020)
+## 1.8.4 (17.05.2020)
 - Fix for lights, now we support one or two lights
 
 ## 1.8.2 (17.05.2020)
