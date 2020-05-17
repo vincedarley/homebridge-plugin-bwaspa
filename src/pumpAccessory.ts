@@ -3,6 +3,7 @@ import type { Service, PlatformAccessory, CharacteristicValue, CharacteristicSet
 
 import { SpaHomebridgePlatform } from './platform';
 import { VERSION } from './settings';
+import { PUMP_STATES } from './spaClient'
 
 /**
  * Control a 1- or 2- speed pump as a homekit "fan"
@@ -19,7 +20,7 @@ export class PumpAccessory {
   }
 
   // Where we have a 1 speed pump, only 'Off' and 'High' are used.
-  private readonly speeds: string[] = ["Off", "Low", "High"];
+  private readonly speeds: string[] = PUMP_STATES;
   // Always 1 or 2
   numSpeedSettings : number;
 
@@ -108,7 +109,7 @@ export class PumpAccessory {
     callback(null);
   }
 
-    /**
+  /**
    * Handle "GET" requests from HomeKit
    * These are sent when the user changes the state of an accessory, for example, changing the Brightness
    */

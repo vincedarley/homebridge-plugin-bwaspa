@@ -2,6 +2,7 @@ import * as crc from "crc";
 import type { Logger } from 'homebridge';
 
 const UNKNOWN_TEMPERATURE_VALUE = 255;
+export const PUMP_NOT_EXISTS = "-";
 export const PUMP_OFF = "Off";
 export const PUMP_LOW = "Low";
 export const PUMP_HIGH = "High";
@@ -23,8 +24,8 @@ const SetTargetTempRequest = new Uint8Array([0x0a, 0xbf, 0x20]);
 // to tell us how many pumps (with how many speeds), etc.
 const ConfigRequest = new Uint8Array([0x0a, 0xbf, 0x04]);
 const ConfigReply = new Uint8Array([0x0a,0xbf,0x94]);
-const ControlConfig1Request = new Uint8Array([0x0a, 0xbf, 0x22]);
-const ControlConfig1Reply = new Uint8Array([0x0a,0xbf,0x24]);
+const ControlPanelRequest = new Uint8Array([0x0a, 0xbf, 0x22]);
+const ControlPanelReply = new Uint8Array([0x0a,0xbf,0x2e]);
 const ControlConfig2Request = new Uint8Array([0x0a, 0xbf, 0x2e]);
 const ControlConfig2Reply = new Uint8Array([0x0a,0xbf,0x25]);
 
@@ -42,13 +43,17 @@ export class SpaClient {
     temp_CorF: string;
     tempRangeIsHigh: boolean;
     pumps: string[];
+    pumpSpeeds: number[];
     priming: boolean;
     time_12or24: string;
     isHeatingNow: boolean;
     circulationPump: boolean;
     flow: string;
+    // Once the Spa has told us what accessories it really has.
+    accurateConfigReadFromSpa: boolean;
 
     constructor(public readonly log: Logger, public readonly host: string) {
+        this.accurateConfigReadFromSpa = false;
         this.lightIsOn = [false,false];
         this.currentTemp = 0;
         this.hour = 12;
@@ -56,7 +61,10 @@ export class SpaClient {
         this.heatingMode = "";
         this.temp_CorF = "";
         this.tempRangeIsHigh = true;
+        // Be generous to start.  Once we've read the config, we'll set reduce
+        // the number of pumps and their speeds correctly
         this.pumps = [PUMP_OFF,PUMP_OFF,PUMP_OFF,PUMP_OFF,PUMP_OFF,PUMP_OFF];
+        this.pumpSpeeds = [2,2,2,2,2,2];
         this.targetTempModeLow = 2*18;
         this.targetTempModeHigh = 2*38;
         this.priming = false;
@@ -159,11 +167,11 @@ export class SpaClient {
         message = this.concat(message, typepayload);
         message = this.concat(message, new Uint8Array([checksum]));
         message = this.concat(message, prefixSuffix);
-        this.log.debug(purpose, "Writing:" + this.readable(message));
+        this.log.debug(purpose, "Writing:" + this.prettify(message));
         SpaClient.sock.write(message);
     }
 
-    readable(message: Uint8Array) {
+    prettify(message: Uint8Array) {
         return Buffer.from(message).toString('hex').match(/.{1,2}/g);
     }
     getTargetTemp() {
@@ -222,22 +230,41 @@ export class SpaClient {
 
     setPumpSpeed(index: number, value: string) {
         // Pumps are numbered 1,2,3,... by Balboa
-        if ((this.pumps[index-1] === value)) {
+        index--;
+        if ((this.pumps[index] === value)) {
+            // No action needed if pump already at the desired speed
             return;
         }
-        // Pump1 = toggle '4', Pump2 = toggle '5', etc.
-        const id = index+3;
-        if (((value === PUMP_HIGH) && (this.pumps[index-1] === PUMP_OFF))) {
-            this.send_toggle_message(id);
-            this.send_toggle_message(id);
-        } else if (((value === PUMP_OFF) && (this.pumps[index-1] === PUMP_LOW))) {
-            this.send_toggle_message(id);
+        if (this.pumpSpeeds[index] == 0) {
+            this.log.error("Trying to set speed of pump",(index+1),"which doesn't exist");
+            return;
+        }
+        // Toggle Pump1 = toggle '4', Pump2 = toggle '5', etc.
+        const id = index+4;
+        if (this.pumpSpeeds[index] == 1) {
+            // 1 speed pump - just off or high settings
+            if (value === PUMP_LOW) {
+                this.log.warn("Pump", (index+1), ": Trying to set a 1 speed pump to LOW speed. Switching to HIGH instead.");
+                value = PUMP_HIGH;
+            }
+            // Any change requires just one toggle. It's either from off to high or high to off
             this.send_toggle_message(id);
         } else {
-            this.send_toggle_message(id);
-        }
-        
-        this.pumps[index-1] = value;
+            // 2 speed pump. If 3 speed pumps exist, not hard to support in the future.
+            if (((value === PUMP_HIGH) && (this.pumps[index] === PUMP_OFF))) {
+                // Going from off to high requires 2 toggles
+                this.send_toggle_message(id);
+                this.send_toggle_message(id);
+            } else if (((value === PUMP_OFF) && (this.pumps[index] === PUMP_LOW))) {
+                // Going from low to off requires 2 toggles
+                this.send_toggle_message(id);
+                this.send_toggle_message(id);
+            } else {
+                // Anything else requires 1 toggle
+                this.send_toggle_message(id);
+            }
+        }        
+        this.pumps[index] = value;
     }
 
     compute_checksum(length: Uint8Array, bytes: Uint8Array) {
@@ -269,7 +296,7 @@ export class SpaClient {
     }
 
     send_control_config_request() {
-        this.sendMessageToSpa("ControlConfigRequest", ControlConfig1Request, new Uint8Array([0x02, 0x00, 0x00]));
+        this.sendMessageToSpa("ControlPanelRequest", ControlPanelRequest, new Uint8Array([0x00, 0x00, 0x01]));
     }
 
     send_control_config_2_request() {
@@ -288,6 +315,7 @@ export class SpaClient {
         // # 0x50 - temperature range
         // # 0x0e - mister (unsupported at present)
         // # 0x0c - blower (unsupported at present)
+        // # 0x16 - aux1, 0x17 - aux2
         this.sendMessageToSpa("Toggle item " + item, ToggleItemRequest, new Uint8Array([item, 0x00]));
     }
 
@@ -325,7 +353,7 @@ export class SpaClient {
         + ", Temp Range: " + (this.tempRangeIsHigh ? "High" : "Low")
         + ", Pumps: " + this.pumps
         + ", Circ Pump: " + this.circulationPump
-        + ", Light: " + this.lightIsOn
+        + ", Lights: " + this.lightIsOn
         return s;
     }
 
@@ -357,21 +385,24 @@ export class SpaClient {
             return this.readStateFromBytes(contents);
         } else if (this.equal(msgType, GetFaultsReply)) {
             return this.readFaults(contents);
-        } else if (this.equal(msgType, ControlConfig1Reply)) {
-            // TODO: interpret this
-            this.log.info("Control config 1 reply:", this.readable(contents));
+        } else if (this.equal(msgType, ControlPanelReply)) {
+            this.log.info("Control panel reply(" + this.prettify(msgType) 
+             + "):"+ this.prettify(contents));
+            this.interpretControlPanelReply(contents);
         } else if (this.equal(msgType, ControlConfig2Reply)) {
             // TODO: interpret this
-            this.log.info("Control config 2 reply:", this.readable(contents));
+            this.log.info("Control config 2 reply(" + this.prettify(msgType) 
+            + "):"+ this.prettify(contents));
         } else if (this.equal(msgType, ConfigReply)) {
             // TODO: interpret this
-            this.log.info("Config reply:", this.readable(contents));
+            this.log.info("Config reply(" + this.prettify(msgType) 
+            + "):"+ this.prettify(contents));
         } else {
             // Various messages about controls, filters, etc. In theory we could
             // choose to implement more things here, but limited value in it.
             this.log.info("Not understood a received spa message ", 
-            "(likely user interacting with the screen controls):", msgType.toString(), 
-            " contents: ", this.readable(contents));
+            "(likely user interacting with the screen controls):" + this.prettify(msgType), 
+            " contents: "+ this.prettify(contents));
         }
         return false;
     }
@@ -438,6 +469,38 @@ export class SpaClient {
             }
         }
         return false;
+    }
+
+    /**
+     * 
+     * @param bytes 1a(=00011010),00,01,90,00,00 on my spa
+     */
+    interpretControlPanelReply(bytes: Uint8Array) {
+        // 2 bits per pump. Pumps 5 and 6 are apparently P6xxxxP5 in the second byte
+        // Line up all the bites in a row
+        var pumpFlags1to6 = bytes[0] + 256 * (bytes[1] & 0x03) + 16 * (bytes[1] & 0xc0);
+        var countPumps = 0;
+        for (var idx = 0; idx < 6; idx++) {
+            // 0 = no such pump, 1 = off/high pump, 2 = off/low/high pump
+            this.pumpSpeeds[idx] = pumpFlags1to6 & 0x03;
+            if (this.pumpSpeeds[idx] == 0) {
+                this.pumps[idx] = PUMP_NOT_EXISTS;
+            } else {
+                countPumps++;  
+            }
+            pumpFlags1to6 >>= 2;
+        }
+        this.log.info("Discovered", countPumps,"pumps with speeds", this.pumpSpeeds);
+        var lights = [(bytes[2] & 0x03) != 0,(bytes[2] & 0xc0) != 0];
+
+        var circ_pump = (bytes[3] & 0x80) != 0;
+        var blower = (bytes[3] & 0x03) != 0;
+        var mister = (bytes[4] & 0x30) != 0;
+
+        var aux = [(bytes[4] & 0x01) != 0,(bytes[4] & 0x02) != 0];
+        this.log.info("Discovered lights:",lights,"circ_pump",circ_pump,
+        "blower",blower,"mister",mister,"aux",aux);
+        this.accurateConfigReadFromSpa = true;
     }
 
     /**
