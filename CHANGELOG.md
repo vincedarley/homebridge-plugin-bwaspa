@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.8.1 (17.05.2020)
+- Updated README
+- Check for spa faults every 10 minutes
+- Refactor code that reads Spa configuration automatically and ensure it is called at
+  the earliest sensible time.
+
 ## 1.8.0 (17.05.2020)
 - Read pumps (and their number of speeds), and lights, etc from the Spa automatically
 - Use Pump speed determination for better logic on setting speeds (which was probably

@@ -24,8 +24,8 @@ const SetTargetTempRequest = new Uint8Array([0x0a, 0xbf, 0x20]);
 // to tell us how many pumps (with how many speeds), etc.
 const ConfigRequest = new Uint8Array([0x0a, 0xbf, 0x04]);
 const ConfigReply = new Uint8Array([0x0a,0xbf,0x94]);
-const ControlPanelRequest = new Uint8Array([0x0a, 0xbf, 0x22]);
-const ControlPanelReply = new Uint8Array([0x0a,0xbf,0x2e]);
+const ControlTypesRequest = new Uint8Array([0x0a, 0xbf, 0x22]);
+const ControlTypesReply = new Uint8Array([0x0a,0xbf,0x2e]);
 const ControlConfig2Request = new Uint8Array([0x0a, 0xbf, 0x2e]);
 const ControlConfig2Reply = new Uint8Array([0x0a,0xbf,0x25]);
 
@@ -62,7 +62,7 @@ export class SpaClient {
         this.temp_CorF = "";
         this.tempRangeIsHigh = true;
         // Be generous to start.  Once we've read the config, we'll set reduce
-        // the number of pumps and their speeds correctly
+        // the number of pumps and their number of speeds correctly
         this.pumps = [PUMP_OFF,PUMP_OFF,PUMP_OFF,PUMP_OFF,PUMP_OFF,PUMP_OFF];
         this.pumpSpeeds = [2,2,2,2,2,2];
         this.targetTempModeLow = 2*18;
@@ -77,18 +77,15 @@ export class SpaClient {
         // Wait 20 seconds after startup to send a request to check for any faults
         setTimeout( function() {
             SpaClient.instance.send_request_for_faults_log();
-            // And then request again once each hour.
+            // And then request again once every 10 minutes.
             // TODO: Check that this works even if there's been a socket error in
             // the meantime and the socket has been regenerated.
             setInterval( function() {
                 SpaClient.instance.send_request_for_faults_log();
-            }, 60 * 60 * 1000);
+            }, 10 * 60 * 1000);
         }, 20000);
 
-        // Some testing things:
-        setTimeout( function() {
-            SpaClient.instance.send_control_config_request();
-        }, 25000);
+        // Some testing things. Not yet sure of their use.
         setTimeout( function() {
             SpaClient.instance.send_control_config_2_request();
         }, 28000);
@@ -123,6 +120,8 @@ export class SpaClient {
             host: host
         }, function() {
             log.debug('Successfully connected to Spa at', host, "on port 4257");
+            // Get the Spa's primary configuration of accessories right away
+            SpaClient.instance.send_control_panel_request();
         });
         // listen for new messages from the spa. These can be replies to messages
         // We have sent, or can be the standard sending of status that the spa
@@ -148,7 +147,7 @@ export class SpaClient {
                 SpaClient.instance.socket = SpaClient.get_socket(log, host);
             }, 20000);
         });
-
+        
         return SpaClient.sock;
     }
 
@@ -167,10 +166,14 @@ export class SpaClient {
         message = this.concat(message, typepayload);
         message = this.concat(message, new Uint8Array([checksum]));
         message = this.concat(message, prefixSuffix);
-        this.log.debug(purpose, "Writing:" + this.prettify(message));
+        this.log.debug(purpose, "Sending:" + this.prettify(message));
         SpaClient.sock.write(message);
     }
 
+    /**
+     * Turn the bytes into a nice hex, comma-separated string like '0a,bf,2e'
+     * @param message the bytes
+     */
     prettify(message: Uint8Array) {
         return Buffer.from(message).toString('hex').match(/.{1,2}/g);
     }
@@ -295,8 +298,8 @@ export class SpaClient {
         this.sendMessageToSpa("ConfigRequest", ConfigRequest, new Uint8Array());
     }
 
-    send_control_config_request() {
-        this.sendMessageToSpa("ControlPanelRequest", ControlPanelRequest, new Uint8Array([0x00, 0x00, 0x01]));
+    send_control_panel_request() {
+        this.sendMessageToSpa("ControlTypesRequest", ControlTypesRequest, new Uint8Array([0x00, 0x00, 0x01]));
     }
 
     send_control_config_2_request() {
@@ -385,10 +388,10 @@ export class SpaClient {
             return this.readStateFromBytes(contents);
         } else if (this.equal(msgType, GetFaultsReply)) {
             return this.readFaults(contents);
-        } else if (this.equal(msgType, ControlPanelReply)) {
-            this.log.info("Control panel reply(" + this.prettify(msgType) 
+        } else if (this.equal(msgType, ControlTypesReply)) {
+            this.log.info("Control types reply(" + this.prettify(msgType) 
              + "):"+ this.prettify(contents));
-            this.interpretControlPanelReply(contents);
+            this.interpretControlTypesReply(contents);
         } else if (this.equal(msgType, ControlConfig2Reply)) {
             // TODO: interpret this
             this.log.info("Control config 2 reply(" + this.prettify(msgType) 
@@ -401,7 +404,7 @@ export class SpaClient {
             // Various messages about controls, filters, etc. In theory we could
             // choose to implement more things here, but limited value in it.
             this.log.info("Not understood a received spa message ", 
-            "(likely user interacting with the screen controls):" + this.prettify(msgType), 
+            "(nothing critical, but please do report this):" + this.prettify(msgType), 
             " contents: "+ this.prettify(contents));
         }
         return false;
@@ -448,6 +451,11 @@ export class SpaClient {
         this.circulationPump = ((bytes[13] & 2) !== 0);
         this.lightIsOn[0] = ((bytes[14] & (1+2)) === (1+2));
         this.lightIsOn[1] = ((bytes[14] & (4+8)) === (4+8));
+        // Believe the following 4 lines are correct, but no way to test
+        // mister = data[15] & 0x01
+        // blower = (data[13] & 0x0c) >> 2
+        // aux1 = data[15] & 0x08
+        // aux2 = data[15] & 0x10
         if (this.tempRangeIsHigh) {
             this.targetTempModeHigh = bytes[20];
         } else {
@@ -472,10 +480,11 @@ export class SpaClient {
     }
 
     /**
+     * Get the set of accessories on this spa - how many pumps, lights, etc.
      * 
      * @param bytes 1a(=00011010),00,01,90,00,00 on my spa
      */
-    interpretControlPanelReply(bytes: Uint8Array) {
+    interpretControlTypesReply(bytes: Uint8Array) {
         // 2 bits per pump. Pumps 5 and 6 are apparently P6xxxxP5 in the second byte
         // Line up all the bites in a row
         var pumpFlags1to6 = bytes[0] + 256 * (bytes[1] & 0x03) + 16 * (bytes[1] & 0xc0);
