@@ -17,8 +17,7 @@ It supports pumps that are single speed (off or high) and 2-speed (off or low or
 
 You can control two lights and up to six pumps. 
 
-The "Thermostat" device type exposes control of the spa's target temperature and high (="HEAT" in Home app) vs low (="Cool" in Home app), heating mode.  The target temperature is separate for the two modes
-and the valid ranges are also different.  If the flow sensor indicates water flow has failed, then the thermostat is "off".  You cannot turn it off yourself - it is not a valid state for the spa itself.
+The "Thermostat" device type exposes control of the spa's target temperature and high (="HEAT" in Home app) vs low (="Cool" in Home app), heating mode.  The target temperature is separate for the two modes and the valid ranges are also different.  If the flow sensor indicates water flow has failed, then the thermostat is "off".  You cannot turn it off yourself - it is not a valid state for the spa itself.
 
 The Spa's current temperature is visible both in the Thermostat device and in the read-only Temperature Sensor. Up to you if you want/need both devices.
 
@@ -71,11 +70,12 @@ The flow sensor has 3 states: normal (all good), failed (which triggers a "leak"
 
 Pumps 4-6 and lights 2 are currently untested (please report if they work for you or not).
 
-The code has preliminary ability to automatically determine know how many pumps (and their speed options) and lights your spa has - but, for the moment you still define that in the items you set up in your config. It would be helpful if you could validate that the automatic sensing is correct (see below).
+The code has the ability to automatically determine know how many pumps (and their speed options) and lights your spa has - but, for the moment you still define that in the items you set up in your config. It would be helpful if you could validate that the automatic sensing is correct (see below).
+If you try to define things that don't exist, the controller will reject them - add a toplevel config '"ignoreAutomaticConfiguration" : true' to not do this.
 
 Lights are simply on/off.  Balboa provide no capability to control the colour.  So this limitation will never be rectified.
 
-Currently the water flow sensor code only updates once every ten minutes.  So even when you fix the issue (change filters, reset spa, etc) it won't reset in Homekit for some time without you manually restarting homebridge - this could be improved in the code in the future.
+Currently the water flow sensor code updates once every ten minutes, and the Spa does not actually report that water flow has been corrected, so the latest fault will still be present.  So even when you fix the issue (change/clean filters, etc) it won't reset in Homekit until the next day.  If you turn the spa on/off, then a priming event will take precedence and Homekit will then no longer report the flow problem.
 
 Some spas have a "blower" or a "mister". No support for those at present.
 

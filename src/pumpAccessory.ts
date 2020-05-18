@@ -72,7 +72,7 @@ export class PumpAccessory {
     } else {
       this.setSpeed(0);
     }
-    this.platform.log.debug('Set Pump Characteristic On ->', value);
+    this.platform.log.debug('Set Pump',this.pumpNumber,'Characteristic On ->', value);
 
     callback(null);
   }
@@ -92,7 +92,7 @@ export class PumpAccessory {
    */
   getOn(callback: CharacteristicGetCallback) {
     const isOn = this.getSpeed() != 0;
-    this.platform.log.debug('Get Pump Characteristic On ->', isOn);
+    this.platform.log.debug('Get Pump',this.pumpNumber,'Characteristic On ->', isOn);
 
     callback(null, isOn);
   }
@@ -106,7 +106,7 @@ export class PumpAccessory {
     // speeds we have to 0-2 (a 1-speed pump just swaps from 0 to 2 directly);
     const speed = Math.round((value as number)/50.0);
     this.setSpeed(speed);
-    this.platform.log.debug('Set Pump Characteristic Speed -> ', value, ' which is ', this.speeds[speed]);
+    this.platform.log.debug('Set Pump',this.pumpNumber,'Characteristic Speed -> ', value, ' which is ', this.speeds[speed]);
 
     callback(null);
   }
@@ -120,7 +120,7 @@ export class PumpAccessory {
     // As above we convert the speed of 0-2 to a value of 0-100, irrespective
     // of the number of speeds the pump has
     const value = (100.0*speed)/2;
-    this.platform.log.debug('Get Pump Characteristic Speed -> ', value, ' which is ', this.speeds[speed]);
+    this.platform.log.debug('Get Pump',this.pumpNumber,'Characteristic Speed -> ', value, ' which is ', this.speeds[speed]);
 
     callback(null, value);
   }

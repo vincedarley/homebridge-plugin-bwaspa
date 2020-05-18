@@ -1,5 +1,6 @@
 import * as crc from "crc";
 import type { Logger } from 'homebridge';
+import * as net from "net";
 
 const UNKNOWN_TEMPERATURE_VALUE = 255;
 export const PUMP_NOT_EXISTS = "-";
@@ -19,20 +20,18 @@ const StateReply = new Uint8Array([0xff,0xaf,0x13]);
 // These two either don't have a reply or we don't care about it.
 const ToggleItemRequest = new Uint8Array([0x0a, 0xbf, 0x11]);
 const SetTargetTempRequest = new Uint8Array([0x0a, 0xbf, 0x20]);
-// These we send once, but don't actually currently make use of the results
-// Need to investigate how to interpret them. I assume they would be able 
-// to tell us how many pumps (with how many speeds), etc.
-const ConfigRequest = new Uint8Array([0x0a, 0xbf, 0x04]);
-const ConfigReply = new Uint8Array([0x0a,0xbf,0x94]);
+// These will tell us how many pumps, lights, etc the Spa has
 const ControlTypesRequest = new Uint8Array([0x0a, 0xbf, 0x22]);
 const ControlTypesReply = new Uint8Array([0x0a,0xbf,0x2e]);
+// These we send once, but don't actually currently make use of the results
+// Need to investigate how to interpret them. 
+const ConfigRequest = new Uint8Array([0x0a, 0xbf, 0x04]);
+const ConfigReply = new Uint8Array([0x0a,0xbf,0x94]);
 const ControlConfig2Request = new Uint8Array([0x0a, 0xbf, 0x2e]);
 const ControlConfig2Reply = new Uint8Array([0x0a,0xbf,0x25]);
 
 export class SpaClient {
-    static instance: SpaClient;
-    static sock: any;
-    socket: any;
+    socket?: net.Socket;
     lightIsOn: boolean[];
     currentTemp: number;
     targetTempModeHigh: number;
@@ -51,9 +50,13 @@ export class SpaClient {
     flow: string;
     // Once the Spa has told us what accessories it really has.
     accurateConfigReadFromSpa: boolean;
+    isCurrentlyConnectedToSpa: boolean;
+    ignoreAutomaticConfiguration: boolean;
 
-    constructor(public readonly log: Logger, public readonly host: string) {
+    constructor(public readonly log: Logger, public readonly host: string, ignoreAutomatic?: boolean) {
         this.accurateConfigReadFromSpa = false;
+        this.isCurrentlyConnectedToSpa = false;
+        this.ignoreAutomaticConfiguration = (ignoreAutomatic ? ignoreAutomatic : false);
         this.lightIsOn = [false,false];
         this.currentTemp = 0;
         this.hour = 12;
@@ -72,83 +75,101 @@ export class SpaClient {
         this.isHeatingNow = false;
         this.circulationPump = false;
         this.flow = FLOW_STATES[0];
-        this.socket = SpaClient.get_socket(log, host);
+        this.socket = this.get_socket(host);
 
-        // Wait 20 seconds after startup to send a request to check for any faults
-        setTimeout( function() {
-            SpaClient.instance.send_request_for_faults_log();
-            // And then request again once every 10 minutes.
-            // TODO: Check that this works even if there's been a socket error in
-            // the meantime and the socket has been regenerated.
-            setInterval( function() {
-                SpaClient.instance.send_request_for_faults_log();
-            }, 10 * 60 * 1000);
-        }, 20000);
-
-        // Some testing things. Not yet sure of their use.
-        setTimeout( function() {
-            SpaClient.instance.send_control_config_2_request();
-        }, 28000);
-        setTimeout( function() {
-            SpaClient.instance.send_config_request();
-        }, 31000);
     }
 
-    shutdownSpaConnection() {
-        // Not sure I understand enough about these sockets to be sure
-        // of best way to clean them up.
-        this.log.debug("Shutting down Spa socket");
-        if (SpaClient.instance != null && SpaClient.instance.socket != null) {
-            SpaClient.instance.socket.end();
-            SpaClient.instance.socket = null;
+    get_socket(host: string) {
+        if (this.isCurrentlyConnectedToSpa) {
+            this.log.error("Already connected, should not be trying again.");
         }
-    }
 
-    static getSpaClient(log: Logger, host: string) {
-        if (SpaClient.instance == null) {
-            SpaClient.instance = new SpaClient(log, host);
-        }
-        return SpaClient.instance;
-    }
-
-    static get_socket(log: Logger, host: string) {
-        var net = require('net');
-
-        log.debug("Connecting to Spa at", host, "on port 4257");
-        SpaClient.sock = net.connect({
+        this.log.debug("Connecting to Spa at", host, "on port 4257");
+        this.socket = net.connect({
             port: 4257, 
             host: host
-        }, function() {
-            log.debug('Successfully connected to Spa at', host, "on port 4257");
-            // Get the Spa's primary configuration of accessories right away
-            SpaClient.instance.send_control_panel_request();
+        }, () => {
+            this.log.debug('Successfully connected to Spa at', host, "on port 4257");
+            this.successfullyConnectedToSpa();
         });
+        this.socket?.on('end', () => {
+            this.log.debug("SpaClient: disconnected:");
+        });
+        // If we get an error, then retry
+        this.socket?.on('error', (error: any) => {
+            this.log.debug(error /* , this.socket */);
+            this.log.debug("Closing old socket, retrying in 20s");
+            
+            this.shutdownSpaConnection();
+            this.reconnect(host);
+        });
+        
+        return this.socket;
+    }
+
+    successfullyConnectedToSpa() {
+        this.isCurrentlyConnectedToSpa = true;
         // listen for new messages from the spa. These can be replies to messages
         // We have sent, or can be the standard sending of status that the spa
         // seems to do every second.
-        SpaClient.sock.on('data', function(data: any) {
+        this.socket?.on('data', (data: any) => {
             var bufView = new Uint8Array(data);
-            const somethingChanged = SpaClient.instance.read_msg(bufView);
+            const somethingChanged = this.read_msg(bufView);
             if (somethingChanged) {
                 // Only log state when something has changed.
-                log.debug(SpaClient.instance.stateToString());
+                this.log.debug(this.stateToString());
             }
         });
-        SpaClient.sock.on('end', function() {
-            log.debug("SpaClient:disconnected:");
-        });
-        // If we get an error, then retry
-        SpaClient.sock.on('error', (error: any) => {
-            log.debug(error);
-            log.debug("Closing old socket, retrying in 20s");
-            
-            SpaClient.instance.shutdownSpaConnection();
-            setTimeout( function() {
-                SpaClient.instance.socket = SpaClient.get_socket(log, host);
+
+        // Get the Spa's primary configuration of accessories right away
+        this.send_control_panel_request();
+
+        // Wait 5 seconds after startup to send a request to check for any faults
+        setTimeout(() => {
+            this.send_request_for_faults_log();
+            // And then request again once every 10 minutes.
+            // TODO: Check that this works even if there's been a socket error in
+            // the meantime and the socket has been regenerated.
+            setInterval(() => {
+                this.send_request_for_faults_log();
+            }, 10 * 60 * 1000);
+        }, 5000);
+
+        // Some testing things. Not yet sure of their use.
+        setTimeout(() => {
+            this.send_control_config_2_request();
+        }, 10000);
+        setTimeout(() => {
+            this.send_config_request();
+        }, 15000);  
+    }
+
+    reconnecting: boolean = false;
+    reconnect(host: string) {
+        if (!this.reconnecting) {
+            this.reconnecting = true;
+            setTimeout(() => {
+                this.socket = this.get_socket(host);
+                this.reconnecting = false;
             }, 20000);
-        });
-        
-        return SpaClient.sock;
+        }
+    }
+
+    // Used if we get an error on the socket, as well as during shutdown.
+    // If we got an error, after this the code will retry to recreate the
+    // connection (elsewhere).
+    shutdownSpaConnection() {
+        // Might already be disconnected, if we're in a repeat error situation.
+        this.isCurrentlyConnectedToSpa = false;
+        this.log.debug("Shutting down Spa socket");
+        // Not sure I understand enough about these sockets to be sure
+        // of best way to clean them up.
+        if (this.socket != undefined) {
+            //this.log.debug('Before:', this.socket);
+            this.socket.end();
+            //this.log.debug('After:', this.socket);
+            this.socket = undefined;
+        }
     }
 
     /**
@@ -167,7 +188,7 @@ export class SpaClient {
         message = this.concat(message, new Uint8Array([checksum]));
         message = this.concat(message, prefixSuffix);
         this.log.debug(purpose, "Sending:" + this.prettify(message));
-        SpaClient.sock.write(message);
+        this.socket?.write(message);
     }
 
     /**
@@ -208,6 +229,9 @@ export class SpaClient {
         if ((this.lightIsOn[index-1] === value)) {
             return;
         }
+        if (!this.isCurrentlyConnectedToSpa) {
+            // Should we throw an error, or how do we handle this?
+        }
         // Lights numbered 1,2
         const id = 0x11+index-1;
         this.send_toggle_message(id);
@@ -238,7 +262,7 @@ export class SpaClient {
             // No action needed if pump already at the desired speed
             return;
         }
-        if (this.pumpSpeeds[index] == 0) {
+        if (!this.ignoreAutomaticConfiguration && this.pumpSpeeds[index] == 0) {
             this.log.error("Trying to set speed of pump",(index+1),"which doesn't exist");
             return;
         }
@@ -437,16 +461,15 @@ export class SpaClient {
         this.isHeatingNow = ((tempFlags & 48) !== 0);
         this.tempRangeIsHigh = (((tempFlags & 4) === 0) ? false : true);
         var pump_status1234 = bytes[11];
-        // How can we determine the number of pumps automatically?  The Balboa
-        // app knows that, so it is possible.
-        this.pumps[0] = PUMP_STATES[(pump_status1234 & (1+2))];
-        this.pumps[1] = PUMP_STATES[((pump_status1234 & (4+8)) >> 2)];
-        this.pumps[2] = PUMP_STATES[((pump_status1234 & (16+32)) >> 4)];
-        this.pumps[3] = PUMP_STATES[((pump_status1234 & (64+128)) >> 6)];
+        // We have a correct determination of the number of pumps automatically.
+        if (this.ignoreAutomaticConfiguration || this.pumps[0] != PUMP_NOT_EXISTS) this.pumps[0] = PUMP_STATES[(pump_status1234 & (1+2))];
+        if (this.ignoreAutomaticConfiguration || this.pumps[1] != PUMP_NOT_EXISTS) this.pumps[1] = PUMP_STATES[((pump_status1234 & (4+8)) >> 2)];
+        if (this.ignoreAutomaticConfiguration || this.pumps[2] != PUMP_NOT_EXISTS) this.pumps[2] = PUMP_STATES[((pump_status1234 & (16+32)) >> 4)];
+        if (this.ignoreAutomaticConfiguration || this.pumps[3] != PUMP_NOT_EXISTS) this.pumps[3] = PUMP_STATES[((pump_status1234 & (64+128)) >> 6)];
         // pumps 5,6 are untested by me.
         var pump_status56 = bytes[12];
-        this.pumps[5] = PUMP_STATES[(pump_status56 & (1+2))];
-        this.pumps[6] = PUMP_STATES[((pump_status56 & (4+8)) >> 2)];
+        if (this.ignoreAutomaticConfiguration || this.pumps[4] != PUMP_NOT_EXISTS) this.pumps[4] = PUMP_STATES[(pump_status56 & (1+2))];
+        if (this.ignoreAutomaticConfiguration || this.pumps[5] != PUMP_NOT_EXISTS) this.pumps[5] = PUMP_STATES[((pump_status56 & (4+8)) >> 2)];
         // Not sure if this circ_pump index or logic is correct.
         this.circulationPump = ((bytes[13] & 2) !== 0);
         this.lightIsOn[0] = ((bytes[14] & (1+2)) === (1+2));
@@ -499,7 +522,7 @@ export class SpaClient {
             }
             pumpFlags1to6 >>= 2;
         }
-        this.log.info("Discovered", countPumps,"pumps with speeds", this.pumpSpeeds);
+        this.log.info("Discovered", countPumps, "pumps with speeds", this.pumpSpeeds);
         var lights = [(bytes[2] & 0x03) != 0,(bytes[2] & 0xc0) != 0];
 
         var circ_pump = (bytes[3] & 0x80) != 0;

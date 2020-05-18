@@ -36,7 +36,7 @@ export class SpaHomebridgePlatform implements DynamicPlatformPlugin {
     this.devices = config.devices || [];
 
     // Create and load up our primary client which connects with the spa
-    this.spa = SpaClient.getSpaClient(this.log, config.host);
+    this.spa = new SpaClient(this.log, config.host, config.ignoreAutomaticConfiguration);
     
     // When this event is fired it means Homebridge has restored all cached accessories from disk.
     // Dynamic Platform plugins should only register new accessories after this event was fired,

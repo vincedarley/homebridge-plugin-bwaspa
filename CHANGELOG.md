@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.9.0 (18.05.2020)
+- Cleanup of Spa socket connection code for more robustness and recovery from error conditions
+- Fix (untested) to pumps 5 and 6
+- Use of automatic Spa configuration to constrain what messages can be sent and what accessories can be used.
+
 ## 1.8.4 (17.05.2020)
 - Fix for lights, now we support one or two lights
 
