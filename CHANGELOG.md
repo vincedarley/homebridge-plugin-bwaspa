@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.9.1 (18.05.2020)
+- Use of automatic Spa configuration to constrain lights
+- Improved handling of intervals to check on Spa faults
+
 ## 1.9.0 (18.05.2020)
 - Cleanup of Spa socket connection code for more robustness and recovery from error conditions
 - Fix (untested) to pumps 5 and 6

@@ -32,7 +32,8 @@ const ControlConfig2Reply = new Uint8Array([0x0a,0xbf,0x25]);
 
 export class SpaClient {
     socket?: net.Socket;
-    lightIsOn: boolean[];
+    // undefined means the light doesn't exist on the spa
+    lightIsOn: (boolean | undefined)[];
     currentTemp: number;
     targetTempModeHigh: number;
     targetTempModeLow: number;
@@ -52,11 +53,14 @@ export class SpaClient {
     accurateConfigReadFromSpa: boolean;
     isCurrentlyConnectedToSpa: boolean;
     ignoreAutomaticConfiguration: boolean;
+    faultCheckIntervalId: any;
 
     constructor(public readonly log: Logger, public readonly host: string, ignoreAutomatic?: boolean) {
         this.accurateConfigReadFromSpa = false;
         this.isCurrentlyConnectedToSpa = false;
         this.ignoreAutomaticConfiguration = (ignoreAutomatic ? ignoreAutomatic : false);
+        // Be generous to start. Once we've read the config we will reduce the number of lights
+        // if needed.
         this.lightIsOn = [false,false];
         this.currentTemp = 0;
         this.hour = 12;
@@ -74,9 +78,8 @@ export class SpaClient {
         this.time_12or24 = "12 Hr";
         this.isHeatingNow = false;
         this.circulationPump = false;
-        this.flow = FLOW_STATES[0];
+        this.flow = FLOW_GOOD;
         this.socket = this.get_socket(host);
-
     }
 
     get_socket(host: string) {
@@ -126,12 +129,15 @@ export class SpaClient {
 
         // Wait 5 seconds after startup to send a request to check for any faults
         setTimeout(() => {
-            this.send_request_for_faults_log();
-            // And then request again once every 10 minutes.
+            if (this.isCurrentlyConnectedToSpa) this.send_request_for_faults_log();
             // TODO: Check that this works even if there's been a socket error in
             // the meantime and the socket has been regenerated.
-            setInterval(() => {
-                this.send_request_for_faults_log();
+            if (this.faultCheckIntervalId) {
+                this.log.error("Shouldn't ever already have a fault check interval running here.");
+            }
+            // And then request again once every 10 minutes.
+            this.faultCheckIntervalId = setInterval(() => {
+                if (this.isCurrentlyConnectedToSpa) this.send_request_for_faults_log();
             }, 10 * 60 * 1000);
         }, 5000);
 
@@ -162,6 +168,10 @@ export class SpaClient {
         // Might already be disconnected, if we're in a repeat error situation.
         this.isCurrentlyConnectedToSpa = false;
         this.log.debug("Shutting down Spa socket");
+        if (this.faultCheckIntervalId) {
+            clearInterval(this.faultCheckIntervalId);
+            this.faultCheckIntervalId = undefined;
+        }
         // Not sure I understand enough about these sockets to be sure
         // of best way to clean them up.
         if (this.socket != undefined) {
@@ -209,11 +219,16 @@ export class SpaClient {
         return this.tempRangeIsHigh;
     }
     timeToString(hour: number, minute: number) {
-        return hour.toString().padStart(2, '0') + ":" 
-        + minute.toString().padStart(2, '0');
+        return hour.toString().padStart(2, '0') + ":" + minute.toString().padStart(2, '0');
     }
     getIsLightOn(index: number) {
-        return this.lightIsOn[index-1];
+        // Lights are numbered 1,2 by Balboa
+        index--;
+        if (!this.ignoreAutomaticConfiguration && this.lightIsOn[index] == undefined) {
+            this.log.error("Trying to get status of light",(index+1),"which doesn't exist");
+            return false;
+        }
+        return this.lightIsOn[index];
     }
     getIsHeatingNow() {
         return this.isHeatingNow;
@@ -226,16 +241,21 @@ export class SpaClient {
     }
 
     setLightState(index: number, value: boolean) {
-        if ((this.lightIsOn[index-1] === value)) {
+        // Lights are numbered 1,2 by Balboa
+        index--;
+        if ((this.lightIsOn[index] === value)) {
+            return;
+        }
+        if (!this.ignoreAutomaticConfiguration && this.lightIsOn[index] == undefined) {
+            this.log.error("Trying to set state of light",(index+1),"which doesn't exist");
             return;
         }
         if (!this.isCurrentlyConnectedToSpa) {
             // Should we throw an error, or how do we handle this?
         }
-        // Lights numbered 1,2
-        const id = 0x11+index-1;
+        const id = 0x11+index;
         this.send_toggle_message(id);
-        this.lightIsOn[index-1] = value;
+        this.lightIsOn[index] = value;
     }
 
     setTempRangeIsHigh(isHigh: boolean) {
@@ -252,7 +272,12 @@ export class SpaClient {
 
     getPumpSpeed(index: number) {
         // Pumps are numbered 1,2,3,... by Balboa
-        return this.pumps[index-1];
+        index--;
+        if (!this.ignoreAutomaticConfiguration && this.pumpSpeeds[index] == 0) {
+            this.log.error("Trying to get speed of pump",(index+1),"which doesn't exist");
+            return PUMP_OFF;
+        }
+        return this.pumps[index];
     }
 
     setPumpSpeed(index: number, value: string) {
@@ -472,8 +497,8 @@ export class SpaClient {
         if (this.ignoreAutomaticConfiguration || this.pumps[5] != PUMP_NOT_EXISTS) this.pumps[5] = PUMP_STATES[((pump_status56 & (4+8)) >> 2)];
         // Not sure if this circ_pump index or logic is correct.
         this.circulationPump = ((bytes[13] & 2) !== 0);
-        this.lightIsOn[0] = ((bytes[14] & (1+2)) === (1+2));
-        this.lightIsOn[1] = ((bytes[14] & (4+8)) === (4+8));
+        if (this.ignoreAutomaticConfiguration || this.lightIsOn[0] != undefined) this.lightIsOn[0] = ((bytes[14] & (1+2)) === (1+2));
+        if (this.ignoreAutomaticConfiguration || this.lightIsOn[1] != undefined) this.lightIsOn[1] = ((bytes[14] & (4+8)) === (4+8));
         // Believe the following 4 lines are correct, but no way to test
         // mister = data[15] & 0x01
         // blower = (data[13] & 0x0c) >> 2
@@ -524,6 +549,8 @@ export class SpaClient {
         }
         this.log.info("Discovered", countPumps, "pumps with speeds", this.pumpSpeeds);
         var lights = [(bytes[2] & 0x03) != 0,(bytes[2] & 0xc0) != 0];
+        this.lightIsOn[0] = lights[0] ? false : undefined;
+        this.lightIsOn[1] = lights[1] ? false : undefined;
 
         var circ_pump = (bytes[3] & 0x80) != 0;
         var blower = (bytes[3] & 0x03) != 0;

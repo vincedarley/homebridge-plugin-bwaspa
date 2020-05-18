@@ -6,7 +6,8 @@ import { VERSION } from './settings';
 import { PUMP_STATES } from './spaClient'
 
 /**
- * Control a 1- or 2- speed pump as a homekit "fan"
+ * Control a 1- or 2- speed pump as a homekit "fan".
+ * Where we have a 1 speed pump, only 'Off' and 'High' (speed = 0 or 2) are used.
  */
 export class PumpAccessory {
   private service: Service;
@@ -19,8 +20,6 @@ export class PumpAccessory {
     lastSpeed: 2
   }
 
-  // Where we have a 1 speed pump, only 'Off' and 'High' are used.
-  private readonly speeds: string[] = PUMP_STATES;
   // Always 1 or 2
   numSpeedSettings : number;
 
@@ -106,7 +105,7 @@ export class PumpAccessory {
     // speeds we have to 0-2 (a 1-speed pump just swaps from 0 to 2 directly);
     const speed = Math.round((value as number)/50.0);
     this.setSpeed(speed);
-    this.platform.log.debug('Set Pump',this.pumpNumber,'Characteristic Speed -> ', value, ' which is ', this.speeds[speed]);
+    this.platform.log.debug('Set Pump',this.pumpNumber,'Characteristic Speed -> ', value, ' which is ', PUMP_STATES[speed]);
 
     callback(null);
   }
@@ -120,17 +119,18 @@ export class PumpAccessory {
     // As above we convert the speed of 0-2 to a value of 0-100, irrespective
     // of the number of speeds the pump has
     const value = (100.0*speed)/2;
-    this.platform.log.debug('Get Pump',this.pumpNumber,'Characteristic Speed -> ', value, ' which is ', this.speeds[speed]);
+    this.platform.log.debug('Get Pump',this.pumpNumber,'Characteristic Speed -> ', value, ' which is ', PUMP_STATES[speed]);
 
     callback(null, value);
   }
 
   private getSpeed() {
-    return this.speeds.indexOf(this.platform.spa.getPumpSpeed(this.pumpNumber));
+    // return 0, 1 or 2.
+    return PUMP_STATES.indexOf(this.platform.spa.getPumpSpeed(this.pumpNumber));
   }
 
   private setSpeed(speed: number) {
-    this.platform.spa.setPumpSpeed(this.pumpNumber, this.speeds[speed]);
+    this.platform.spa.setPumpSpeed(this.pumpNumber, PUMP_STATES[speed]);
     if (speed != 0) {
       this.states.lastSpeed = speed;
     }
