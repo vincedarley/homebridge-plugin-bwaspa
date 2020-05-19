@@ -2,6 +2,9 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.9.3 (19.05.2020)
+- Clean up to some spa messages, and added control panel requests 1-4 to gain more information
+
 ## 1.9.2 (19.05.2020)
 - Code cleanup and documentation
 - Verified By Homebridge

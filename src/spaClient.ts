@@ -13,22 +13,31 @@ export const FLOW_LOW = "Low";
 export const FLOW_FAILED = "Failed";
 export const FLOW_STATES = [FLOW_GOOD, FLOW_LOW, FLOW_FAILED];
 
-const GetFaultsRequest = new Uint8Array([0x0a, 0xbf, 0x22]);
+const PrimaryRequest = new Uint8Array([0x0a, 0xbf, 0x22]);
+const GetFaultsMessage = new Uint8Array([0x20, 0xff, 0x00]);
 const GetFaultsReply = new Uint8Array([0x0a,0xbf,0x28]);
+// These will tell us how many pumps, lights, etc the Spa has
+const ControlTypesMessage = new Uint8Array([0x00, 0x00, 0x01]);
+const ControlTypesReply = new Uint8Array([0x0a,0xbf,0x2e]);
+
 // This one is sent to us automatically every second
 const StateReply = new Uint8Array([0xff,0xaf,0x13]);
 // These two either don't have a reply or we don't care about it.
 const ToggleItemRequest = new Uint8Array([0x0a, 0xbf, 0x11]);
 const SetTargetTempRequest = new Uint8Array([0x0a, 0xbf, 0x20]);
-// These will tell us how many pumps, lights, etc the Spa has
-const ControlTypesRequest = new Uint8Array([0x0a, 0xbf, 0x22]);
-const ControlTypesReply = new Uint8Array([0x0a,0xbf,0x2e]);
 // These we send once, but don't actually currently make use of the results
 // Need to investigate how to interpret them. 
 const ConfigRequest = new Uint8Array([0x0a, 0xbf, 0x04]);
 const ConfigReply = new Uint8Array([0x0a,0xbf,0x94]);
-const ControlConfig2Request = new Uint8Array([0x0a, 0xbf, 0x2e]);
-const ControlConfig2Reply = new Uint8Array([0x0a,0xbf,0x25]);
+
+// Four different request/replies. Unclear of their purpose/value as yet.
+// Again we send each once.
+const ControlPanelRequest : Uint8Array[][] = [
+    [new Uint8Array([0x01,0x00,0x00]), new Uint8Array([0x0a,0xbf,0x23])],
+    [new Uint8Array([0x02,0x00,0x00]), new Uint8Array([0x0a,0xbf,0x24])],
+    [new Uint8Array([0x04,0x00,0x00]), new Uint8Array([0x0a,0xbf,0x25])],
+    [new Uint8Array([0x08,0x00,0x00]), new Uint8Array([0x0a,0xbf,0x26])]
+];
 
 export class SpaClient {
     socket?: net.Socket;
@@ -137,7 +146,7 @@ export class SpaClient {
         });
 
         // Get the Spa's primary configuration of accessories right away
-        this.send_control_panel_request();
+        this.sendControlTypesRequest();
 
         // Wait 5 seconds after startup to send a request to check for any faults
         setTimeout(() => {
@@ -158,9 +167,12 @@ export class SpaClient {
         }, 5000);
 
         // Some testing things. Not yet sure of their use.
-        setTimeout(() => {
-            this.send_control_config_2_request();
-        }, 10000);
+        // Note: must use 'let' here so id is bound separately each time.
+        for (let id=0;id<4;id++) {
+            setTimeout(() => {
+                this.sendControlPanelRequest(id);
+            }, 1000*(id+1));
+        }
         setTimeout(() => {
             this.send_config_request();
         }, 15000);  
@@ -362,12 +374,17 @@ export class SpaClient {
         this.sendMessageToSpa("ConfigRequest", ConfigRequest, new Uint8Array());
     }
 
-    send_control_panel_request() {
-        this.sendMessageToSpa("ControlTypesRequest", ControlTypesRequest, new Uint8Array([0x00, 0x00, 0x01]));
+    sendControlTypesRequest() {
+        this.sendMessageToSpa("ControlTypesRequest", PrimaryRequest, ControlTypesMessage);
     }
 
-    send_control_config_2_request() {
-        this.sendMessageToSpa("ControlConfig2Request", ControlConfig2Request, new Uint8Array([0x04, 0x00, 0x00]));
+    sendControlPanelRequest(id : number) {
+        // 4 messages from [0x01,0x00,0x00] through 2,4,8
+        this.sendMessageToSpa("ControlPanelRequest"+(id+1), PrimaryRequest, ControlPanelRequest[id][0]);
+    }
+
+    send_request_for_faults_log() {
+        this.sendMessageToSpa("Checking for any Spa faults", PrimaryRequest, GetFaultsMessage);   
     }
 
     send_toggle_message(item: number) {
@@ -384,10 +401,6 @@ export class SpaClient {
         // # 0x0c - blower (unsupported at present)
         // # 0x16 - aux1, 0x17 - aux2
         this.sendMessageToSpa("Toggle item " + item, ToggleItemRequest, new Uint8Array([item, 0x00]));
-    }
-
-    send_request_for_faults_log() {
-        this.sendMessageToSpa("Checking for any Spa faults", GetFaultsRequest, new Uint8Array([0x20, 0xff, 0x00]));   
     }
 
     // Celsius temperatures are communicated by the Spa in half degrees.
@@ -446,6 +459,9 @@ export class SpaClient {
         if (length == 0) {
             return false;
         }
+        if (chunk[length] != this.compute_checksum(new Uint8Array([length]), chunk.slice(2,length))) {
+            this.log.error("Bad checksum ", chunk[length], "for", this.prettify(chunk));
+        }
         var contents = chunk.slice(5, length);
         var msgType = chunk.slice(2,5);
         if (this.equal(msgType,StateReply)) {
@@ -456,15 +472,23 @@ export class SpaClient {
             this.log.info("Control types reply(" + this.prettify(msgType) 
              + "):"+ this.prettify(contents));
             this.interpretControlTypesReply(contents);
-        } else if (this.equal(msgType, ControlConfig2Reply)) {
-            // TODO: interpret this
-            this.log.info("Control config 2 reply(" + this.prettify(msgType) 
-            + "):"+ this.prettify(contents));
         } else if (this.equal(msgType, ConfigReply)) {
             // TODO: interpret this
             this.log.info("Config reply(" + this.prettify(msgType) 
             + "):"+ this.prettify(contents));
         } else {
+            for (var id = 0; id<4; id++) {
+                if (this.equal(msgType, ControlPanelRequest[id][1])) {
+                    // Potential information here:
+                    // 1: Filters
+                    // 2: ?
+                    // 3: ?
+                    // 4: Reminders, cleaning cycle length, etc.
+                    this.log.info("Control Panel reply " + (id+1) + " (" + this.prettify(msgType) 
+                    + "):"+ this.prettify(contents));
+                    return false;
+                }
+            }
             // Various messages about controls, filters, etc. In theory we could
             // choose to implement more things here, but limited value in it.
             this.log.info("Not understood a received spa message ", 
