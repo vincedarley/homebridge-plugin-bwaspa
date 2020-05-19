@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.9.2 (19.05.2020)
+- Code cleanup and documentation
+- Verified By Homebridge
+- Changed some defaults to placeholders in the config schema
+- Added link to readme so that you can report/validate your spa configuration for automatic setup
+
 ## 1.9.1 (18.05.2020)
 - Use of automatic Spa configuration to constrain lights
 - Improved handling of intervals to check on Spa faults

@@ -11,6 +11,8 @@ This plugin will connect some Balboa Spas over their wifi, and expose a set of c
 
 Configure the plugin with Homebridge ConfigUI
 
+[![verified-by-homebridge](https://badgen.net/badge/homebridge/verified/purple)](https://github.com/homebridge/homebridge/wiki/Verified-Plugins)
+
 # More details on supported accessories
 
 It supports pumps that are single speed (off or high) and 2-speed (off or low or high) - you can define that in the config. The pump control sliders in Home then have a 'minStep' of 50% or 100% depending on their number of speed settings.
@@ -93,7 +95,7 @@ If you wish to help on further automation of pump/light configuration, please ta
 [My Hot Tub] Config reply(0a,bf,94):02,14,80,00,15,27,3f,9b,95,00,00,00,00,00,00,00,00,00,15,27,ff,ff,3f,9b,95
 ```
 
-and submit those details (which will probably contain slightly different numbers) in an issue on github, along with the physical configuration of your spa (number of pumps, speed settings, etc). Hopefully with a bit more data we can ensure everything is interpreted correctly.  The above, for example, shows that my Spa has 3 pumps, where Pump 1 is 2-speed, Pump 2 is 2-speed and Pump 3 is 1-speed. And my Spa has 1 light. This was all therefore discovered correctly.
+and submit those details (which will probably contain slightly different numbers) in [this issue](https://github.com/vincedarley/homebridge-plugin-bwaspa/issues/1) on github, along with the physical configuration of your spa (number of pumps, speed settings, etc). Hopefully with a bit more data we can ensure everything is interpreted correctly.  The above, for example, shows that my Spa has 3 pumps, where Pump 1 is 2-speed, Pump 2 is 2-speed and Pump 3 is 1-speed. And my Spa has 1 light. This was all therefore discovered correctly.
 
 ## Thanks
 

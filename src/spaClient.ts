@@ -34,20 +34,29 @@ export class SpaClient {
     socket?: net.Socket;
     // undefined means the light doesn't exist on the spa
     lightIsOn: (boolean | undefined)[];
+    // takes values from PUMP_STATES or PUMP_NOT_EXISTS
+    pumpsCurrentSpeed: string[];
+    // 0 means doesn't exist, else 1 or 2 indicates number of speeds for this pump
+    pumpsSpeedRange: number[];
+
     currentTemp: number;
+    // When spa is in 'high' mode, what is the target temperature
     targetTempModeHigh: number;
+    // When spa is in 'low' mode, what is the target temperature
     targetTempModeLow: number;
+    // Is spa in low or high mode.
+    tempRangeIsHigh: boolean;
+    // Time of day, according to the Spa (sync it with the Balboa mobile app if you wish)
     hour: number;
     minute: number;
+    // ready, ready at rest, etc.
     heatingMode: string;
     temp_CorF: string;
-    tempRangeIsHigh: boolean;
-    pumps: string[];
-    pumpSpeeds: number[];
     priming: boolean;
     time_12or24: string;
     isHeatingNow: boolean;
-    circulationPump: boolean;
+    circulationPumpIsOn: boolean;
+    // Takes values from FLOW_STATES
     flow: string;
     // Once the Spa has told us what accessories it really has.
     accurateConfigReadFromSpa: boolean;
@@ -62,23 +71,26 @@ export class SpaClient {
         // Be generous to start. Once we've read the config we will reduce the number of lights
         // if needed.
         this.lightIsOn = [false,false];
+        // Be generous to start.  Once we've read the config, we'll set reduce
+        // the number of pumps and their number of speeds correctly
+        this.pumpsCurrentSpeed = [PUMP_OFF,PUMP_OFF,PUMP_OFF,PUMP_OFF,PUMP_OFF,PUMP_OFF];
+        this.pumpsSpeedRange = [2,2,2,2,2,2];
+        // All of these will be set by the Spa as soon as we get the first status update
         this.currentTemp = 0;
         this.hour = 12;
         this.minute = 0;
         this.heatingMode = "";
         this.temp_CorF = "";
         this.tempRangeIsHigh = true;
-        // Be generous to start.  Once we've read the config, we'll set reduce
-        // the number of pumps and their number of speeds correctly
-        this.pumps = [PUMP_OFF,PUMP_OFF,PUMP_OFF,PUMP_OFF,PUMP_OFF,PUMP_OFF];
-        this.pumpSpeeds = [2,2,2,2,2,2];
         this.targetTempModeLow = 2*18;
         this.targetTempModeHigh = 2*38;
         this.priming = false;
         this.time_12or24 = "12 Hr";
         this.isHeatingNow = false;
-        this.circulationPump = false;
+        this.circulationPumpIsOn = false;
+        // This isn't updated as frequently as the above
         this.flow = FLOW_GOOD;
+        // Our communications channel with the spa
         this.socket = this.get_socket(host);
     }
 
@@ -129,7 +141,9 @@ export class SpaClient {
 
         // Wait 5 seconds after startup to send a request to check for any faults
         setTimeout(() => {
-            if (this.isCurrentlyConnectedToSpa) this.send_request_for_faults_log();
+            if (this.isCurrentlyConnectedToSpa) {
+                this.send_request_for_faults_log();
+            }
             // TODO: Check that this works even if there's been a socket error in
             // the meantime and the socket has been regenerated.
             if (this.faultCheckIntervalId) {
@@ -137,7 +151,9 @@ export class SpaClient {
             }
             // And then request again once every 10 minutes.
             this.faultCheckIntervalId = setInterval(() => {
-                if (this.isCurrentlyConnectedToSpa) this.send_request_for_faults_log();
+                if (this.isCurrentlyConnectedToSpa) {
+                    this.send_request_for_faults_log();
+                }
             }, 10 * 60 * 1000);
         }, 5000);
 
@@ -175,9 +191,8 @@ export class SpaClient {
         // Not sure I understand enough about these sockets to be sure
         // of best way to clean them up.
         if (this.socket != undefined) {
-            //this.log.debug('Before:', this.socket);
             this.socket.end();
-            //this.log.debug('After:', this.socket);
+            this.socket.destroy();
             this.socket = undefined;
         }
     }
@@ -273,27 +288,27 @@ export class SpaClient {
     getPumpSpeed(index: number) {
         // Pumps are numbered 1,2,3,... by Balboa
         index--;
-        if (!this.ignoreAutomaticConfiguration && this.pumpSpeeds[index] == 0) {
+        if (!this.ignoreAutomaticConfiguration && this.pumpsSpeedRange[index] == 0) {
             this.log.error("Trying to get speed of pump",(index+1),"which doesn't exist");
             return PUMP_OFF;
         }
-        return this.pumps[index];
+        return this.pumpsCurrentSpeed[index];
     }
 
     setPumpSpeed(index: number, value: string) {
         // Pumps are numbered 1,2,3,... by Balboa
         index--;
-        if ((this.pumps[index] === value)) {
+        if ((this.pumpsCurrentSpeed[index] === value)) {
             // No action needed if pump already at the desired speed
             return;
         }
-        if (!this.ignoreAutomaticConfiguration && this.pumpSpeeds[index] == 0) {
+        if (!this.ignoreAutomaticConfiguration && this.pumpsSpeedRange[index] == 0) {
             this.log.error("Trying to set speed of pump",(index+1),"which doesn't exist");
             return;
         }
         // Toggle Pump1 = toggle '4', Pump2 = toggle '5', etc.
         const id = index+4;
-        if (this.pumpSpeeds[index] == 1) {
+        if (this.pumpsSpeedRange[index] == 1) {
             // 1 speed pump - just off or high settings
             if (value === PUMP_LOW) {
                 this.log.warn("Pump", (index+1), ": Trying to set a 1 speed pump to LOW speed. Switching to HIGH instead.");
@@ -303,11 +318,11 @@ export class SpaClient {
             this.send_toggle_message(id);
         } else {
             // 2 speed pump. If 3 speed pumps exist, not hard to support in the future.
-            if (((value === PUMP_HIGH) && (this.pumps[index] === PUMP_OFF))) {
+            if (((value === PUMP_HIGH) && (this.pumpsCurrentSpeed[index] === PUMP_OFF))) {
                 // Going from off to high requires 2 toggles
                 this.send_toggle_message(id);
                 this.send_toggle_message(id);
-            } else if (((value === PUMP_OFF) && (this.pumps[index] === PUMP_LOW))) {
+            } else if (((value === PUMP_OFF) && (this.pumpsCurrentSpeed[index] === PUMP_LOW))) {
                 // Going from low to off requires 2 toggles
                 this.send_toggle_message(id);
                 this.send_toggle_message(id);
@@ -316,7 +331,7 @@ export class SpaClient {
                 this.send_toggle_message(id);
             }
         }        
-        this.pumps[index] = value;
+        this.pumpsCurrentSpeed[index] = value;
     }
 
     compute_checksum(length: Uint8Array, bytes: Uint8Array) {
@@ -403,8 +418,8 @@ export class SpaClient {
         + ", Time Scale: " + this.time_12or24 + "\n" 
         + "Heating: " + this.isHeatingNow 
         + ", Temp Range: " + (this.tempRangeIsHigh ? "High" : "Low")
-        + ", Pumps: " + this.pumps
-        + ", Circ Pump: " + this.circulationPump
+        + ", Pumps: " + this.pumpsCurrentSpeed
+        + ", Circ Pump: " + this.circulationPumpIsOn
         + ", Lights: " + this.lightIsOn
         return s;
     }
@@ -487,16 +502,16 @@ export class SpaClient {
         this.tempRangeIsHigh = (((tempFlags & 4) === 0) ? false : true);
         var pump_status1234 = bytes[11];
         // We have a correct determination of the number of pumps automatically.
-        if (this.ignoreAutomaticConfiguration || this.pumps[0] != PUMP_NOT_EXISTS) this.pumps[0] = PUMP_STATES[(pump_status1234 & (1+2))];
-        if (this.ignoreAutomaticConfiguration || this.pumps[1] != PUMP_NOT_EXISTS) this.pumps[1] = PUMP_STATES[((pump_status1234 & (4+8)) >> 2)];
-        if (this.ignoreAutomaticConfiguration || this.pumps[2] != PUMP_NOT_EXISTS) this.pumps[2] = PUMP_STATES[((pump_status1234 & (16+32)) >> 4)];
-        if (this.ignoreAutomaticConfiguration || this.pumps[3] != PUMP_NOT_EXISTS) this.pumps[3] = PUMP_STATES[((pump_status1234 & (64+128)) >> 6)];
+        if (this.ignoreAutomaticConfiguration || this.pumpsCurrentSpeed[0] != PUMP_NOT_EXISTS) this.pumpsCurrentSpeed[0] = PUMP_STATES[(pump_status1234 & (1+2))];
+        if (this.ignoreAutomaticConfiguration || this.pumpsCurrentSpeed[1] != PUMP_NOT_EXISTS) this.pumpsCurrentSpeed[1] = PUMP_STATES[((pump_status1234 & (4+8)) >> 2)];
+        if (this.ignoreAutomaticConfiguration || this.pumpsCurrentSpeed[2] != PUMP_NOT_EXISTS) this.pumpsCurrentSpeed[2] = PUMP_STATES[((pump_status1234 & (16+32)) >> 4)];
+        if (this.ignoreAutomaticConfiguration || this.pumpsCurrentSpeed[3] != PUMP_NOT_EXISTS) this.pumpsCurrentSpeed[3] = PUMP_STATES[((pump_status1234 & (64+128)) >> 6)];
         // pumps 5,6 are untested by me.
         var pump_status56 = bytes[12];
-        if (this.ignoreAutomaticConfiguration || this.pumps[4] != PUMP_NOT_EXISTS) this.pumps[4] = PUMP_STATES[(pump_status56 & (1+2))];
-        if (this.ignoreAutomaticConfiguration || this.pumps[5] != PUMP_NOT_EXISTS) this.pumps[5] = PUMP_STATES[((pump_status56 & (4+8)) >> 2)];
+        if (this.ignoreAutomaticConfiguration || this.pumpsCurrentSpeed[4] != PUMP_NOT_EXISTS) this.pumpsCurrentSpeed[4] = PUMP_STATES[(pump_status56 & (1+2))];
+        if (this.ignoreAutomaticConfiguration || this.pumpsCurrentSpeed[5] != PUMP_NOT_EXISTS) this.pumpsCurrentSpeed[5] = PUMP_STATES[((pump_status56 & (4+8)) >> 2)];
         // Not sure if this circ_pump index or logic is correct.
-        this.circulationPump = ((bytes[13] & 2) !== 0);
+        this.circulationPumpIsOn = ((bytes[13] & 2) !== 0);
         if (this.ignoreAutomaticConfiguration || this.lightIsOn[0] != undefined) this.lightIsOn[0] = ((bytes[14] & (1+2)) === (1+2));
         if (this.ignoreAutomaticConfiguration || this.lightIsOn[1] != undefined) this.lightIsOn[1] = ((bytes[14] & (4+8)) === (4+8));
         // Believe the following 4 lines are correct, but no way to test
@@ -539,15 +554,15 @@ export class SpaClient {
         var countPumps = 0;
         for (var idx = 0; idx < 6; idx++) {
             // 0 = no such pump, 1 = off/high pump, 2 = off/low/high pump
-            this.pumpSpeeds[idx] = pumpFlags1to6 & 0x03;
-            if (this.pumpSpeeds[idx] == 0) {
-                this.pumps[idx] = PUMP_NOT_EXISTS;
+            this.pumpsSpeedRange[idx] = pumpFlags1to6 & 0x03;
+            if (this.pumpsSpeedRange[idx] == 0) {
+                this.pumpsCurrentSpeed[idx] = PUMP_NOT_EXISTS;
             } else {
                 countPumps++;  
             }
             pumpFlags1to6 >>= 2;
         }
-        this.log.info("Discovered", countPumps, "pumps with speeds", this.pumpSpeeds);
+        this.log.info("Discovered", countPumps, "pumps with speeds", this.pumpsSpeedRange);
         var lights = [(bytes[2] & 0x03) != 0,(bytes[2] & 0xc0) != 0];
         this.lightIsOn[0] = lights[0] ? false : undefined;
         this.lightIsOn[1] = lights[1] ? false : undefined;

@@ -10,12 +10,12 @@
         "title": "Name",
         "type": "string",
         "required": true,
-        "default": "My Hot Tub"
+        "placeholder": "My Hot Tub"
       },
       "host": {
         "title": "IP Address",
         "type": "string",
-        "default": "192.168.1.151",
+        "placeholder": "192.168.1.151",
         "required": true,
         "format": "hostname"
       },
@@ -28,7 +28,7 @@
             "name": {
               "title": "Device name",
               "type": "string",
-              "default": "my Pump or light or...",
+              "placeholder": "my Pump or light or...",
               "required": true
             },
             "pumpRange": {
