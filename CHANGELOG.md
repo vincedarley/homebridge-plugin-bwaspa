@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.9.4 (19.05.2020)
+- Some interpretation of the additional control panel requests (e.g. to get the motherboard model)
+- Some code cleanup
+- Only use same-day spa faults to trigger the water flow sensor state (previously also day before used)
+
 ## 1.9.3 (19.05.2020)
 - Clean up to some spa messages, and added control panel requests 1-4 to gain more information
 

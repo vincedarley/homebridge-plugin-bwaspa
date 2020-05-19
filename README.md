@@ -86,13 +86,24 @@ Some spas have a "blower" or a "mister". No support for those at present.
 If you wish to help on further automation of pump/light configuration, please take a look in the homebridge log for lines like this:
 
 ```
-[My Hot Tub] ControlPanelRequest Sending:7e,08,0a,bf,22,00,00,01,58,7e
-[My Hot Tub] Control panel reply(0a,bf,2e):1a,00,01,90,00,00
+[My Hot Tub] Control types reply(0a,bf,2e):1a,00,01,90,00,00
 [My Hot Tub] Discovered 3 pumps with speeds [ 2, 2, 1, 0, 0, 0 ]
-[My Hot Tub] Discovered lights: [ true, false ] circ_pump true blower false mister false aux [ false, false ]
-
-[My Hot Tub] ConfigRequest Writing:7e,05,0a,bf,04,77,7e
-[My Hot Tub] Config reply(0a,bf,94):02,14,80,00,15,27,3f,9b,95,00,00,00,00,00,00,00,00,00,15,27,ff,ff,3f,9b,95
+[My Hot Tub] Discovered 1 light
+[My Hot Tub] Discovered other components: circ_pump true blower false mister false aux [ false, false ]
+[My Hot Tub] ControlPanelRequest1 Sending:7e,08,0a,bf,22,01,00,00,34,7e
+[My Hot Tub] Control Panel reply 1:14,00,01,1e,88,00,01,1e
+[My Hot Tub] ControlPanelRequest2 Sending:7e,08,0a,bf,22,02,00,00,89,7e
+[My Hot Tub] Control Panel reply 2:64,e1,24,00,4d,53,34,30,45,20,20,20,01,c3,47,96,36,03,0a,44,00
+[My Hot Tub] Spa motherboard model MS40E   
+[My Hot Tub] ControlPanelRequest3 Sending:7e,08,0a,bf,22,04,00,00,f4,7e
+[My Hot Tub] Control Panel reply 3:05,01,32,63,50,68,61,07,41
+[My Hot Tub] ControlPanelRequest4 Sending:7e,08,0a,bf,22,08,00,00,0e,7e
+[My Hot Tub] Control Panel reply 4:00,85,00,01,01,02,00,00,00,00,00,00,00,00,00,00,00,00
+[My Hot Tub] Checking for any Spa faults Sending:7e,08,0a,bf,22,20,ff,00,cb,7e
+[My Hot Tub] Fault Entries: 24 Num: 24 Error code: 19 Days ago: 3 Time: 10:49 Heat mode: 24 Set temp: 38 Temp A: 38.5 Temp B: 38.5
+[My Hot Tub] No recent faults. Last fault 3 days ago of type 19
+[My Hot Tub] ConfigRequest Sending:7e,05,0a,bf,04,77,7e
+[My Hot Tub] Config reply with MAC address (0a,bf,94):02,14,80,00,15,27,3f,9b,95,00,00,00,00,00,00,00,00,00,15,27,ff,ff,3f,9b,95
 ```
 
 and submit those details (which will probably contain slightly different numbers) in [this issue](https://github.com/vincedarley/homebridge-plugin-bwaspa/issues/1) on github, along with the physical configuration of your spa (number of pumps, speed settings, etc). Hopefully with a bit more data we can ensure everything is interpreted correctly.  The above, for example, shows that my Spa has 3 pumps, where Pump 1 is 2-speed, Pump 2 is 2-speed and Pump 3 is 1-speed. And my Spa has 1 light. This was all therefore discovered correctly.

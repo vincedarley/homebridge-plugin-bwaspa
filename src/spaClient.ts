@@ -473,19 +473,14 @@ export class SpaClient {
              + "):"+ this.prettify(contents));
             this.interpretControlTypesReply(contents);
         } else if (this.equal(msgType, ConfigReply)) {
-            // TODO: interpret this
-            this.log.info("Config reply(" + this.prettify(msgType) 
+            this.log.info("Config reply with MAC address (" + this.prettify(msgType) 
             + "):"+ this.prettify(contents));
+            // Bytes 3-8 are the MAC address of the Spa.  They are also repeated later
+            // on in the string, but split into two halves with two bytes inbetween (ff, ff)
         } else {
             for (var id = 0; id<4; id++) {
                 if (this.equal(msgType, ControlPanelRequest[id][1])) {
-                    // Potential information here:
-                    // 1: Filters
-                    // 2: ?
-                    // 3: ?
-                    // 4: Reminders, cleaning cycle length, etc.
-                    this.log.info("Control Panel reply " + (id+1) + " (" + this.prettify(msgType) 
-                    + "):"+ this.prettify(contents));
+                    this.interpretControlPanelReply(id+1, contents);
                     return false;
                 }
             }
@@ -557,8 +552,6 @@ export class SpaClient {
             // Bytes 3,4 are the time
             if (i != 3 && i != 4) {
                 if (oldBytes[i] !== this.lastStateBytes[i]) {
-                    // this.log.debug("OLD:", oldBytes.toString());
-                    // this.log.debug("NEW:", this.lastStateBytes.toString());
                     return true;
                 }
             }
@@ -588,17 +581,57 @@ export class SpaClient {
         }
         this.log.info("Discovered", countPumps, "pumps with speeds", this.pumpsSpeedRange);
         var lights = [(bytes[2] & 0x03) != 0,(bytes[2] & 0xc0) != 0];
+        // Store 'undefined' if the light doesn't exist. Else store 'false' which will
+        // soon be over-ridden with the correct light on/off state.
         this.lightIsOn[0] = lights[0] ? false : undefined;
         this.lightIsOn[1] = lights[1] ? false : undefined;
+        var countLights = (lights[0] ? 1 : 0) + (lights[1] ? 1 : 0);
 
         var circ_pump = (bytes[3] & 0x80) != 0;
         var blower = (bytes[3] & 0x03) != 0;
         var mister = (bytes[4] & 0x30) != 0;
 
         var aux = [(bytes[4] & 0x01) != 0,(bytes[4] & 0x02) != 0];
-        this.log.info("Discovered lights:",lights,"circ_pump",circ_pump,
-        "blower",blower,"mister",mister,"aux",aux);
+        this.log.info("Discovered",countLights,"light"+(countLights!=1?"s":""));
+        this.log.info("Discovered other components: circ_pump",circ_pump,
+            "blower",blower,"mister",mister,"aux",aux);
         this.accurateConfigReadFromSpa = true;
+    }
+
+    /**
+     * Information returned from calls 1-4 here. Results shown below for my Spa.
+     * 
+     * 1: Filters: 14,00,01,1e,88,00,01,1e
+     * - Bytes0-3: Filter start at 20:00, duration 1 hour 30 minutes
+     * - Bytes4-7: Filter also start 8:00am (high-order bit says it is on), duration 1 hour 30 minutes
+     * 2: 64,e1,24,00,4d,53,34,30,45,20,20,20,01,c3,47,96,36,03,0a,44,00
+     * - First three bytes are the software id.  
+     * - Believe that 4d,53,34,30,45,20,20,20 are the motherboard model in ascii
+     *   which would be MS40E (this seems correct, given some google results)
+     * - After that comes 1 byte for 'current setup' and then 4 bytes which encode
+     * the 'configuration signature'. 
+     * 3: 05,01,32,63,50,68,61,07,41
+     * - No idea?!
+     * 4: Reminders, cleaning cycle length, etc.: 00,85,00,01,01,02,00,00,00,00,00,00,00,00,00,00,00,00
+     * - first 01 = temp scale (F or C)
+     * - next 01 = time format (12hour or 24hour)
+     * - 02 = cleaning cycle length in half hour increments
+     * 
+     * Mostly we don't choose to use any of the above information at present.
+     * 
+     * @param id 
+     * @param contents 
+     */
+    interpretControlPanelReply(id: number, contents: Uint8Array) {
+        this.log.info("Control Panel reply " + id + ":"+ this.prettify(contents));
+        if (id == 2) {
+            // Convert characters 5-12 into ascii
+            let motherboard: string = "";
+            (new Uint8Array(contents.slice(4,12))).forEach(function (byte: number) {
+                motherboard += String.fromCharCode(byte);
+            });
+            this.log.info("Spa motherboard model", motherboard);
+        }
     }
 
     /**
@@ -622,8 +655,8 @@ export class SpaClient {
         // Set flow to good, but possibly over-ride right below
         this.flow = FLOW_GOOD;
 
-        if (daysAgo > 1) {
-            // Don't do anything for older faults.  Perhaps > 0??
+        if (daysAgo > 0) {
+            // Don't do anything for older faults.
             this.log.debug("No recent faults. Last fault", daysAgo, "days ago of type", code);
             return false;
         }
