@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.9.5 (20.05.2020)
+- Only read the Spa control types configuration once, rather than each time a socket error/reconnection happens
+- Use 'info' logging for socket error+reconnection for greater visibility of potential problems
+
 ## 1.9.4 (19.05.2020)
 - Some interpretation of the additional control panel requests (e.g. to get the motherboard model)
 - Some code cleanup

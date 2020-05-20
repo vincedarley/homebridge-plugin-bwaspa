@@ -67,10 +67,14 @@ export class SpaClient {
     circulationPumpIsOn: boolean;
     // Takes values from FLOW_STATES
     flow: string;
-    // Once the Spa has told us what accessories it really has.
+    // Once the Spa has told us what accessories it really has. Only need to do this once.
     accurateConfigReadFromSpa: boolean;
+    // Should be true for almost all of the time, but occasionally the Spa's connection drops
+    // and we must reconnect.
     isCurrentlyConnectedToSpa: boolean;
+    // Don't use the automatically determined configuration to constrain the actions taken.
     ignoreAutomaticConfiguration: boolean;
+    // Stored so that we can cancel it if needed
     faultCheckIntervalId: any;
 
     constructor(public readonly log: Logger, public readonly host: string, ignoreAutomatic?: boolean) {
@@ -113,7 +117,7 @@ export class SpaClient {
             port: 4257, 
             host: host
         }, () => {
-            this.log.debug('Successfully connected to Spa at', host, "on port 4257");
+            this.log.info('Successfully connected to Spa at', host, "on port 4257");
             this.successfullyConnectedToSpa();
         });
         this.socket?.on('end', () => {
@@ -121,8 +125,8 @@ export class SpaClient {
         });
         // If we get an error, then retry
         this.socket?.on('error', (error: any) => {
-            this.log.debug(error /* , this.socket */);
-            this.log.debug("Closing old socket, retrying in 20s");
+            this.log.debug(error);
+            this.log.info("Had error - closing old socket, retrying in 20s");
             
             this.shutdownSpaConnection();
             this.reconnect(host);
@@ -145,16 +149,28 @@ export class SpaClient {
             }
         });
 
-        // Get the Spa's primary configuration of accessories right away
-        this.sendControlTypesRequest();
+        // No need to do this once we already have all the config information once.
+        if (!this.accurateConfigReadFromSpa) {
+            // Get the Spa's primary configuration of accessories right away
+            this.sendControlTypesRequest();
+
+            // Some testing things. Not yet sure of their use.
+            // Note: must use 'let' here so id is bound separately each time.
+            for (let id=0;id<4;id++) {
+                setTimeout(() => {
+                    this.sendControlPanelRequest(id);
+                }, 1000*(id+1));
+            }
+            setTimeout(() => {
+                this.send_config_request();
+            }, 15000);  
+        }
 
         // Wait 5 seconds after startup to send a request to check for any faults
         setTimeout(() => {
             if (this.isCurrentlyConnectedToSpa) {
                 this.send_request_for_faults_log();
             }
-            // TODO: Check that this works even if there's been a socket error in
-            // the meantime and the socket has been regenerated.
             if (this.faultCheckIntervalId) {
                 this.log.error("Shouldn't ever already have a fault check interval running here.");
             }
@@ -166,16 +182,6 @@ export class SpaClient {
             }, 10 * 60 * 1000);
         }, 5000);
 
-        // Some testing things. Not yet sure of their use.
-        // Note: must use 'let' here so id is bound separately each time.
-        for (let id=0;id<4;id++) {
-            setTimeout(() => {
-                this.sendControlPanelRequest(id);
-            }, 1000*(id+1));
-        }
-        setTimeout(() => {
-            this.send_config_request();
-        }, 15000);  
     }
 
     reconnecting: boolean = false;
