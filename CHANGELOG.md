@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.9.6 (21.05.2020)
+- When Spa temperature is unknown/undefined (during priming), report 'null' to Homekit which seems to be ignored by Homekit, which just reports the previously known value.
+- Beginnings of infrastructure to have Homekit update to be in sync when manual spa controls are used
+
 ## 1.9.5 (20.05.2020)
 - Only read the Spa control types configuration once, rather than each time a socket error/reconnection happens
 - Use 'info' logging for socket error+reconnection for greater visibility of potential problems

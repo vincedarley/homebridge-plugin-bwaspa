@@ -48,7 +48,7 @@ export class SpaClient {
     // 0 means doesn't exist, else 1 or 2 indicates number of speeds for this pump
     pumpsSpeedRange: number[];
 
-    currentTemp: number;
+    currentTemp?: number;
     // When spa is in 'high' mode, what is the target temperature
     targetTempModeHigh: number;
     // When spa is in 'low' mode, what is the target temperature
@@ -89,7 +89,7 @@ export class SpaClient {
         this.pumpsCurrentSpeed = [PUMP_OFF,PUMP_OFF,PUMP_OFF,PUMP_OFF,PUMP_OFF,PUMP_OFF];
         this.pumpsSpeedRange = [2,2,2,2,2,2];
         // All of these will be set by the Spa as soon as we get the first status update
-        this.currentTemp = 0;
+        this.currentTemp = undefined;
         this.hour = 12;
         this.minute = 0;
         this.heatingMode = "";
@@ -270,7 +270,11 @@ export class SpaClient {
         return this.heatingMode;
     }
     getCurrentTemp() {
-        return this.convertTemperature(true, this.currentTemp);
+        if (this.currentTemp == undefined) {
+            return undefined;
+        } else {
+            return this.convertTemperature(true, this.currentTemp);
+        }
     }
 
     setLightState(index: number, value: boolean) {
@@ -411,7 +415,7 @@ export class SpaClient {
 
     // Celsius temperatures are communicated by the Spa in half degrees.
     convertTemperature(internalToExternal : boolean, temperature : number) {
-        if (this.temp_CorF === "Fahrenheit" || temperature == UNKNOWN_TEMPERATURE_VALUE) return temperature;
+        if (this.temp_CorF === "Fahrenheit") return temperature;
         // It's a celsius value which needs either dividing or multiplying by 2
         if (internalToExternal) {
             return temperature/2.0;
@@ -420,8 +424,8 @@ export class SpaClient {
         }
     }
 
-    temperatureToString(temperature : number) {
-        if (temperature == UNKNOWN_TEMPERATURE_VALUE) return "Unknown";
+    temperatureToString(temperature? : number) {
+        if (temperature == undefined) return "Unknown";
         if (this.temp_CorF === "Fahrenheit") return temperature.toString();
         return this.convertTemperature(true, temperature).toFixed(1).toString() 
     }
@@ -513,7 +517,7 @@ export class SpaClient {
         // correct temperature is read.
         // Probably better to say the temperature is unknown, if homekit supports that.  The Balboa
         // app, for what it's worth, also is confused when current temp = 255.
-        this.currentTemp = bytes[2];
+        this.currentTemp = (bytes[2] == UNKNOWN_TEMPERATURE_VALUE ? undefined : bytes[2]);
         // Seems like priming goes through different states, so not sure this simplicity is correct
         this.priming = ((bytes[1] & 1) === 1);
         this.hour = bytes[3];

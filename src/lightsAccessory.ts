@@ -39,7 +39,6 @@ export class LightsAccessory {
     this.service.getCharacteristic(this.platform.Characteristic.On)
       .on(CharacteristicEventTypes.SET, this.setOn.bind(this))                // SET - bind to the `setOn` method below
       .on(CharacteristicEventTypes.GET, this.getOn.bind(this));               // GET - bind to the `getOn` method below
-
   }
 
   /**
@@ -54,6 +53,14 @@ export class LightsAccessory {
     callback(null);
   }
 
+  // If Spa state has changed, for example using manual controls on the spa, then we must update Homekit.
+  updateCharacteristics() {
+    const isOn = this.platform.spa.getIsLightOn(this.lightNumber);
+    if (isOn != undefined) {
+      this.service.getCharacteristic(this.platform.Characteristic.On).updateValue(isOn);
+    }
+  }
+  
   /**
    * Handle the "GET" requests from HomeKit
    * These are sent when HomeKit wants to know the current state of the accessory, for example, checking if a Light bulb is on.

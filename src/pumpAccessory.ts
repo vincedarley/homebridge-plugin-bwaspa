@@ -124,6 +124,15 @@ export class PumpAccessory {
     callback(null, value);
   }
 
+  // If Spa state has changed, for example using manual controls on the spa, then we must update Homekit.
+  updateCharacteristics() {
+    const speed = this.getSpeed();
+    const isOn = speed != 0;
+    const speedValue = (100.0*speed)/2;
+      this.service.getCharacteristic(this.platform.Characteristic.On).updateValue(isOn);
+      this.service.getCharacteristic(this.platform.Characteristic.RotationSpeed).updateValue(speedValue);
+  }
+
   private getSpeed() {
     // return 0, 1 or 2.
     return PUMP_STATES.indexOf(this.platform.spa.getPumpSpeed(this.pumpNumber));

@@ -67,6 +67,12 @@ export class SpaHomebridgePlatform implements DynamicPlatformPlugin {
     this.accessories.push(accessory);
   }
 
+  // updateStateOfAccessories() {
+  //   this.accessories.forEach(accessory => {
+  //     accessory.updateCharacteristics();
+  //   });
+  // }
+
   /**
    * We read all accessories from the config.json file.
    * 

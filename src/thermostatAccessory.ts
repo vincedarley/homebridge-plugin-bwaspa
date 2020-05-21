@@ -98,9 +98,13 @@ export class ThermostatAccessory {
    */
   getCurrentTemperature(callback: CharacteristicGetCallback) {
     const temperature = this.platform.spa.getCurrentTemp();
-    this.platform.log.debug('Get Current Temperature Characteristic ->', temperature);
+    // Seems as if Homekit interprets null as something simply to be ignored, hence Homekit
+    // just uses the previous known value.
+    const val = (temperature == undefined ? null : temperature);
 
-    callback(null, temperature);
+    this.platform.log.debug('Get Current Temperature Characteristic ->', val);
+
+    callback(null, val);
   }
 
   getTemperatureDisplayUnits(callback: CharacteristicGetCallback) {
@@ -204,6 +208,27 @@ export class ThermostatAccessory {
       " (may be different to ", value, ")");
 
     callback(null);
+  }
+
+  // If Spa state has changed, for example using manual controls on the spa, then we must update Homekit.
+  updateCharacteristics() {
+    const mode = this.platform.spa.getTempRangeIsHigh();
+    const heating = this.platform.spa.getIsHeatingNow();
+    const temperature = this.platform.spa.getCurrentTemp();
+    const val = (temperature == undefined ? null : temperature!);
+
+    const targetTemperature = this.platform.spa.getTargetTemp();
+    const flowState = this.platform.spa.getFlowState();
+
+    this.service.getCharacteristic(this.platform.Characteristic.CurrentTemperature).updateValue(val);
+    this.service.getCharacteristic(this.platform.Characteristic.TargetTemperature).updateValue(targetTemperature);
+    this.service.getCharacteristic(this.platform.Characteristic.TargetHeatingCoolingState).updateValue(
+      flowState != FLOW_GOOD ? this.platform.Characteristic.TargetHeatingCoolingState.OFF : 
+      (mode ? this.platform.Characteristic.TargetHeatingCoolingState.HEAT : this.platform.Characteristic.TargetHeatingCoolingState.COOL)
+    );
+    this.service.getCharacteristic(this.platform.Characteristic.CurrentHeatingCoolingState).updateValue(
+      heating ? this.platform.Characteristic.CurrentHeatingCoolingState.HEAT
+      : this.platform.Characteristic.CurrentHeatingCoolingState.OFF);
   }
 
 }
