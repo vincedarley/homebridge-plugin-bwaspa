@@ -2,7 +2,6 @@ import * as crc from "crc";
 import type { Logger } from 'homebridge';
 import * as net from "net";
 
-const UNKNOWN_TEMPERATURE_VALUE = 255;
 export const PUMP_NOT_EXISTS = "-";
 export const PUMP_OFF = "Off";
 export const PUMP_LOW = "Low";
@@ -14,13 +13,13 @@ export const FLOW_FAILED = "Failed";
 export const FLOW_STATES = [FLOW_GOOD, FLOW_LOW, FLOW_FAILED];
 
 const PrimaryRequest = new Uint8Array([0x0a, 0xbf, 0x22]);
-const GetFaultsMessage = new Uint8Array([0x20, 0xff, 0x00]);
+const GetFaultsMessageContents = new Uint8Array([0x20, 0xff, 0x00]);
 const GetFaultsReply = new Uint8Array([0x0a,0xbf,0x28]);
 // These will tell us how many pumps, lights, etc the Spa has
-const ControlTypesMessage = new Uint8Array([0x00, 0x00, 0x01]);
+const ControlTypesMessageContents = new Uint8Array([0x00, 0x00, 0x01]);
 const ControlTypesReply = new Uint8Array([0x0a,0xbf,0x2e]);
 
-// This one is sent to us automatically every second
+// This one is sent to us automatically every second - no need to request it
 const StateReply = new Uint8Array([0xff,0xaf,0x13]);
 // These two either don't have a reply or we don't care about it.
 const ToggleItemRequest = new Uint8Array([0x0a, 0xbf, 0x11]);
@@ -30,8 +29,8 @@ const SetTargetTempRequest = new Uint8Array([0x0a, 0xbf, 0x20]);
 const ConfigRequest = new Uint8Array([0x0a, 0xbf, 0x04]);
 const ConfigReply = new Uint8Array([0x0a,0xbf,0x94]);
 
-// Four different request/replies. Unclear of their purpose/value as yet.
-// Again we send each once.
+// Four different request message contents and their reply codes. Unclear of the 
+// purpose/value of all of them yet. Again we send each once.
 const ControlPanelRequest : Uint8Array[][] = [
     [new Uint8Array([0x01,0x00,0x00]), new Uint8Array([0x0a,0xbf,0x23])],
     [new Uint8Array([0x02,0x00,0x00]), new Uint8Array([0x0a,0xbf,0x24])],
@@ -147,6 +146,23 @@ export class SpaClient {
             if (somethingChanged) {
                 // Only log state when something has changed.
                 this.log.debug(this.stateToString());
+                // Call whoever has registered with us - this is our homekit platform plugin
+                // which will arrange to go through each accessory and check if the state of
+                // it has changed. There are 3 cases here to be aware of:
+                // 1) The user adjusted something in Home and therefore this callback is completely
+                // unnecessary, since Home is already aware.
+                // 2) The user adjusted something in Home, but that change could not actually take
+                // effect - for example the user tried to turn off the primary filter pump during
+                // a filtration cycle, and the Spa will ignore such a change.  In this case this
+                // callback is essential for the Home app to reflect reality
+                // 3) The user adjusted something using the physical spa controls (or the Balboa app),
+                // and again this callback is essential for Home to be in sync with those changes.
+                //
+                // Theoretically we could be cleverer and not call this for the unnecessary cases, but
+                // that seems like a lot of complex work for little benefit.  Also theoretically we
+                // could specify just the controls that have changed, and hence reduce the amount of
+                // activity.  But again little genuine benefit really from that, versus the code complexity
+                // it would require.
                 this.changesCallback();
             }
         });
@@ -387,7 +403,7 @@ export class SpaClient {
     }
 
     sendControlTypesRequest() {
-        this.sendMessageToSpa("ControlTypesRequest", PrimaryRequest, ControlTypesMessage);
+        this.sendMessageToSpa("ControlTypesRequest", PrimaryRequest, ControlTypesMessageContents);
     }
 
     sendControlPanelRequest(id : number) {
@@ -396,7 +412,7 @@ export class SpaClient {
     }
 
     send_request_for_faults_log() {
-        this.sendMessageToSpa("Checking for any Spa faults", PrimaryRequest, GetFaultsMessage);   
+        this.sendMessageToSpa("Checking for any Spa faults", PrimaryRequest, GetFaultsMessageContents);   
     }
 
     send_toggle_message(item: number) {
@@ -514,12 +530,12 @@ export class SpaClient {
      * Return true if anything important has changed (i.e. ignore the time changing!)
      */
     readStateFromBytes(bytes: Uint8Array) {
-        // If current_temp = UNKNOWN_TEMPERATURE_VALUE (255), then the Spa is still not fully initialised
+        // If current_temp = 255, then the Spa is still not fully initialised
         // (but is not necessarily in "priming" state). Need to wait, really - after some seconds the
         // correct temperature is read.
         // Probably better to say the temperature is unknown, if homekit supports that.  The Balboa
         // app, for what it's worth, also is confused when current temp = 255.
-        this.currentTemp = (bytes[2] == UNKNOWN_TEMPERATURE_VALUE ? undefined : bytes[2]);
+        this.currentTemp = (bytes[2] == 255 ? undefined : bytes[2]);
         // Seems like priming goes through different states, so not sure this simplicity is correct
         this.priming = ((bytes[1] & 1) === 1);
         this.hour = bytes[3];
@@ -623,7 +639,7 @@ export class SpaClient {
      * - After that comes 1 byte for 'current setup' and then 4 bytes which encode
      * the 'configuration signature'. 
      * 3: 05,01,32,63,50,68,61,07,41
-     * - No idea?!
+     * - No idea?! ' cPha' is the ascii version of the middle 5 bytes - so probably not ascii!
      * 4: Reminders, cleaning cycle length, etc.: 00,85,00,01,01,02,00,00,00,00,00,00,00,00,00,00,00,00
      * - first 01 = temp scale (F or C)
      * - next 01 = time format (12hour or 24hour)
@@ -636,7 +652,16 @@ export class SpaClient {
      */
     interpretControlPanelReply(id: number, contents: Uint8Array) {
         this.log.info("Control Panel reply " + id + ":"+ this.prettify(contents));
-        if (id == 2) {
+        if (id == 1) {
+            let filter1start = this.timeToString(contents[0], contents[1]);
+            let filter1duration = this.timeToString(contents[2], contents[3]);
+            let filter2on = (contents[4] & 0x80) != 0;
+            let filter2start = this.timeToString(contents[4]&0x7f, contents[5]);
+            let filter2duration = this.timeToString(contents[6], contents[7]);
+            this.log.info("First filter time from",filter1start,"for",filter1duration);
+            this.log.info("Second filter time", (filter2on ? 'on' : 'off'), 
+            "from",filter2start,"for",filter2duration);
+        } else if (id == 2) {
             let softwareID = "M" + contents[0] +"_"+contents[1]+" V"+contents[2];
             let currentSetup = contents[12];
             let configurationSignature = Buffer.from(contents.slice(13,17)).toString('hex');
@@ -678,7 +703,8 @@ export class SpaClient {
 
         if (daysAgo > 0) {
             // Don't do anything for older faults.
-            this.log.debug("No recent faults. Last fault", daysAgo, "days ago of type", code);
+            this.log.info("No recent faults. Last fault", daysAgo, "days ago of type", 
+            "M0"+code,"=",this.faultCodeToString(code));
             return false;
         }
 
@@ -695,11 +721,34 @@ export class SpaClient {
             this.flow = FLOW_STATES[code-15];
             // It may also make sense to switch the thermostat control accessory into 
             // a state of 'cooling' or 'off' when water flow fails.
-            this.log.debug("Recent, relevant fault found:", daysAgo, "days ago of type", code);
+            this.log.warn("Recent, alerted fault found:", daysAgo, "days ago of type", 
+            "M0"+code,"=",this.faultCodeToString(code));
             return true;
         }
-        this.log.debug("Recent, but not relevant fault found:", daysAgo, "days ago of type", code);
+        this.log.info("Recent, but not alerted fault found:", daysAgo, "days ago of type", 
+        "M0"+code,"=",this.faultCodeToString(code));
         return false;
+    }
+
+    faultCodeToString(code: number) {
+        if (code == 16) return "the water flow is low";
+        if (code == 17) return "the water flow has failed";
+        if (code == 19) return "priming (this is not actually a fault - your Spa was recently turned on)"
+        if (code == 28) return "the heater may be dry";
+        if (code == 27) return "the heater is dry";
+        if (code == 30) return "the heater is too hot";
+        if (code == 29) return "the water is too hot";
+        if (code == 15) return "sensors are out of sync";
+        if (code == 26) return "sensors are out of sync -- call for service";
+        if (code == 31) return "sensor A fault";
+        if (code == 32) return "sensor B fault";
+        if (code == 22) return "program memory failure";
+        if (code == 21) return "the settings have been reset (persistent memory error)";
+        if (code == 20) return "the clock has failed";
+        if (code == 36) return "the GFCI test failed";
+        if (code == 34) return "a pump may be stuck on";
+        if (code == 35) return "hot fault";
+        return "unknown code - check Balboa spa manuals";
     }
 }
 

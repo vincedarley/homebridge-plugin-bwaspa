@@ -70,6 +70,12 @@ export class SpaHomebridgePlatform implements DynamicPlatformPlugin {
     this.accessories.push(accessory);
   }
 
+  /**
+   * This is a callback which is triggered when the Spa code discovers that something has changed in
+   * the spa state, where that change might have happened outside of Home. In such a case we need to
+   * make sure all accessories are resynced. This resync operation is lightweight (no spa communication
+   * needed) and fast. It may lead to Home's knowledge of the state of each accessory changing.
+   */
   updateStateOfAccessories() {
     this.log.debug("State of something changed - tell HomeKit about it.");
     // For the moment, we simply loop through every device updating homekit.
@@ -116,6 +122,7 @@ export class SpaHomebridgePlatform implements DynamicPlatformPlugin {
 
           // it is possible to remove platform accessories at any time using `api.unregisterPlatformAccessories`, eg.:
           // this.api.unregisterPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory]);
+          // If we do this, we should also remove them from the deviceObjects array.
         }
       }
     }

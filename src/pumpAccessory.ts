@@ -64,6 +64,9 @@ export class PumpAccessory {
   /**
    * Handle "SET" requests from HomeKit
    * Turns the device on or off.
+   * It is possible that the Spa rejects this change, if the user is trying to turn the pump off, if it
+   * is during a filter cycle. In that case the 'updateCharacteristics' callback below will end up
+   * being called and that will discover the correct new value. 
    */
   setOn(value: CharacteristicValue, callback: CharacteristicSetCallback) {
     if (value as boolean) {
@@ -99,6 +102,9 @@ export class PumpAccessory {
   /**
    * Handle "SET" requests from HomeKit
    * These are sent when the user changes the state of an accessory, for example, changing the Brightness
+   * It is possible that the Spa rejects this change, if the user is trying to turn the pump off, if it
+   * is during a filter cycle. In that case the 'updateCharacteristics' callback below will end up
+   * being called and that will discover the correct new value.  
    */
   setRotationSpeed(value: CharacteristicValue, callback: CharacteristicSetCallback) {
     // value is 0-100, and we want to convert that, irrespective of the number of

@@ -2,7 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
-## 1.9.7 (21.05.2020)
+## 1.9.8 (22.05.2020)
+- Some improvements to the fault reporting, with better messages in the log
+- Improved documentation
+
+## 1.9.7 (22.05.2020)
 - First version that will monitor manual spa state/control changes and tell HomeKit about them.
   This means 'digital' and 'manual' state of all the Spa controls should be fully in sync.
 
