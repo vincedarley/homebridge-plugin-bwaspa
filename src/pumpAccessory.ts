@@ -129,8 +129,8 @@ export class PumpAccessory {
     const speed = this.getSpeed();
     const isOn = speed != 0;
     const speedValue = (100.0*speed)/2;
-      this.service.getCharacteristic(this.platform.Characteristic.On).updateValue(isOn);
-      this.service.getCharacteristic(this.platform.Characteristic.RotationSpeed).updateValue(speedValue);
+    this.service.getCharacteristic(this.platform.Characteristic.On).updateValue(isOn);
+    this.service.getCharacteristic(this.platform.Characteristic.RotationSpeed).updateValue(speedValue);
   }
 
   private getSpeed() {

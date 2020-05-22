@@ -22,6 +22,7 @@ export class SpaHomebridgePlatform implements DynamicPlatformPlugin {
   public readonly accessories: PlatformAccessory[] = [];
   spa : SpaClient;
   devices : any[];
+  deviceObjects : any[];
 
   constructor(
     public readonly log: Logger,
@@ -34,9 +35,11 @@ export class SpaHomebridgePlatform implements DynamicPlatformPlugin {
     
     this.log.debug('Finished initializing platform:', this.config.name);
     this.devices = config.devices || [];
-
+    this.deviceObjects = new Array();
+    
     // Create and load up our primary client which connects with the spa
-    this.spa = new SpaClient(this.log, config.host, config.ignoreAutomaticConfiguration);
+    this.spa = new SpaClient(this.log, config.host, this.updateStateOfAccessories.bind(this),
+      config.ignoreAutomaticConfiguration);
     
     // When this event is fired it means Homebridge has restored all cached accessories from disk.
     // Dynamic Platform plugins should only register new accessories after this event was fired,
@@ -67,11 +70,14 @@ export class SpaHomebridgePlatform implements DynamicPlatformPlugin {
     this.accessories.push(accessory);
   }
 
-  // updateStateOfAccessories() {
-  //   this.accessories.forEach(accessory => {
-  //     accessory.updateCharacteristics();
-  //   });
-  // }
+  updateStateOfAccessories() {
+    this.log.debug("State of something changed - tell HomeKit about it.");
+    // For the moment, we simply loop through every device updating homekit.
+    // At least theoretically better if we could just do the ones we know have changed.
+    this.deviceObjects.forEach(deviceObject => {
+      deviceObject.updateCharacteristics();
+    });
+  }
 
   /**
    * We read all accessories from the config.json file.
@@ -124,47 +130,47 @@ export class SpaHomebridgePlatform implements DynamicPlatformPlugin {
     const deviceType = accessory.context.device.deviceType;
     switch (deviceType) {
       case "Pump 1": {
-        new PumpAccessory(this, accessory, 1);
+        this.deviceObjects.push(new PumpAccessory(this, accessory, 1));
         break;
       }
       case "Pump 2": {
-        new PumpAccessory(this, accessory, 2);
+        this.deviceObjects.push(new PumpAccessory(this, accessory, 2));
         break;
       }
       case "Pump 3": {
-        new PumpAccessory(this, accessory, 3);
+        this.deviceObjects.push(new PumpAccessory(this, accessory, 3));
         break;
       }
       case "Pump 4": {
-        new PumpAccessory(this, accessory, 4);
+        this.deviceObjects.push(new PumpAccessory(this, accessory, 4));
         break;
       }
       case "Pump 5": {
-        new PumpAccessory(this, accessory, 5);
+        this.deviceObjects.push(new PumpAccessory(this, accessory, 5));
         break;
       }
       case "Pump 6": {
-        new PumpAccessory(this, accessory, 6);
+        this.deviceObjects.push(new PumpAccessory(this, accessory, 6));
         break;
       }
       case "Lights 1": {
-        new LightsAccessory(this, accessory, 1);
+        this.deviceObjects.push(new LightsAccessory(this, accessory, 1));
         break;
       }
       case "Lights 2": {
-        new LightsAccessory(this, accessory, 2);
+        this.deviceObjects.push(new LightsAccessory(this, accessory, 2));
         break;
       }
       case "Temperature Sensor": {
-        new TemperatureAccessory(this, accessory);
+        this.deviceObjects.push(new TemperatureAccessory(this, accessory));
         break;
       }
       case "Thermostat": {
-        new ThermostatAccessory(this, accessory);
+        this.deviceObjects.push(new ThermostatAccessory(this, accessory));
         break;
       }
       case "Water Flow Problem Sensor": {
-        new WaterFlowProblemAccessory(this, accessory);
+        this.deviceObjects.push(new WaterFlowProblemAccessory(this, accessory));
         break;
       }
       default: {

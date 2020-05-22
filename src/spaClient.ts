@@ -77,7 +77,8 @@ export class SpaClient {
     // Stored so that we can cancel it if needed
     faultCheckIntervalId: any;
 
-    constructor(public readonly log: Logger, public readonly host: string, ignoreAutomatic?: boolean) {
+    constructor(public readonly log: Logger, public readonly host: string, 
+      public readonly changesCallback: () => void, ignoreAutomatic?: boolean) {
         this.accurateConfigReadFromSpa = false;
         this.isCurrentlyConnectedToSpa = false;
         this.ignoreAutomaticConfiguration = (ignoreAutomatic ? ignoreAutomatic : false);
@@ -146,6 +147,7 @@ export class SpaClient {
             if (somethingChanged) {
                 // Only log state when something has changed.
                 this.log.debug(this.stateToString());
+                this.changesCallback();
             }
         });
 
@@ -616,8 +618,8 @@ export class SpaClient {
      * - Bytes4-7: Filter also start 8:00am (high-order bit says it is on), duration 1 hour 30 minutes
      * 2: 64,e1,24,00,4d,53,34,30,45,20,20,20,01,c3,47,96,36,03,0a,44,00
      * - First three bytes are the software id.  
-     * - Believe that 4d,53,34,30,45,20,20,20 are the motherboard model in ascii
-     *   which would be MS40E (this seems correct, given some google results)
+     * - Bytes 5-12 (4d,53,34,30,45,20,20,20) are the motherboard model in ascii
+     *   which is MS40E in this case (SIREV16 is a value reported by another user).
      * - After that comes 1 byte for 'current setup' and then 4 bytes which encode
      * the 'configuration signature'. 
      * 3: 05,01,32,63,50,68,61,07,41
@@ -635,12 +637,21 @@ export class SpaClient {
     interpretControlPanelReply(id: number, contents: Uint8Array) {
         this.log.info("Control Panel reply " + id + ":"+ this.prettify(contents));
         if (id == 2) {
+            let softwareID = "M" + contents[0] +"_"+contents[1]+" V"+contents[2];
+            let currentSetup = contents[12];
+            let configurationSignature = Buffer.from(contents.slice(13,17)).toString('hex');
             // Convert characters 5-12 into ascii
             let motherboard: string = "";
             (new Uint8Array(contents.slice(4,12))).forEach(function (byte: number) {
                 motherboard += String.fromCharCode(byte);
             });
-            this.log.info("Spa motherboard model", motherboard);
+            // This is most of the information that shows up in the Spa display
+            // when you go to the info screen.
+            this.log.info("System Model", motherboard);
+            this.log.info("SoftwareID (SSID)",softwareID);
+            this.log.info("Current Setup",currentSetup);
+            this.log.info("Configuration Signature",configurationSignature);
+            // Not sure what the last 4 bytes 03-0a-44-00 mean
         }
     }
 

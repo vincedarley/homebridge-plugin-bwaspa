@@ -2,8 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.9.7 (21.05.2020)
+- First version that will monitor manual spa state/control changes and tell HomeKit about them.
+  This means 'digital' and 'manual' state of all the Spa controls should be fully in sync.
+
 ## 1.9.6 (21.05.2020)
-- When Spa temperature is unknown/undefined (during priming), report 'null' to Homekit which seems to be ignored by Homekit, which just reports the previously known value.
+- When Spa temperature is unknown/undefined (during priming), report 'null' to Homekit which seems to be ignored by Homekit, which just reports the previously known value = better user experience.
 - Beginnings of infrastructure to have Homekit update to be in sync when manual spa controls are used
 
 ## 1.9.5 (20.05.2020)
