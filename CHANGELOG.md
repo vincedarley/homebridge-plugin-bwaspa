@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.9.9 (24.05.2020)
+- Minor code and documentation improvements
+- Improved logging for the fault reporting.
+
 ## 1.9.8 (22.05.2020)
 - Some improvements to the fault reporting, with better messages in the log
 - Improved documentation

@@ -465,11 +465,6 @@ export class SpaClient {
         return s;
     }
 
-    // Just for message reply types which we know are of length 3.
-    equal(a: Uint8Array, b: Uint8Array) {
-        return (a[0] === b[0] && a[1] === b[1] && a[2] === b[2]);
-    }
-
     /**
      * Return true if anything important has changed as a result of the message
      * received.
@@ -680,6 +675,8 @@ export class SpaClient {
         }
     }
 
+    lastFaultBytes = new Uint8Array();
+    
     /**
      * 	Get log of faults. Return true if there were faults of relevance
      */ 
@@ -689,45 +686,64 @@ export class SpaClient {
         var minute = bytes[5];
 
         var code = bytes[2];
-        // This is just the most recent fault.  We can query for others too.
-        // (I believe by replacing 0xff in the request with a number) 
-        this.log.debug("Fault Entries:", bytes[0], "Num:", bytes[1]+1,
-        "Error code:", code, "Days ago:", daysAgo,
-        "Time:", this.timeToString(hour, minute),
-        "Heat mode:", bytes[6], "Set temp:", this.convertTemperature(true, bytes[7]), 
-        "Temp A:", this.convertTemperature(true, bytes[8]), 
-        "Temp B:", this.convertTemperature(true, bytes[9]));
+        // This is just the most recent fault.  We could query for others too.
+        // (I believe by replacing 0xff in the request with a number), but for our
+        // purposes the most recent only is sufficient 
         
         // Set flow to good, but possibly over-ride right below
         this.flow = FLOW_GOOD;
 
-        if (daysAgo > 0) {
-            // Don't do anything for older faults.
-            this.log.info("No recent faults. Last fault", daysAgo, "days ago of type", 
-            "M0"+code,"=",this.faultCodeToString(code));
-            return false;
-        }
+        let message : string;
+        let returnValue = false;
 
         // Check if there are any new faults and report them.  I've chosen just to do 
         // that for codes 16 and 17.  But potentially any code except 19 (Priming) should
         // be alerted.  And priming is perhaps also useful since it indicates a restart.
         // Would be good to separate codes into ones which require immediate intervention
         // vs ones that might be ok for a few hours or days.
-        if (code == 16 || code == 17) {
+
+        if (daysAgo > 0) {
+            message = "No recent faults. Last fault";
+        } else if (code == 16 || code == 17) {
             // Water flow is low (16) or water flow failed (17). These generally indicate
             // the filter needs cleaning/change urgently. Hot tub will stop heating
             // and therefore cool down without a change. Important to alert the user
             // of them.
             this.flow = FLOW_STATES[code-15];
-            // It may also make sense to switch the thermostat control accessory into 
-            // a state of 'cooling' or 'off' when water flow fails.
-            this.log.warn("Recent, alerted fault found:", daysAgo, "days ago of type", 
-            "M0"+code,"=",this.faultCodeToString(code));
-            return true;
+            // This state change will also be used to switch the thermostat control accessory into 
+            // a state of 'off' when water flow fails.
+            message = "Recent, alerted fault found";
+            returnValue = true;
+        } else {
+            message = "Recent, but not alerted fault found:";
         }
-        this.log.info("Recent, but not alerted fault found:", daysAgo, "days ago of type", 
-        "M0"+code,"=",this.faultCodeToString(code));
-        return false;
+
+        // Store this for next time
+        const oldBytes = this.lastFaultBytes;
+        this.lastFaultBytes = new Uint8Array(bytes);
+
+        // To avoid annoyance, only log each fault once.
+        if (!this.equal(oldBytes, this.lastFaultBytes)) {
+            this.log.info(message, daysAgo, "days ago of type", "M0"+code,"=",this.faultCodeToString(code),"with details from log:", 
+            "Fault Entries:", bytes[0], "Num:", bytes[1]+1,
+            "Error code:", code, "Days ago:", daysAgo,
+            "Time:", this.timeToString(hour, minute),
+            "Heat mode:", bytes[6], "Set temp:", this.convertTemperature(true, bytes[7]), 
+            "Temp A:", this.convertTemperature(true, bytes[8]), 
+            "Temp B:", this.convertTemperature(true, bytes[9]));
+        }
+        
+        return returnValue;
+    }
+
+    equal(one: Uint8Array, two: Uint8Array) {
+        if (one.length != two.length) return false;
+        for (var i = 0; i < one.length; i++) {
+            if (one[i] !== two[i]) {
+                return false;
+            }
+        }
+        return true;
     }
 
     faultCodeToString(code: number) {
