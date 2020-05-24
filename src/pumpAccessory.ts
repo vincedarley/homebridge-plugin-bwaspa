@@ -17,7 +17,7 @@ export class PumpAccessory {
    * speed as last time.
    */
   private states = {
-    lastSpeed: 2
+    lastNonZeroSpeed: 2
   }
 
   // Always 1 or 2
@@ -70,12 +70,12 @@ export class PumpAccessory {
    */
   setOn(value: CharacteristicValue, callback: CharacteristicSetCallback) {
     if (value as boolean) {
-      this.setSpeed(this.states.lastSpeed);
+      this.scheduleSetSpeed(this.states.lastNonZeroSpeed);
     } else {
-      this.setSpeed(0);
+      this.scheduleSetSpeed(0);
     }
-    this.platform.log.debug('Set Pump',this.pumpNumber,'Characteristic On ->', value);
-
+    this.platform.log.debug('Set Pump',this.pumpNumber,'->', value? 'On': 'Off');
+    
     callback(null);
   }
 
@@ -94,8 +94,8 @@ export class PumpAccessory {
    */
   getOn(callback: CharacteristicGetCallback) {
     const isOn = this.getSpeed() != 0;
-    this.platform.log.debug('Get Pump',this.pumpNumber,'Characteristic On ->', isOn);
-
+    this.platform.log.debug('Get Pump',this.pumpNumber,'<-',isOn?'On':'Off');
+    
     callback(null, isOn);
   }
 
@@ -110,8 +110,8 @@ export class PumpAccessory {
     // value is 0-100, and we want to convert that, irrespective of the number of
     // speeds we have to 0-2 (a 1-speed pump just swaps from 0 to 2 directly);
     const speed = Math.round((value as number)/50.0);
-    this.setSpeed(speed);
-    this.platform.log.debug('Set Pump',this.pumpNumber,'Characteristic Speed -> ', value, ' which is ', PUMP_STATES[speed]);
+    this.scheduleSetSpeed(speed);
+    this.platform.log.debug('Set Pump',this.pumpNumber,'Speed -> ', value, ' which is ', PUMP_STATES[speed]);
 
     callback(null);
   }
@@ -125,7 +125,7 @@ export class PumpAccessory {
     // As above we convert the speed of 0-2 to a value of 0-100, irrespective
     // of the number of speeds the pump has
     const value = (100.0*speed)/2;
-    this.platform.log.debug('Get Pump',this.pumpNumber,'Characteristic Speed -> ', value, ' which is ', PUMP_STATES[speed]);
+    this.platform.log.debug('Get Pump',this.pumpNumber,'Speed <- ', value, ' which is ', PUMP_STATES[speed]);
 
     callback(null, value);
   }
@@ -135,6 +135,8 @@ export class PumpAccessory {
     const speed = this.getSpeed();
     const isOn = speed != 0;
     const speedValue = (100.0*speed)/2;
+    
+    this.platform.log.debug('Pump',this.pumpNumber,'updating to',isOn,'and',speed);
     this.service.getCharacteristic(this.platform.Characteristic.On).updateValue(isOn);
     this.service.getCharacteristic(this.platform.Characteristic.RotationSpeed).updateValue(speedValue);
   }
@@ -144,10 +146,32 @@ export class PumpAccessory {
     return PUMP_STATES.indexOf(this.platform.spa.getPumpSpeed(this.pumpNumber));
   }
 
+  private scheduleId : any = undefined;
+
+  /** 
+   * When the pump is turned on, we receive both an on setting (which triggers setting
+   * the speed) and will usually also (depending on the user's actions) also receive 
+   * an immediate follow-on setting of the speed as well.  We want to reconcile multiple
+   * rapid speed settings to just a single set of the spa to avoid confusion.
+   */
+  private scheduleSetSpeed(speed: number) {
+    let newSpeed = speed;
+    if (this.scheduleId) {
+      clearTimeout(this.scheduleId);
+      this.scheduleId = undefined;
+    }
+    // Allow 10ms leeway for another set event.
+    this.scheduleId = setTimeout(() => {
+      this.setSpeed(newSpeed);
+      this.scheduleId = undefined;
+    }, 10);
+  }
+
   private setSpeed(speed: number) {
+    this.platform.log.debug('Pump',this.pumpNumber,'actually setting speed to',speed);
     this.platform.spa.setPumpSpeed(this.pumpNumber, PUMP_STATES[speed]);
     if (speed != 0) {
-      this.states.lastSpeed = speed;
+      this.states.lastNonZeroSpeed = speed;
     }
   }
 }

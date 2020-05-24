@@ -366,6 +366,10 @@ export class SpaClient {
                 // Going from low to off requires 2 toggles
                 this.send_toggle_message(id);
                 this.send_toggle_message(id);
+            } else if (((value === PUMP_LOW) && (this.pumpsCurrentSpeed[index] === PUMP_HIGH))) {
+                // Going from high to low requires 2 toggles
+                this.send_toggle_message(id);
+                this.send_toggle_message(id);
             } else {
                 // Anything else requires 1 toggle
                 this.send_toggle_message(id);

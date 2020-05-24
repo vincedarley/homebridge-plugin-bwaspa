@@ -32,7 +32,7 @@ export class SpaHomebridgePlatform implements DynamicPlatformPlugin {
     if (!config || !Array.isArray(config.devices)) {
       log.warn('No configuration found for %s', PLUGIN_NAME);
     }
-    
+
     this.log.debug('Finished initializing platform:', this.config.name);
     this.devices = config.devices || [];
     this.deviceObjects = new Array();
@@ -70,13 +70,31 @@ export class SpaHomebridgePlatform implements DynamicPlatformPlugin {
     this.accessories.push(accessory);
   }
 
+  private scheduleId : any = undefined;
+
   /**
    * This is a callback which is triggered when the Spa code discovers that something has changed in
    * the spa state, where that change might have happened outside of Home. In such a case we need to
    * make sure all accessories are resynced. This resync operation is lightweight (no spa communication
    * needed) and fast. It may lead to Home's knowledge of the state of each accessory changing.
+   * 
+   * The only challenge is that this call might be triggered while changes are already
+   * being sent to the spa, so we want to wait for any changes to play out before
+   * checking the spa's state and updating everything.
    */
   updateStateOfAccessories() {
+    if (this.scheduleId) {
+      clearTimeout(this.scheduleId);
+      this.scheduleId = undefined;
+    }
+    // Allow 500ms leeway for another state change event.
+    this.scheduleId = setTimeout(() => {
+      this.reallyUpdateStateOfAccessories();
+      this.scheduleId = undefined;
+    }, 500);
+  }
+
+  private reallyUpdateStateOfAccessories() {
     this.log.debug("State of something changed - tell HomeKit about it.");
     // For the moment, we simply loop through every device updating homekit.
     // At least theoretically better if we could just do the ones we know have changed.

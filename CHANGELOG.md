@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 ## 1.9.9 (24.05.2020)
 - Minor code and documentation improvements
 - Improved logging for the fault reporting.
+- Deal with pump on/speed setting simultaneity to deal with some conditions
+  where synchronisation can fail.
+- Similarly, allow some synchronisation leeway when we believe the physical
+  state has changed outside of Homekit.
+- Fix to settings pumps directly from High to Low (a coding error instead set
+  the pump to off in this situation).
 
 ## 1.9.8 (22.05.2020)
 - Some improvements to the fault reporting, with better messages in the log
@@ -12,7 +18,7 @@ All notable changes to this project will be documented in this file.
 
 ## 1.9.7 (22.05.2020)
 - First version that will monitor manual spa state/control changes and tell HomeKit about them.
-  This means 'digital' and 'manual' state of all the Spa controls should be fully in sync.
+- This means 'digital' and 'manual' state of all the Spa controls should be fully in sync.
 
 ## 1.9.6 (21.05.2020)
 - When Spa temperature is unknown/undefined (during priming), report 'null' to Homekit which seems to be ignored by Homekit, which just reports the previously known value = better user experience.
