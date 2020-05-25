@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.9.10 (25.05.2020)
+- When connection to Spa drops for a while, signal an error state to Homekit so that the
+  user is aware, and their actions of course take no effect.
+- Improved logging to align with the above change
+  
 ## 1.9.9 (24.05.2020)
 - Minor code and documentation improvements
 - Improved logging for the fault reporting.

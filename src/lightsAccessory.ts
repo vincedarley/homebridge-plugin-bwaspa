@@ -46,17 +46,26 @@ export class LightsAccessory {
    * These are sent when the user changes the state of an accessory, for example, turning on a Light bulb.
    */
   setOn(value: CharacteristicValue, callback: CharacteristicSetCallback) {
+    if (!this.platform.spa.hasGoodSpaConnection()) {
+      callback(this.platform.connectionProblem);
+      return;
+    }
     // Turn the light on or off
     this.platform.spa.setLightState(this.lightNumber, value as boolean);
-    this.platform.log.debug('Set Lights', this.lightNumber, 'Characteristic On ->', value);
+    this.platform.log.debug('Set Lights', this.lightNumber, 'On ->', value);
 
     callback(null);
   }
 
   // If Spa state has changed, for example using manual controls on the spa, then we must update Homekit.
   updateCharacteristics() {
+    if (!this.platform.spa.hasGoodSpaConnection()) {
+      this.service.getCharacteristic(this.platform.Characteristic.On).updateValue(this.platform.connectionProblem);
+      return;
+    }
     const isOn = this.platform.spa.getIsLightOn(this.lightNumber);
     if (isOn != undefined) {
+      this.platform.log.debug('Light',this.lightNumber,'updating to',isOn);
       this.service.getCharacteristic(this.platform.Characteristic.On).updateValue(isOn);
     }
   }
@@ -77,9 +86,12 @@ export class LightsAccessory {
   getOn(callback: CharacteristicGetCallback) {
     // Read whether the light is on or off
     const isOn = this.platform.spa.getIsLightOn(this.lightNumber);
-    this.platform.log.debug('Get Lights', this.lightNumber, 'Characteristic On ->', isOn);
-
-    callback(null, isOn);
+    this.platform.log.debug('Get Lights', this.lightNumber, 'On <-', isOn, this.platform.status());
+    if (!this.platform.spa.hasGoodSpaConnection()) {
+      callback(this.platform.connectionProblem);
+    } else {
+      callback(null, isOn);
+    }
   }
 
 }

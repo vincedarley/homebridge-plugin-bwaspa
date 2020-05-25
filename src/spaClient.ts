@@ -70,11 +70,14 @@ export class SpaClient {
     accurateConfigReadFromSpa: boolean;
     // Should be true for almost all of the time, but occasionally the Spa's connection drops
     // and we must reconnect.
-    isCurrentlyConnectedToSpa: boolean;
+    private isCurrentlyConnectedToSpa: boolean;
     // Don't use the automatically determined configuration to constrain the actions taken.
     ignoreAutomaticConfiguration: boolean;
     // Stored so that we can cancel it if needed
     faultCheckIntervalId: any;
+
+    lastStateBytes = new Uint8Array();
+    lastFaultBytes = new Uint8Array();
 
     constructor(public readonly log: Logger, public readonly host: string, 
       public readonly changesCallback: () => void, ignoreAutomatic?: boolean) {
@@ -137,6 +140,13 @@ export class SpaClient {
 
     successfullyConnectedToSpa() {
         this.isCurrentlyConnectedToSpa = true;
+        // Reset our knowledge of the state, since it will
+        // almost certainly be out of date.
+        this.resetRecentState();
+        
+        // Update homekit right away, and then again once some data comes in.
+        // this.changesCallback();
+
         // listen for new messages from the spa. These can be replies to messages
         // We have sent, or can be the standard sending of status that the spa
         // seems to do every second.
@@ -233,6 +243,10 @@ export class SpaClient {
         }
     }
 
+    hasGoodSpaConnection() {
+        return this.isCurrentlyConnectedToSpa;
+    }
+    
     /**
      * Message starts and ends with 0x7e. Needs a checksum.
      * @param purpose purely for logging clarity
@@ -347,32 +361,29 @@ export class SpaClient {
             return;
         }
         // Toggle Pump1 = toggle '4', Pump2 = toggle '5', etc.
-        const id = index+4;
+        const balboaPumpId = index+4;
         if (this.pumpsSpeedRange[index] == 1) {
-            // 1 speed pump - just off or high settings
+            // It is a 1-speed pump - just off or high settings
             if (value === PUMP_LOW) {
                 this.log.warn("Pump", (index+1), ": Trying to set a 1 speed pump to LOW speed. Switching to HIGH instead.");
                 value = PUMP_HIGH;
             }
             // Any change requires just one toggle. It's either from off to high or high to off
-            this.send_toggle_message(id);
+            this.send_toggle_message(balboaPumpId);
         } else {
-            // 2 speed pump. If 3 speed pumps exist, not hard to support in the future.
-            if (((value === PUMP_HIGH) && (this.pumpsCurrentSpeed[index] === PUMP_OFF))) {
-                // Going from off to high requires 2 toggles
-                this.send_toggle_message(id);
-                this.send_toggle_message(id);
-            } else if (((value === PUMP_OFF) && (this.pumpsCurrentSpeed[index] === PUMP_LOW))) {
-                // Going from low to off requires 2 toggles
-                this.send_toggle_message(id);
-                this.send_toggle_message(id);
-            } else if (((value === PUMP_LOW) && (this.pumpsCurrentSpeed[index] === PUMP_HIGH))) {
-                // Going from high to low requires 2 toggles
-                this.send_toggle_message(id);
-                this.send_toggle_message(id);
-            } else {
-                // Anything else requires 1 toggle
-                this.send_toggle_message(id);
+            // How many toggles do we need to get from the current speed
+            // to the desired speed?  For a 2-speed pump, allowed speeds are 0,1,2.
+            // This code (but not other code in this class) should actually 
+            // work as-is for 3-speed pumps if they exist.
+            let loopThrough = this.pumpsSpeedRange[index]+1;
+            let count = 1;
+            while (this.pumpsCurrentSpeed[(index+count)%loopThrough] !== value) {
+                count++;
+            }
+            // For a 2-speed pump, we'll need to toggle either 1 or 2 times.
+            while (count > 0) {
+                this.send_toggle_message(balboaPumpId);
+                count--;
             }
         }        
         this.pumpsCurrentSpeed[index] = value;
@@ -520,7 +531,10 @@ export class SpaClient {
         return false;
     }
 
-    lastStateBytes = new Uint8Array(1);
+    resetRecentState() {
+        this.lastStateBytes = new Uint8Array();
+        this.lastFaultBytes = new Uint8Array();
+    }
 
     /**
      * Interpret the standard response, which we are sent about every 1 second, covering
@@ -679,8 +693,6 @@ export class SpaClient {
         }
     }
 
-    lastFaultBytes = new Uint8Array();
-    
     /**
      * 	Get log of faults. Return true if there were faults of relevance
      */ 

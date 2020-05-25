@@ -24,6 +24,8 @@ export class SpaHomebridgePlatform implements DynamicPlatformPlugin {
   devices : any[];
   deviceObjects : any[];
 
+  connectionProblem = new Error('Connecting...');
+
   constructor(
     public readonly log: Logger,
     public readonly config: PlatformConfig,
@@ -87,11 +89,11 @@ export class SpaHomebridgePlatform implements DynamicPlatformPlugin {
       clearTimeout(this.scheduleId);
       this.scheduleId = undefined;
     }
-    // Allow 500ms leeway for another state change event.
+    // Allow 250ms leeway for another state change event.
     this.scheduleId = setTimeout(() => {
       this.reallyUpdateStateOfAccessories();
       this.scheduleId = undefined;
-    }, 500);
+    }, 250);
   }
 
   private reallyUpdateStateOfAccessories() {
@@ -101,6 +103,14 @@ export class SpaHomebridgePlatform implements DynamicPlatformPlugin {
     this.deviceObjects.forEach(deviceObject => {
       deviceObject.updateCharacteristics();
     });
+  }
+
+  status() {
+    if (this.spa.hasGoodSpaConnection()) {
+      return "";
+    } else {
+      return "(not currently connected)";
+    }
   }
 
   /**

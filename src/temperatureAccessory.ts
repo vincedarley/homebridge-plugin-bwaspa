@@ -57,15 +57,25 @@ export class TemperatureAccessory {
     // Seems as if Homekit interprets null as something simply to be ignored, hence Homekit
     // just uses the previous known value.
     const val = (temperature == undefined ? null : temperature);
-    this.platform.log.debug('Get Temperature Characteristic ->', val);
+    this.platform.log.debug('Get Temperature <-', val, this.platform.status());
 
-    callback(null, val);
+    if (!this.platform.spa.hasGoodSpaConnection()) {
+      callback(this.platform.connectionProblem);
+    } else {
+      callback(null, val);
+    }
   }
 
   // If Spa state has changed, for example using manual controls on the spa, then we must update Homekit.
   updateCharacteristics() {
+    if (!this.platform.spa.hasGoodSpaConnection()) {
+      this.service.getCharacteristic(this.platform.Characteristic.CurrentTemperature).updateValue(this.platform.connectionProblem);
+      return;
+    }
+
     const temperature = this.platform.spa.getCurrentTemp();
     const val = (temperature == undefined ? null : temperature!);
+    this.platform.log.debug('Temperature updating to',val);
     this.service.getCharacteristic(this.platform.Characteristic.CurrentTemperature).updateValue(val);
   }
 

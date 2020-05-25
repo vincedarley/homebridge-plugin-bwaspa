@@ -69,12 +69,16 @@ export class PumpAccessory {
    * being called and that will discover the correct new value. 
    */
   setOn(value: CharacteristicValue, callback: CharacteristicSetCallback) {
+    if (!this.platform.spa.hasGoodSpaConnection()) {
+      callback(this.platform.connectionProblem);
+      return;
+    }
     if (value as boolean) {
       this.scheduleSetSpeed(this.states.lastNonZeroSpeed);
     } else {
       this.scheduleSetSpeed(0);
     }
-    this.platform.log.debug('Set Pump',this.pumpNumber,'->', value? 'On': 'Off');
+    this.platform.log.debug('Set Pump',this.pumpNumber,'->', value? 'On': 'Off', this.platform.status());
     
     callback(null);
   }
@@ -94,9 +98,13 @@ export class PumpAccessory {
    */
   getOn(callback: CharacteristicGetCallback) {
     const isOn = this.getSpeed() != 0;
-    this.platform.log.debug('Get Pump',this.pumpNumber,'<-',isOn?'On':'Off');
+    this.platform.log.debug('Get Pump',this.pumpNumber,'<-',isOn?'On':'Off', this.platform.status());
     
-    callback(null, isOn);
+    if (!this.platform.spa.hasGoodSpaConnection()) {
+      callback(this.platform.connectionProblem);
+    } else {
+      callback(null, isOn);
+    }
   }
 
   /**
@@ -107,11 +115,15 @@ export class PumpAccessory {
    * being called and that will discover the correct new value.  
    */
   setRotationSpeed(value: CharacteristicValue, callback: CharacteristicSetCallback) {
+    if (!this.platform.spa.hasGoodSpaConnection()) {
+      callback(this.platform.connectionProblem);
+      return;
+    }
     // value is 0-100, and we want to convert that, irrespective of the number of
     // speeds we have to 0-2 (a 1-speed pump just swaps from 0 to 2 directly);
     const speed = Math.round((value as number)/50.0);
     this.scheduleSetSpeed(speed);
-    this.platform.log.debug('Set Pump',this.pumpNumber,'Speed -> ', value, ' which is ', PUMP_STATES[speed]);
+    this.platform.log.debug('Set Pump',this.pumpNumber,'Speed ->', value, 'which is', PUMP_STATES[speed], this.platform.status());
 
     callback(null);
   }
@@ -125,13 +137,21 @@ export class PumpAccessory {
     // As above we convert the speed of 0-2 to a value of 0-100, irrespective
     // of the number of speeds the pump has
     const value = (100.0*speed)/2;
-    this.platform.log.debug('Get Pump',this.pumpNumber,'Speed <- ', value, ' which is ', PUMP_STATES[speed]);
-
-    callback(null, value);
+    this.platform.log.debug('Get Pump',this.pumpNumber,'Speed <-', value, 'which is', PUMP_STATES[speed], this.platform.status());
+    if (!this.platform.spa.hasGoodSpaConnection()) {
+      callback(this.platform.connectionProblem);
+    } else {
+      callback(null, value);
+    }
   }
 
   // If Spa state has changed, for example using manual controls on the spa, then we must update Homekit.
   updateCharacteristics() {
+    if (!this.platform.spa.hasGoodSpaConnection()) {
+      this.service.getCharacteristic(this.platform.Characteristic.On).updateValue(this.platform.connectionProblem);
+      this.service.getCharacteristic(this.platform.Characteristic.RotationSpeed).updateValue(this.platform.connectionProblem);
+      return;
+    }
     const speed = this.getSpeed();
     const isOn = speed != 0;
     const speedValue = (100.0*speed)/2;
@@ -168,7 +188,7 @@ export class PumpAccessory {
   }
 
   private setSpeed(speed: number) {
-    this.platform.log.debug('Pump',this.pumpNumber,'actually setting speed to',speed);
+    this.platform.log.debug('Pump',this.pumpNumber,'actually setting speed to',speed, this.platform.status());
     this.platform.spa.setPumpSpeed(this.pumpNumber, PUMP_STATES[speed]);
     if (speed != 0) {
       this.states.lastNonZeroSpeed = speed;
