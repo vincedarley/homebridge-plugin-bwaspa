@@ -46,7 +46,7 @@ export class LightsAccessory {
    * These are sent when the user changes the state of an accessory, for example, turning on a Light bulb.
    */
   setOn(value: CharacteristicValue, callback: CharacteristicSetCallback) {
-    if (!this.platform.spa.hasGoodSpaConnection()) {
+    if (!this.platform.isCurrentlyConnected()) {
       callback(this.platform.connectionProblem);
       return;
     }
@@ -59,7 +59,7 @@ export class LightsAccessory {
 
   // If Spa state has changed, for example using manual controls on the spa, then we must update Homekit.
   updateCharacteristics() {
-    if (!this.platform.spa.hasGoodSpaConnection()) {
+    if (!this.platform.isCurrentlyConnected()) {
       this.service.getCharacteristic(this.platform.Characteristic.On).updateValue(this.platform.connectionProblem);
       return;
     }
@@ -87,7 +87,7 @@ export class LightsAccessory {
     // Read whether the light is on or off
     const isOn = this.platform.spa.getIsLightOn(this.lightNumber);
     this.platform.log.debug('Get Lights', this.lightNumber, 'On <-', isOn, this.platform.status());
-    if (!this.platform.spa.hasGoodSpaConnection()) {
+    if (!this.platform.isCurrentlyConnected()) {
       callback(this.platform.connectionProblem);
     } else {
       callback(null, isOn);

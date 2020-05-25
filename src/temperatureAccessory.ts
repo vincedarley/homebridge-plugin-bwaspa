@@ -59,7 +59,7 @@ export class TemperatureAccessory {
     const val = (temperature == undefined ? null : temperature);
     this.platform.log.debug('Get Temperature <-', val, this.platform.status());
 
-    if (!this.platform.spa.hasGoodSpaConnection()) {
+    if (!this.platform.isCurrentlyConnected()) {
       callback(this.platform.connectionProblem);
     } else {
       callback(null, val);
@@ -68,7 +68,7 @@ export class TemperatureAccessory {
 
   // If Spa state has changed, for example using manual controls on the spa, then we must update Homekit.
   updateCharacteristics() {
-    if (!this.platform.spa.hasGoodSpaConnection()) {
+    if (!this.platform.isCurrentlyConnected()) {
       this.service.getCharacteristic(this.platform.Characteristic.CurrentTemperature).updateValue(this.platform.connectionProblem);
       return;
     }

@@ -107,10 +107,18 @@ export class SpaHomebridgePlatform implements DynamicPlatformPlugin {
 
   status() {
     if (this.spa.hasGoodSpaConnection()) {
-      return "";
+      return "(connected)";
     } else {
       return "(not currently connected)";
     }
+  }
+
+  isCurrentlyConnected() {
+    // if (this.config.strictConnection) {
+      return this.spa.hasGoodSpaConnection();
+    // } else {
+    //   return true;
+    // }
   }
 
   /**

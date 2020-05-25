@@ -155,7 +155,7 @@ export class SpaClient {
             const somethingChanged = this.read_msg(bufView);
             if (somethingChanged) {
                 // Only log state when something has changed.
-                this.log.debug(this.stateToString());
+                this.log.debug("State change:", this.stateToString());
                 // Call whoever has registered with us - this is our homekit platform plugin
                 // which will arrange to go through each accessory and check if the state of
                 // it has changed. There are 3 cases here to be aware of:
@@ -376,10 +376,9 @@ export class SpaClient {
             // This code (but not other code in this class) should actually 
             // work as-is for 3-speed pumps if they exist.
             let loopThrough = this.pumpsSpeedRange[index]+1;
-            let count = 1;
-            while (this.pumpsCurrentSpeed[(index+count)%loopThrough] !== value) {
-                count++;
-            }
+            let oldIdx = PUMP_STATES.indexOf(this.pumpsCurrentSpeed[index]);
+            let newIdx = PUMP_STATES.indexOf(value);
+            let count = (loopThrough + newIdx - oldIdx) % loopThrough;
             // For a 2-speed pump, we'll need to toggle either 1 or 2 times.
             while (count > 0) {
                 this.send_toggle_message(balboaPumpId);
@@ -467,12 +466,12 @@ export class SpaClient {
         var s = "Temp: " + this.temperatureToString(this.currentTemp) 
         + ", Target Temp(H): " + this.temperatureToString(this.targetTempModeHigh) 
         + ", Target Temp(L): " + this.temperatureToString(this.targetTempModeLow) 
-        + ", Time: " + this.timeToString(this.hour, this.minute) + "\n"
-        + "Priming: " + this.priming.toString()
+        + ", Time: " + this.timeToString(this.hour, this.minute) +
+        + ", Priming: " + this.priming.toString()
         + ", Heating Mode: " + this.heatingMode 
         + ", Temp Scale: " + this.temp_CorF
-        + ", Time Scale: " + this.time_12or24 + "\n" 
-        + "Heating: " + this.isHeatingNow 
+        + ", Time Scale: " + this.time_12or24  
+        + ", Heating: " + this.isHeatingNow 
         + ", Temp Range: " + (this.tempRangeIsHigh ? "High" : "Low")
         + ", Pumps: " + this.pumpsCurrentSpeed
         + ", Circ Pump: " + this.circulationPumpIsOn

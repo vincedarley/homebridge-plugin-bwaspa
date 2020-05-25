@@ -138,7 +138,7 @@ export class ThermostatAccessory {
     this.platform.log.debug('Get Target Heating State <-', 
     mode ? "HEAT" : "COOL", "Flow error(", flowError, ")", result, this.platform.status());
 
-    if (!this.platform.spa.hasGoodSpaConnection()) {
+    if (!this.platform.isCurrentlyConnected()) {
       callback(this.platform.connectionProblem);
     } else {
       callback(null, result);
@@ -146,7 +146,7 @@ export class ThermostatAccessory {
   }
 
   setTargetHeatingState(value: CharacteristicValue, callback: CharacteristicSetCallback) {
-    if (!this.platform.spa.hasGoodSpaConnection()) {
+    if (!this.platform.isCurrentlyConnected()) {
       callback(this.platform.connectionProblem);
       return;
     }
@@ -183,7 +183,7 @@ export class ThermostatAccessory {
     const temperature = this.platform.spa.getTargetTemp();
     this.platform.log.debug('Get Target Temperature <-', temperature, this.platform.status());
 
-    if (!this.platform.spa.hasGoodSpaConnection()) {
+    if (!this.platform.isCurrentlyConnected()) {
       callback(this.platform.connectionProblem);
     } else {
       callback(null, temperature);
@@ -191,7 +191,7 @@ export class ThermostatAccessory {
   }
 
   setTargetTemperature(value: CharacteristicValue, callback: CharacteristicSetCallback) {
-    if (!this.platform.spa.hasGoodSpaConnection()) {
+    if (!this.platform.isCurrentlyConnected()) {
       callback(this.platform.connectionProblem);
       return;
     }
@@ -228,7 +228,7 @@ export class ThermostatAccessory {
 
   // If Spa state has changed, for example using manual controls on the spa, then we must update Homekit.
   updateCharacteristics() {
-    if (!this.platform.spa.hasGoodSpaConnection()) {
+    if (!this.platform.isCurrentlyConnected()) {
       this.service.getCharacteristic(this.platform.Characteristic.CurrentTemperature).updateValue(this.platform.connectionProblem);
       this.service.getCharacteristic(this.platform.Characteristic.TargetTemperature).updateValue(this.platform.connectionProblem);
       this.service.getCharacteristic(this.platform.Characteristic.TargetHeatingCoolingState).updateValue(this.platform.connectionProblem);

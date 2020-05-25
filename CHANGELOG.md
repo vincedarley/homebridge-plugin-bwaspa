@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.9.13 (25.05.2020)
+- Fixes to pump speed setting problem introduced in 1.9.10
+- Better connection dropping handling, hopefully.
+
 ## 1.9.10 (25.05.2020)
 - When connection to Spa drops for a while, signal an error state to Homekit so that the
   user is aware, and their actions of course take no effect.
