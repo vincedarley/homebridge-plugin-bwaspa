@@ -2,6 +2,9 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.9.14 (26.05.2020)
+- Cleanup
+
 ## 1.9.13 (25.05.2020)
 - Fixes to pump speed setting problem introduced in 1.9.10
 - Better connection dropping handling, hopefully.

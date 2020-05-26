@@ -9,6 +9,8 @@
 
 This plugin will connect some Balboa Spas over their wifi, and expose a set of controls (pumps, lights) and its temperature, and temperature control, in HomeKit.  It also exposes a "Leak Sensor" which acts as a sensor for whether the heater water flow in the spa is all good.  You can set that up in Home to send you a notification if anything goes wrong.
 
+The plugin does a good job of ensuring the state of all controls remains in sync whether you manipulate the controls through Home, through Siri, through physical controls on the spa, or through the Balboa spa app.
+
 Configure the plugin with Homebridge ConfigUI
 
 [![verified-by-homebridge](https://badgen.net/badge/homebridge/verified/purple)](https://github.com/homebridge/homebridge/wiki/Verified-Plugins)
@@ -77,7 +79,7 @@ If you try to define things that don't exist, the controller will reject them - 
 
 Lights are simply on/off.  Balboa provide no capability to control the colour.  So this limitation will never be rectified.
 
-Currently the water flow sensor code updates once every ten minutes, and the Spa does not actually report that water flow has been corrected, so the latest fault will still be present.  So even when you fix the issue (change/clean filters, etc) it won't reset in Homekit until the next day.  If you turn the spa on/off, then a priming event will take precedence and Homekit will then no longer report the flow problem.
+If the water flow sensor discovers a fault (which it checks for every ten minutes), and you then fix the issue (change/clean filters, etc), the spa does not actually notify that the fault has been corrected. However if you turn the spa off/on then a priming event will take precedence and through this plugin the fault will no longer be reported to Homekit. If you don't turn the spa off/on, then the fault will only be reset in Homekit the following day.
 
 Some spas have a "blower" or a "mister". No support for those at present.
 

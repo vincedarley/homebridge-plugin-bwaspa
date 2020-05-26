@@ -44,13 +44,13 @@ export class WaterFlowProblemAccessory {
 
   handleLeakDetectedGet(callback: CharacteristicGetCallback) {
     const flowState = this.platform.spa.getFlowState();
-    this.platform.log.debug('Get Flow State Characteristic ->', flowState);
+    this.platform.log.debug('Get Flow State <-', flowState);
     callback(null, flowState === "FAILED");
   }
 
   handleFaultDetectedGet(callback: CharacteristicGetCallback) {
     const flowState = this.platform.spa.getFlowState();
-    this.platform.log.debug('Get Flow Fault Characteristic ->', flowState);
+    this.platform.log.debug('Get Flow Fault <-', flowState);
     callback(null, flowState === "LOW");
   }
 

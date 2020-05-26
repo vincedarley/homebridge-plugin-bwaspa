@@ -466,7 +466,7 @@ export class SpaClient {
         var s = "Temp: " + this.temperatureToString(this.currentTemp) 
         + ", Target Temp(H): " + this.temperatureToString(this.targetTempModeHigh) 
         + ", Target Temp(L): " + this.temperatureToString(this.targetTempModeLow) 
-        + ", Time: " + this.timeToString(this.hour, this.minute) +
+        + ", Time: " + this.timeToString(this.hour, this.minute)
         + ", Priming: " + this.priming.toString()
         + ", Heating Mode: " + this.heatingMode 
         + ", Temp Scale: " + this.temp_CorF
@@ -634,7 +634,7 @@ export class SpaClient {
         var aux = [(bytes[4] & 0x01) != 0,(bytes[4] & 0x02) != 0];
         this.log.info("Discovered",countLights,"light"+(countLights!=1?"s":""));
         this.log.info("Discovered other components: circ_pump",circ_pump,
-            "blower",blower,"mister",mister,"aux",aux);
+            ", blower",blower,", mister",mister,", aux",aux);
         this.accurateConfigReadFromSpa = true;
     }
 

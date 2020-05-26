@@ -136,7 +136,7 @@ export class ThermostatAccessory {
       : this.platform.Characteristic.TargetHeatingCoolingState.COOL;
     }
     this.platform.log.debug('Get Target Heating State <-', 
-    mode ? "HEAT" : "COOL", "Flow error(", flowError, ")", result, this.platform.status());
+    mode ? "HEAT" : "COOL", "Flow error(" + flowError + ")", result, this.platform.status());
 
     if (!this.platform.isCurrentlyConnected()) {
       callback(this.platform.connectionProblem);
@@ -168,7 +168,7 @@ export class ThermostatAccessory {
     // HEAT means "high".  If users chooses "cool" or "off", we treat those as "low"
     const heating = (value == this.platform.Characteristic.TargetHeatingCoolingState.HEAT);
     this.platform.spa.setTempRangeIsHigh(heating);
-    this.platform.log.debug('Set Target Heating State Characteristic ->', heating ? "HEAT" : "COOL", 
+    this.platform.log.debug('Set Target Heating State ->', heating ? "HEAT" : "COOL", 
       value, "(and need to adjust valid range)", this.platform.status());
     // Adjust the allowed range
     this.setTargetTempMinMax();
@@ -220,7 +220,7 @@ export class ThermostatAccessory {
       }
     }
     this.platform.spa.setTargetTemperature(temp);
-    this.platform.log.debug('Set Target Temperature Characteristic ->', temp, 
+    this.platform.log.debug('Set Target Temperature ->', temp, 
       " (may be different to", value, ")", this.platform.status());
 
     callback(null);
@@ -243,7 +243,8 @@ export class ThermostatAccessory {
     const targetTemperature = this.platform.spa.getTargetTemp();
     const flowState = this.platform.spa.getFlowState();
 
-    this.platform.log.debug('Thermostat updating to',targetTemperature,'(',val,')', mode, heating, flowState);
+    this.platform.log.debug('Thermostat updating to: target:',targetTemperature,'(current:',
+      val,'), is high:', mode, ', is heating:', heating, ', flow state:', flowState);
 
     this.service.getCharacteristic(this.platform.Characteristic.CurrentTemperature).updateValue(val);
     this.service.getCharacteristic(this.platform.Characteristic.TargetTemperature).updateValue(targetTemperature);
