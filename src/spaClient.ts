@@ -11,6 +11,7 @@ export const FLOW_GOOD = "Good";
 export const FLOW_LOW = "Low";
 export const FLOW_FAILED = "Failed";
 export const FLOW_STATES = [FLOW_GOOD, FLOW_LOW, FLOW_FAILED];
+const FILTERSTATES = ['Off', 'Cycle 1', 'Cycle 2', 'Cycle 1 and 2'];
 
 const PrimaryRequest = new Uint8Array([0x0a, 0xbf, 0x22]);
 const GetFaultsMessageContents = new Uint8Array([0x20, 0xff, 0x00]);
@@ -64,6 +65,7 @@ export class SpaClient {
     time_12or24: string;
     isHeatingNow: boolean;
     circulationPumpIsOn: boolean;
+    filtering: number;
     // Takes values from FLOW_STATES
     flow: string;
     // Once the Spa has told us what accessories it really has. Only need to do this once.
@@ -75,15 +77,17 @@ export class SpaClient {
     ignoreAutomaticConfiguration: boolean;
     // Stored so that we can cancel it if needed
     faultCheckIntervalId: any;
+    devMode: boolean;
 
     lastStateBytes = new Uint8Array();
     lastFaultBytes = new Uint8Array();
 
     constructor(public readonly log: Logger, public readonly host: string, 
-      public readonly changesCallback: () => void, ignoreAutomatic?: boolean) {
+      public readonly changesCallback: () => void, ignoreAutomatic?: boolean, devMode?: boolean) {
         this.accurateConfigReadFromSpa = false;
         this.isCurrentlyConnectedToSpa = false;
         this.ignoreAutomaticConfiguration = (ignoreAutomatic ? ignoreAutomatic : false);
+        this.devMode = (devMode ? devMode : false);
         // Be generous to start. Once we've read the config we will reduce the number of lights
         // if needed.
         this.lightIsOn = [false,false];
@@ -104,6 +108,7 @@ export class SpaClient {
         this.time_12or24 = "12 Hr";
         this.isHeatingNow = false;
         this.circulationPumpIsOn = false;
+        this.filtering = 0;
         // This isn't updated as frequently as the above
         this.flow = FLOW_GOOD;
         // Our communications channel with the spa
@@ -400,6 +405,8 @@ export class SpaClient {
         return c;
     }
 
+    // Temperatures which are out of certain bounds will be rejected by the spa.
+    // We don't do bounds-checking ourselves.
     setTargetTemperature(temp: number) {
         var sendTemp;
         if (this.tempRangeIsHigh) {
@@ -436,12 +443,17 @@ export class SpaClient {
         }
         // # 0x04 to 0x09 - pumps 1-6
         // # 0x11-0x12 - lights 1-2
-        // # 0x3c - hold
-        // # 0x51 - heating mode
-        // # 0x50 - temperature range
+        // # 0x3c - hold (unsupported at present). Hol dmode is used to disable the pumps during
+        // service functions like cleaning or replacing the filter.  Hold mode will last for 1 hour
+        // unless the mode is exited manually.
+        // # 0x51 - heating mode (ready at rest, etc) (unsupported at present)
+        // # 0x50 - temperature range (high or low)
         // # 0x0e - mister (unsupported at present)
         // # 0x0c - blower (unsupported at present)
-        // # 0x16 - aux1, 0x17 - aux2
+        // # 0x16 - aux1, 0x17 - aux2 (unsupported at present)
+        // The spa may also have two "lock" settings - locking the control panel completely, or
+        // just locking the settings (but allowing jets and lights, say, to still be used).
+        // Don't know what codes to use for those at present.
         this.sendMessageToSpa("Toggle item " + item, ToggleItemRequest, new Uint8Array([item, 0x00]));
     }
 
@@ -475,6 +487,7 @@ export class SpaClient {
         + ", Temp Range: " + (this.tempRangeIsHigh ? "High" : "Low")
         + ", Pumps: " + this.pumpsCurrentSpeed
         + ", Circ Pump: " + this.circulationPumpIsOn
+        + ", Filtering: " + FILTERSTATES[this.filtering]
         + ", Lights: " + this.lightIsOn
         return s;
     }
@@ -501,6 +514,9 @@ export class SpaClient {
         }
         var contents = chunk.slice(5, length);
         var msgType = chunk.slice(2,5);
+        if (this.devMode) {
+            this.log.info("Received:", this.prettify(msgType), this.prettify(contents));
+        }
         if (this.equal(msgType,StateReply)) {
             return this.readStateFromBytes(contents);
         } else if (this.equal(msgType, GetFaultsReply)) {
@@ -542,21 +558,27 @@ export class SpaClient {
      * Return true if anything important has changed (i.e. ignore the time changing!)
      */
     readStateFromBytes(bytes: Uint8Array) {
+        // Seems like priming goes through different states, so not sure this simplicity is correct
+        this.priming = ((bytes[1] & 1) === 1);
         // If current_temp = 255, then the Spa is still not fully initialised
         // (but is not necessarily in "priming" state). Need to wait, really - after some seconds the
         // correct temperature is read.
         // Probably better to say the temperature is unknown, if homekit supports that.  The Balboa
-        // app, for what it's worth, also is confused when current temp = 255.
+        // app, for what it's worth, also is confused when current temp = 255.  We currently report
+        // 'undefined' here, which our temperature accessory turns into a 'null' to send to Homekit.
         this.currentTemp = (bytes[2] == 255 ? undefined : bytes[2]);
-        // Seems like priming goes through different states, so not sure this simplicity is correct
-        this.priming = ((bytes[1] & 1) === 1);
         this.hour = bytes[3];
         this.minute = bytes[4];
         this.heatingMode = ["Ready", "Rest", "Ready in Rest"][bytes[5]];
-        var unitsFlags = bytes[9];
-        this.temp_CorF = (((unitsFlags & 1) === 0) ? "Fahrenheit" : "Celsius");
-        this.time_12or24 = (((unitsFlags & 2) === 0) ? "12 Hr" : "24 Hr");
+        // Bytes 6,7,8 -- unused or unknown at present.
+        var variousFlags = bytes[9];
+        this.temp_CorF = (((variousFlags & 1) === 0) ? "Fahrenheit" : "Celsius");
+        this.time_12or24 = (((variousFlags & 2) === 0) ? "12 Hr" : "24 Hr");
+        // Filtering mode we just put in the log. It has 4 states (off, cycle1, cycle2, cycle 1 and 2)
+        this.filtering = (variousFlags & 0x0c) >> 2; // values of 0,1,2,3
         var tempFlags = bytes[10];
+        // It seems some spas have 3 states for this, idle, heating, heat-waiting.
+        // We merge the latter two into just "heating" - there are two bits here though.
         this.isHeatingNow = ((tempFlags & 48) !== 0);
         this.tempRangeIsHigh = (((tempFlags & 4) === 0) ? false : true);
         var pump_status1234 = bytes[11];
@@ -571,13 +593,18 @@ export class SpaClient {
         if (this.ignoreAutomaticConfiguration || this.pumpsCurrentSpeed[5] != PUMP_NOT_EXISTS) this.pumpsCurrentSpeed[5] = PUMP_STATES[((pump_status56 & (4+8)) >> 2)];
         // Not sure if this circ_pump index or logic is correct.
         this.circulationPumpIsOn = ((bytes[13] & 2) !== 0);
+        // The lights are in the low order bites of 'bytes[14]'
         if (this.ignoreAutomaticConfiguration || this.lightIsOn[0] != undefined) this.lightIsOn[0] = ((bytes[14] & (1+2)) === (1+2));
         if (this.ignoreAutomaticConfiguration || this.lightIsOn[1] != undefined) this.lightIsOn[1] = ((bytes[14] & (4+8)) === (4+8));
-        // Believe the following 4 lines are correct, but no way to test
-        // mister = data[15] & 0x01
+        
+        // Believe the following lines are correct, but no way to test on my spa
+        // mister = data[15] & 0x01 - on/off for the mister device.
+        // Blowers can have 4 states: off, low, medium, high
         // blower = (data[13] & 0x0c) >> 2
-        // aux1 = data[15] & 0x08
-        // aux2 = data[15] & 0x10
+        // aux1 = data[15] & 0x08 - on/off for device 'aux1'
+        // aux2 = data[15] & 0x10 - on/off for device 'aux2'
+
+        // Bytes 16,17,18,19 - unused or unknown at present
         if (this.tempRangeIsHigh) {
             this.targetTempModeHigh = bytes[20];
         } else {
@@ -674,14 +701,17 @@ export class SpaClient {
             this.log.info("Second filter time", (filter2on ? 'on' : 'off'), 
             "from",filter2start,"for",filter2duration);
         } else if (id == 2) {
-            let softwareID = "M" + contents[0] +"_"+contents[1]+" V"+contents[2];
-            let currentSetup = contents[12];
-            let configurationSignature = Buffer.from(contents.slice(13,17)).toString('hex');
-            // Convert characters 5-12 into ascii
+            // bytes 0-3 tell us about the version of software running, which we format
+            // in the same way as on the spa's screen.
+            let softwareID = "M" + contents[0] +"_"+contents[1]+" V"+contents[2]+"." + contents[3];
+            // Convert bytes 4-11 into ascii
             let motherboard: string = "";
-            (new Uint8Array(contents.slice(4,12))).forEach(function (byte: number) {
+            contents.slice(4,12).forEach((byte: number) => {
                 motherboard += String.fromCharCode(byte);
             });
+            // No idea what these really mean, but they are shown on the spa screen
+            let currentSetup = contents[12];
+            let configurationSignature = Buffer.from(contents.slice(13,17)).toString('hex');
             // This is most of the information that shows up in the Spa display
             // when you go to the info screen.
             this.log.info("System Model", motherboard);

@@ -21,7 +21,7 @@ export class LightsAccessory {
     // set accessory information
     this.accessory.getService(this.platform.Service.AccessoryInformation)!
       .setCharacteristic(this.platform.Characteristic.Manufacturer, 'Balboa')
-      .setCharacteristic(this.platform.Characteristic.Model, 'Default-Model')
+      .setCharacteristic(this.platform.Characteristic.Model, this.platform.model)
       .setCharacteristic(this.platform.Characteristic.SerialNumber, VERSION);
 
     // get the LightBulb service if it exists, otherwise create a new LightBulb service

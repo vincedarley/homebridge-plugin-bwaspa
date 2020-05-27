@@ -1,7 +1,7 @@
 {
   "displayName": "Balboa Spa",
   "name": "homebridge-balboa-spa",
-  "version": "1.9.14",
+  "version": "1.9.15",
   "description": "Homebridge control of a balboa spa.",
   "license": "Apache-2.0",
   "repository": {
@@ -23,7 +23,10 @@
     "prepublishOnly": "npm run lint && npm run build"
   },
   "keywords": [
-    "homebridge-plugin"
+    "homebridge-plugin",
+    "balboa",
+    "spa",
+    "bwa"
   ],
   "dependencies": {
     "crc": "^3.8.0",

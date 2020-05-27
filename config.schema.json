@@ -12,6 +12,11 @@
         "required": true,
         "placeholder": "My Hot Tub"
       },
+      "model": {
+        "title": "Spa Model",
+        "type": "string",
+        "required": false
+      },
       "host": {
         "title": "IP Address",
         "type": "string",

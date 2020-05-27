@@ -81,7 +81,9 @@ Lights are simply on/off.  Balboa provide no capability to control the colour.  
 
 If the water flow sensor discovers a fault (which it checks for every ten minutes), and you then fix the issue (change/clean filters, etc), the spa does not actually notify that the fault has been corrected. However if you turn the spa off/on then a priming event will take precedence and through this plugin the fault will no longer be reported to Homekit. If you don't turn the spa off/on, then the fault will only be reset in Homekit the following day.
 
-Some spas have a "blower" or a "mister". No support for those at present.
+Some spas have a "blower", "mister", and up to two 'aux' devices. This plugin does not support these at present (although the code does detect if they exist or not on your spa) - it would be pretty simple to add support for them.
+
+No current support for setting the heatmode of the spa ('ready at rest', etc).
 
 ## Improvements
 
@@ -91,19 +93,22 @@ If you wish to help on further automation of pump/light configuration, please ta
 [My Hot Tub] Control types reply(0a,bf,2e):1a,00,01,90,00,00
 [My Hot Tub] Discovered 3 pumps with speeds [ 2, 2, 1, 0, 0, 0 ]
 [My Hot Tub] Discovered 1 light
-[My Hot Tub] Discovered other components: circ_pump true blower false mister false aux [ false, false ]
-[My Hot Tub] ControlPanelRequest1 Sending:7e,08,0a,bf,22,01,00,00,34,7e
+[My Hot Tub] Discovered other components: circ_pump true , blower false , mister false , aux [ false, false ]
 [My Hot Tub] Control Panel reply 1:14,00,01,1e,88,00,01,1e
+[My Hot Tub] First filter time from 20:00 for 01:30
+[My Hot Tub] Second filter time on from 08:00 for 01:30
 [My Hot Tub] ControlPanelRequest2 Sending:7e,08,0a,bf,22,02,00,00,89,7e
 [My Hot Tub] Control Panel reply 2:64,e1,24,00,4d,53,34,30,45,20,20,20,01,c3,47,96,36,03,0a,44,00
-[My Hot Tub] Spa motherboard model MS40E   
+[My Hot Tub] System Model MS40E   
+[My Hot Tub] SoftwareID (SSID) M100_225 V36
+[My Hot Tub] Current Setup 1
+[My Hot Tub] Configuration Signature c3479636
 [My Hot Tub] ControlPanelRequest3 Sending:7e,08,0a,bf,22,04,00,00,f4,7e
 [My Hot Tub] Control Panel reply 3:05,01,32,63,50,68,61,07,41
 [My Hot Tub] ControlPanelRequest4 Sending:7e,08,0a,bf,22,08,00,00,0e,7e
 [My Hot Tub] Control Panel reply 4:00,85,00,01,01,02,00,00,00,00,00,00,00,00,00,00,00,00
 [My Hot Tub] Checking for any Spa faults Sending:7e,08,0a,bf,22,20,ff,00,cb,7e
-[My Hot Tub] Fault Entries: 24 Num: 24 Error code: 19 Days ago: 3 Time: 10:49 Heat mode: 24 Set temp: 38 Temp A: 38.5 Temp B: 38.5
-[My Hot Tub] No recent faults. Last fault 3 days ago of type 19
+[My Hot Tub] No recent faults. Last fault 1 days ago of type M019 = priming (this is not actually a fault - your Spa was recently turned on) with details from log: Fault Entries: 24 Num: 24 Error code: 19 Days ago: 1 Time: 18:35 Heat mode: 24 Set temp: 38 Temp A: 38 Temp B: 38
 [My Hot Tub] ConfigRequest Sending:7e,05,0a,bf,04,77,7e
 [My Hot Tub] Config reply with MAC address (0a,bf,94):02,14,80,00,15,27,3f,9b,95,00,00,00,00,00,00,00,00,00,15,27,ff,ff,3f,9b,95
 ```

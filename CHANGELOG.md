@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.9.15 (26.05.2020)
+- Optional model name in config, which propagates through to all accessories in Home
+- Added capture and logging of the filtering status of the spa
+
 ## 1.9.14 (26.05.2020)
 - Cleanup
 
