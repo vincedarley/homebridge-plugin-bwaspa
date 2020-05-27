@@ -126,6 +126,12 @@
                   "enum": [
                     "Water Flow Problem Sensor"
                   ]
+                },
+                {
+                  "title": "Hold Switch",
+                  "enum": [
+                    "Hold Switch"
+                  ]
                 }
               ],
               "required": true

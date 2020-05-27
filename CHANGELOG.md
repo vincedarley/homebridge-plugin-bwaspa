@@ -2,7 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
-## 1.9.15 (26.05.2020)
+## 1.9.16 (27.05.2020)
+- Capture the panel & settings "lock" status of the spa, and the "hold" status.
+- Add ability to create a homekit switch to control the hold status.
+
+## 1.9.15 (27.05.2020)
 - Optional model name in config, which propagates through to all accessories in Home
 - Added capture and logging of the filtering status of the spa
 

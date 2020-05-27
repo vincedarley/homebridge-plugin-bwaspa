@@ -66,6 +66,10 @@ export class SpaClient {
     isHeatingNow: boolean;
     circulationPumpIsOn: boolean;
     filtering: number;
+    lockTheSettings: boolean;
+    lockTheEntirePanel: boolean;
+    hold: boolean;
+
     // Takes values from FLOW_STATES
     flow: string;
     // Once the Spa has told us what accessories it really has. Only need to do this once.
@@ -109,6 +113,9 @@ export class SpaClient {
         this.isHeatingNow = false;
         this.circulationPumpIsOn = false;
         this.filtering = 0;
+        this.lockTheSettings = false;
+        this.lockTheEntirePanel = false;
+        this.hold = false;
         // This isn't updated as frequently as the above
         this.flow = FLOW_GOOD;
         // Our communications channel with the spa
@@ -157,7 +164,7 @@ export class SpaClient {
         // seems to do every second.
         this.socket?.on('data', (data: any) => {
             var bufView = new Uint8Array(data);
-            const somethingChanged = this.read_msg(bufView);
+            const somethingChanged = this.readAndActOnMessage(bufView);
             if (somethingChanged) {
                 // Only log state when something has changed.
                 this.log.debug("State change:", this.stateToString());
@@ -299,6 +306,14 @@ export class SpaClient {
             return false;
         }
         return this.lightIsOn[index];
+    }
+    getIsHold() {
+        return this.hold;
+    }
+    setIsHold(value: boolean) {
+        if (this.hold == value) return;
+        this.send_toggle_message(0x3c);
+        this.hold = value;
     }
     getIsHeatingNow() {
         return this.isHeatingNow;
@@ -443,7 +458,7 @@ export class SpaClient {
         }
         // # 0x04 to 0x09 - pumps 1-6
         // # 0x11-0x12 - lights 1-2
-        // # 0x3c - hold (unsupported at present). Hol dmode is used to disable the pumps during
+        // # 0x3c - hold. Hold mode is used to disable the pumps during
         // service functions like cleaning or replacing the filter.  Hold mode will last for 1 hour
         // unless the mode is exited manually.
         // # 0x51 - heating mode (ready at rest, etc) (unsupported at present)
@@ -488,7 +503,10 @@ export class SpaClient {
         + ", Pumps: " + this.pumpsCurrentSpeed
         + ", Circ Pump: " + this.circulationPumpIsOn
         + ", Filtering: " + FILTERSTATES[this.filtering]
-        + ", Lights: " + this.lightIsOn
+        + ", Lights: [" + this.lightIsOn + "]"
+        + (this.lockTheEntirePanel ? ", Panel locked" : "")
+        + (this.lockTheSettings ? ", Settings locked" : "")
+        + (this.hold ? ", Hold mode activated" : "")
         return s;
     }
 
@@ -500,7 +518,7 @@ export class SpaClient {
      * Second-last byte is the checksum.  Then bytes 3,4,5 are the message type.
      * Everything in between is the content.
      */
-    read_msg(chunk: Uint8Array) {
+    readAndActOnMessage(chunk: Uint8Array) {
         if (chunk.length < 2) {
             return false;
         }
@@ -514,36 +532,44 @@ export class SpaClient {
         }
         var contents = chunk.slice(5, length);
         var msgType = chunk.slice(2,5);
-        if (this.devMode) {
-            this.log.info("Received:", this.prettify(msgType), this.prettify(contents));
-        }
+        var returnValue : boolean;
         if (this.equal(msgType,StateReply)) {
-            return this.readStateFromBytes(contents);
+            returnValue = this.readStateFromBytes(contents);
         } else if (this.equal(msgType, GetFaultsReply)) {
-            return this.readFaults(contents);
+            returnValue = this.readFaults(contents);
         } else if (this.equal(msgType, ControlTypesReply)) {
             this.log.info("Control types reply(" + this.prettify(msgType) 
              + "):"+ this.prettify(contents));
-            this.interpretControlTypesReply(contents);
+            returnValue = this.interpretControlTypesReply(contents);
         } else if (this.equal(msgType, ConfigReply)) {
             this.log.info("Config reply with MAC address (" + this.prettify(msgType) 
             + "):"+ this.prettify(contents));
             // Bytes 3-8 are the MAC address of the Spa.  They are also repeated later
             // on in the string, but split into two halves with two bytes inbetween (ff, ff)
+            returnValue = false;
         } else {
+            returnValue = false;
+            let recognised = false;
             for (var id = 0; id<4; id++) {
                 if (this.equal(msgType, ControlPanelRequest[id][1])) {
-                    this.interpretControlPanelReply(id+1, contents);
-                    return false;
+                    returnValue = this.interpretControlPanelReply(id+1, contents);
+                    recognised = true;
+                    break;
                 }
             }
             // Various messages about controls, filters, etc. In theory we could
             // choose to implement more things here, but limited value in it.
-            this.log.info("Not understood a received spa message ", 
-            "(nothing critical, but please do report this):" + this.prettify(msgType), 
-            " contents: "+ this.prettify(contents));
+            if (!recognised) {
+                this.log.info("Not understood a received spa message ", 
+                "(nothing critical, but please do report this):" + this.prettify(msgType), 
+                " contents: "+ this.prettify(contents));
+            }
         }
-        return false;
+        if (this.devMode && returnValue) {
+            // If dev mode is activated and something changed, then log it, with info level.
+            this.log.info("Received:", this.prettify(msgType), this.prettify(contents));
+        }
+        return returnValue;
     }
 
     resetRecentState() {
@@ -576,11 +602,15 @@ export class SpaClient {
         this.time_12or24 = (((variousFlags & 2) === 0) ? "12 Hr" : "24 Hr");
         // Filtering mode we just put in the log. It has 4 states (off, cycle1, cycle2, cycle 1 and 2)
         this.filtering = (variousFlags & 0x0c) >> 2; // values of 0,1,2,3
-        var tempFlags = bytes[10];
+        this.lockTheSettings = (variousFlags & 0x10) != 0;
+        this.lockTheEntirePanel = (variousFlags & 0x20) != 0;
+        var moreFlags = bytes[10];
         // It seems some spas have 3 states for this, idle, heating, heat-waiting.
         // We merge the latter two into just "heating" - there are two bits here though.
-        this.isHeatingNow = ((tempFlags & 48) !== 0);
-        this.tempRangeIsHigh = (((tempFlags & 4) === 0) ? false : true);
+        this.isHeatingNow = ((moreFlags & 48) !== 0);
+        this.tempRangeIsHigh = (((moreFlags & 4) === 0) ? false : true);
+        // moreFlags & 8 is normally =8, but when we put the spa into "hold" it switches to 0,
+        // and bytes[22] is set to 64.
         var pump_status1234 = bytes[11];
         // We have a correct determination of the number of pumps automatically.
         if (this.ignoreAutomaticConfiguration || this.pumpsCurrentSpeed[0] != PUMP_NOT_EXISTS) this.pumpsCurrentSpeed[0] = PUMP_STATES[(pump_status1234 & (1+2))];
@@ -610,6 +640,11 @@ export class SpaClient {
         } else {
             this.targetTempModeLow = bytes[20];
         }
+        // byte[21] is also set to 8 when we activate any locks. See bytes[9] above for locks
+        // We ignore it here, since we capture locks above.
+        // byte[22] is set to 64 when we activate 'hold' mode. See bytes[10] above.
+        this.hold = (bytes[22] & 64) != 0;
+
         // Store this for next time
         const oldBytes = this.lastStateBytes;
         this.lastStateBytes = new Uint8Array(bytes);
@@ -663,6 +698,9 @@ export class SpaClient {
         this.log.info("Discovered other components: circ_pump",circ_pump,
             ", blower",blower,", mister",mister,", aux",aux);
         this.accurateConfigReadFromSpa = true;
+        // If we got an accurate read of all the components, then declare that
+        // something has changed. We typically only ever do this once.
+        return true;
     }
 
     /**
@@ -720,6 +758,8 @@ export class SpaClient {
             this.log.info("Configuration Signature",configurationSignature);
             // Not sure what the last 4 bytes 03-0a-44-00 mean
         }
+        // None of the above currently indicate a "change" we need to tell homekit about.
+        return false;
     }
 
     /**

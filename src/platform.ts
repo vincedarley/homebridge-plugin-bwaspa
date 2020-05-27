@@ -7,6 +7,7 @@ import { LightsAccessory } from './lightsAccessory';
 import { TemperatureAccessory } from './temperatureAccessory';
 import { ThermostatAccessory } from './thermostatAccessory';
 import { WaterFlowProblemAccessory } from './waterFlowProblemAccessory';
+import { HoldSwitchAccessory } from './holdSwitchAccessory';
 import { SpaClient } from './spaClient';
 
 /**
@@ -218,6 +219,10 @@ export class SpaHomebridgePlatform implements DynamicPlatformPlugin {
       }
       case "Water Flow Problem Sensor": {
         this.deviceObjects.push(new WaterFlowProblemAccessory(this, accessory));
+        break;
+      }
+      case "Hold Switch": {
+        this.deviceObjects.push(new HoldSwitchAccessory(this, accessory));
         break;
       }
       default: {

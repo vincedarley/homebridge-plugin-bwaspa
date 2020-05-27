@@ -27,6 +27,8 @@ The Spa's current temperature is visible both in the Thermostat device and in th
 
 The flow sensor has 3 states: normal (all good), failed (which triggers a "leak" alarm - and you should be able to configure Home to send you a notification when this happens), or low water flow which triggers a status fault with the sensor.  This is useful to alert you if filters need cleaning (when they are dirty the flow slows/fails, heating is turned off, and the spa cools down).  The Balboa mobile app doesn't alert you to any problems with water flow, so this capability is very helpful. 
 
+There is a "Hold" switch to activate the Spa's hold mode (temporarily turn off all pumps, including the circulation pump, so that you can safely change filters, etc).
+
 ## Here is a sample config
 
 ```
@@ -84,6 +86,8 @@ If the water flow sensor discovers a fault (which it checks for every ten minute
 Some spas have a "blower", "mister", and up to two 'aux' devices. This plugin does not support these at present (although the code does detect if they exist or not on your spa) - it would be pretty simple to add support for them.
 
 No current support for setting the heatmode of the spa ('ready at rest', etc).
+
+The 'lock' status of the Spa control panel is logged, but cannot currently be locked/unlocked through this plugin (unclear if that is theoretically possible or not).
 
 ## Improvements
 
