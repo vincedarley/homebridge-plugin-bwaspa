@@ -48,6 +48,12 @@ export class PumpAccessory {
       this.numSpeedSettings = 1;
     }
 
+    // Important note: Home/Siri call both the "on" and the "setRotationSpeed" together when the pump
+    // is turned from off to on. I've observed that using Siri the speed is set first, then 'on', and
+    // with Home it is the opposite. The code needs to be robust to both cases, AND to the case where
+    // the user just turns the pump on, but doesn't specify a speed (e.g. via a single tap on the pump
+    // in Home) -- here we choose to store the "last speed" and use that for such cases.
+
     // register handlers for the On/Off Characteristic
     this.service.getCharacteristic(this.platform.Characteristic.On)
       .on(CharacteristicEventTypes.SET, this.setOn.bind(this))                // SET - bind to the `setOn` method below
@@ -118,6 +124,8 @@ export class PumpAccessory {
     // value is 0-100, and we want to convert that, irrespective of the number of
     // speeds we have to 0-2 (a 1-speed pump just swaps from 0 to 2 directly);
     const speed = Math.round((value as number)/50.0);
+    // Store this immediately.
+    this.states.lastNonZeroSpeed = speed;
     this.platform.log.debug('Set Pump',this.pumpNumber,'Speed ->', value, 'which is', PUMP_STATES[speed], this.platform.status());
     if (!this.platform.isCurrentlyConnected()) {
       callback(this.platform.connectionProblem);

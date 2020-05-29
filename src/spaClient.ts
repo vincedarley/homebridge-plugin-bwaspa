@@ -312,7 +312,7 @@ export class SpaClient {
     }
     setIsHold(value: boolean) {
         if (this.hold == value) return;
-        this.send_toggle_message(0x3c);
+        this.send_toggle_message('Hold', 0x3c);
         this.hold = value;
     }
     getIsHeatingNow() {
@@ -343,7 +343,7 @@ export class SpaClient {
             // Should we throw an error, or how do we handle this?
         }
         const id = 0x11+index;
-        this.send_toggle_message(id);
+        this.send_toggle_message('Light'+(index+1), id);
         this.lightIsOn[index] = value;
     }
 
@@ -351,7 +351,7 @@ export class SpaClient {
         if ((this.tempRangeIsHigh === isHigh)) {
             return;
         }
-        this.send_toggle_message(0x50);
+        this.send_toggle_message('TempHighLowRange', 0x50);
         this.tempRangeIsHigh = isHigh;
     }
 
@@ -369,43 +369,87 @@ export class SpaClient {
         return this.pumpsCurrentSpeed[index];
     }
 
-    setPumpSpeed(index: number, value: string) {
+    /**
+     * A complication here is that, during filtration cycles, a pump might be locked into an "on"
+     * state.  For example on my Spa, pump 1 goes into "low" state, and I can switch it to "high", but
+     * a toggle from "high" does not switch it off, but rather switches it straight to "low" again.
+     * With single-speed pumps this isn't such an issue, but with 2-speed pumps, this behaviour causes 
+     * problems for the easiest approach to setting the pump to a particular speed.  When we calculate that
+     * two 'toggles' are needed, the reality is that sometimes it might just be one, and hence two
+     * toggles will end us in the wrong pump speed.  There's really just one specific case that is 
+     * annoying as a user: the Pump is "High". Desired speed is "Low". Hence we deduce the need for
+     * two toggles. But, since "Off" is skipped, we end up back where we started in "High".
+     * 
+     * @param index pump number (1-6) convert to index lookup (0-5) convert to Balboa message id (4-9)
+     * @param desiredSpeed Off, Low, High
+     */
+    setPumpSpeed(index: number, desiredSpeed: string) {
+        const pumpName = 'Pump' + index;
         // Pumps are numbered 1,2,3,... by Balboa
         index--;
-        if ((this.pumpsCurrentSpeed[index] === value)) {
+        if ((this.pumpsCurrentSpeed[index] === desiredSpeed)) {
             // No action needed if pump already at the desired speed
             return;
         }
         if (!this.ignoreAutomaticConfiguration && this.pumpsSpeedRange[index] == 0) {
-            this.log.error("Trying to set speed of pump",(index+1),"which doesn't exist");
+            this.log.error("Trying to set speed of", pumpName, "which doesn't exist");
             return;
         }
         // Toggle Pump1 = toggle '4', Pump2 = toggle '5', etc.
         const balboaPumpId = index+4;
         if (this.pumpsSpeedRange[index] == 1) {
             // It is a 1-speed pump - just off or high settings
-            if (value === PUMP_LOW) {
-                this.log.warn("Pump", (index+1), ": Trying to set a 1 speed pump to LOW speed. Switching to HIGH instead.");
-                value = PUMP_HIGH;
+            if (desiredSpeed === PUMP_LOW) {
+                this.log.warn(pumpName, ": Trying to set a 1 speed pump to LOW speed. Switching to HIGH instead.");
+                desiredSpeed = PUMP_HIGH;
             }
             // Any change requires just one toggle. It's either from off to high or high to off
-            this.send_toggle_message(balboaPumpId);
+            this.send_toggle_message(pumpName, balboaPumpId);
+            this.pumpsCurrentSpeed[index] = desiredSpeed;
         } else {
             // How many toggles do we need to get from the current speed
             // to the desired speed?  For a 2-speed pump, allowed speeds are 0,1,2.
             // This code (but not other code in this class) should actually 
             // work as-is for 3-speed pumps if they exist.
-            let loopThrough = this.pumpsSpeedRange[index]+1;
+            let numberOfStates = this.pumpsSpeedRange[index]+1;
             let oldIdx = PUMP_STATES.indexOf(this.pumpsCurrentSpeed[index]);
-            let newIdx = PUMP_STATES.indexOf(value);
-            let count = (loopThrough + newIdx - oldIdx) % loopThrough;
+            let newIdx = PUMP_STATES.indexOf(desiredSpeed);
             // For a 2-speed pump, we'll need to toggle either 1 or 2 times.
-            while (count > 0) {
-                this.send_toggle_message(balboaPumpId);
-                count--;
+            let toggleCount = (numberOfStates + newIdx - oldIdx) % numberOfStates;
+            if (toggleCount == 2 && desiredSpeed === PUMP_LOW) {
+                // Deal with the edge-case complication remarked on above.  
+                // Send one toggle message
+                this.send_toggle_message(pumpName, balboaPumpId);
+                this.pumpsCurrentSpeed[index] = PUMP_OFF;
+                // Then wait a little bit to check what state the pump is in, before
+                // continuing - either we need to do nothing, or we need to do one more
+                // toggle.
+                if (this.devMode) {
+                    this.log.info("Edge case triggered on", pumpName);
+                }
+                // TODO: is this the right amount of waiting? Should we try to explicitly 
+                // synchronise this with the next status update message?
+                setTimeout(() => {
+                    if (this.pumpsCurrentSpeed[index] === PUMP_OFF) {
+                        // This is the normal case. We still have one more toggle to do.
+                        this.send_toggle_message(pumpName, balboaPumpId);
+                        this.pumpsCurrentSpeed[index] = PUMP_LOW;
+                    } else {
+                        // Spa is in filter mode where this specific pump is not
+                        // allowed to turn off. It's already in the right state.
+                        if (this.devMode) {
+                            this.log.info("Pump already in correct state");
+                        }
+                    }
+                }, 500);
+            } else {
+                while (toggleCount > 0) {
+                    this.send_toggle_message(pumpName, balboaPumpId);
+                    toggleCount--;
+                }
+                this.pumpsCurrentSpeed[index] = desiredSpeed;
             }
-        }        
-        this.pumpsCurrentSpeed[index] = value;
+        }
     }
 
     compute_checksum(length: Uint8Array, bytes: Uint8Array) {
@@ -451,9 +495,9 @@ export class SpaClient {
         this.sendMessageToSpa("Checking for any Spa faults", PrimaryRequest, GetFaultsMessageContents);   
     }
 
-    send_toggle_message(item: number) {
-        if (item > 255) {
-            this.log.error("Toggle only a single byte; had " + item);
+    send_toggle_message(itemName: string, code: number) {
+        if (code > 255) {
+            this.log.error("Toggle only a single byte; had " + code);
             return;
         }
         // # 0x04 to 0x09 - pumps 1-6
@@ -469,7 +513,8 @@ export class SpaClient {
         // The spa may also have two "lock" settings - locking the control panel completely, or
         // just locking the settings (but allowing jets and lights, say, to still be used).
         // Don't know what codes to use for those at present.
-        this.sendMessageToSpa("Toggle item " + item, ToggleItemRequest, new Uint8Array([item, 0x00]));
+        this.sendMessageToSpa("Toggle " + itemName + ", using code:"+ code, 
+            ToggleItemRequest, new Uint8Array([code, 0x00]));
     }
 
     // Celsius temperatures are communicated by the Spa in half degrees.
@@ -849,6 +894,7 @@ export class SpaClient {
         if (code == 36) return "the GFCI test failed";
         if (code == 34) return "a pump may be stuck on";
         if (code == 35) return "hot fault";
+        if (code == 37) return "hold mode activated (this is not actually a fault)";
         return "unknown code - check Balboa spa manuals";
     }
 }

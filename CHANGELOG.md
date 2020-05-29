@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.9.18 (29.05.2020)
+- Fix for using Siri to adjust speed of a multi-speed pump, where the on/setRotationSpeed calls are
+  made in reverse order.
+
+## 1.9.17 (28.05.2020)
+- Added fault code M037 for 'hold mode activated'
+- Logic to deal with situation during filtering when a pump cannot be turned off, which
+  specifically leads to a bad user experience when trying to switch the pump from High to 
+  Low speed, when it can actually just end up back in High speed each time.
+
 ## 1.9.16 (27.05.2020)
 - Capture the panel & settings "lock" status of the spa, and the "hold" status.
 - Add ability to create a homekit switch to control the hold status.
