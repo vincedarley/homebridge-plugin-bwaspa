@@ -469,9 +469,14 @@ export class SpaClient {
      * With single-speed pumps this isn't such an issue, but with 2-speed pumps, this behaviour causes 
      * problems for the easiest approach to setting the pump to a particular speed.  When we calculate that
      * two 'toggles' are needed, the reality is that sometimes it might just be one, and hence two
-     * toggles will end us in the wrong pump speed.  There's really just one specific case that is 
-     * annoying as a user: the Pump is "High". Desired speed is "Low". Hence we deduce the need for
+     * toggles will end us in the wrong pump speed.  There are really just two specific case that are 
+     * annoying as a user:
+     * 
+     * 1) the pump is "High". Desired speed is "Low". Hence we deduce the need for
      * two toggles. But, since "Off" is skipped, we end up back where we started in "High".
+     * 
+     * 2) we're trying to turn the pump off, but it can't be turned off. We need to make sure
+     * the ending state is correctly reflected in Home.
      * 
      * @param index pump number (1-6) convert to index lookup (0-5) convert to Balboa message id (4-9)
      * @param desiredSpeed 0...pumpsSpeedRange[index] depending on speed range of the pump
@@ -542,15 +547,17 @@ export class SpaClient {
                     toggleCount--;
                 }
                 this.pumpsCurrentSpeed[index] = desiredSpeed;
-                // TODO the other edge case where we try to turn a pump off
-                // that cannot currently be turned off (scheduled filtering).
-                if (desiredSpeed == 0) {
-                    // Try this to solve the TODO. Will ensure the state of
-                    // everything in home is updated.
-                    this.resetRecentState();
-                }
             }
         }
+        // The other edge case where we try to turn a pump off
+        // that cannot currently be turned off (scheduled filtering).
+        if (desiredSpeed == 0) {
+            // Anytime we turn a pump off, ensure that all remembered state information
+            // is forgotten, so the next information from the Spa will tell us what is
+            // actually going on, and we'll update Home if necessary.
+            this.resetRecentState();
+        }
+
     }
 
     compute_checksum(length: Uint8Array, bytes: Uint8Array) {
@@ -608,11 +615,12 @@ export class SpaClient {
      *  unless the mode is exited manually.
      *  - 0x50 - temperature range (high or low)
      *  - 0x0c - blower
+     *  - 0x0e - mister
+     *  - 0x16 - aux1
+     *  - 0x17 - aux2
      *  
      *  And these which are unsupported in the code at present:
-     *  - 0x0e - mister
-     *  - 0x16 - aux1, 0x17 - aux2
-     *  - 0x51 - heating mode (ready at rest, etc)
+     *  - 0x51 - heating mode (ready, ready at rest, etc)
      *  
      *  The spa may also have two "lock" settings - locking the control panel completely, or
      *  just locking the settings (but allowing jets and lights, say, to still be used).
@@ -650,7 +658,9 @@ export class SpaClient {
     stateToString() {
         let pumpDesc = '[';
         for (let i = 0; i<6;i++) {
-            pumpDesc += this.getSpeedAsString(this.pumpsSpeedRange[i],this.pumpsCurrentSpeed[i]) + ' ';
+            if (this.pumpsSpeedRange[i] > 0) {
+                pumpDesc += this.getSpeedAsString(this.pumpsSpeedRange[i],this.pumpsCurrentSpeed[i]) + ' ';
+            }
         }
         pumpDesc += ']';
 
@@ -668,7 +678,9 @@ export class SpaClient {
         + ", Circ Pump: " + this.circulationPumpIsOn
         + ", Filtering: " + FILTERSTATES[this.filtering]
         + ", Lights: [" + this.lightIsOn + "]"
-        + ", Blower: " + this.blowerCurrentSpeed
+        + (this.blowerCurrentSpeed != undefined ? ", Blower: " + this.blowerCurrentSpeed : "")
+        + (this.misterIsOn != undefined ? ", Mister: " + this.misterIsOn : "")
+        + ", Aux: [" + this.auxIsOn + "]"
         + (this.lockTheEntirePanel ? ", Panel locked" : "")
         + (this.lockTheSettings ? ", Settings locked" : "")
         + (this.hold ? ", Hold mode activated" : "")
@@ -847,6 +859,7 @@ export class SpaClient {
             return value;
         }
     }
+
     /**
      * Get the set of accessories on this spa - how many pumps, lights, etc.
      * 
@@ -1013,13 +1026,14 @@ export class SpaClient {
 
         // To avoid annoyance, only log each fault once.
         if (!this.equal(oldBytes, this.lastFaultBytes)) {
-            this.log.info(message, daysAgo, "days ago of type", "M0"+code,"=",this.faultCodeToString(code),"with details from log:", 
-            "Fault Entries:", bytes[0], "Num:", bytes[1]+1,
-            "Error code:", code, "Days ago:", daysAgo,
-            "Time:", this.timeToString(hour, minute),
-            "Heat mode:", bytes[6], "Set temp:", this.convertTemperature(true, bytes[7]), 
-            "Temp A:", this.convertTemperature(true, bytes[8]), 
-            "Temp B:", this.convertTemperature(true, bytes[9]));
+            this.log.info(message, daysAgo, "days ago of type", 
+            "M0"+code,"=",this.faultCodeToString(code),"with details from log:", 
+            "Fault Entries:", bytes[0], ", Num:", bytes[1]+1,
+            ", Error code:", "M0"+code, ", Days ago:", daysAgo,
+            ", Time:", this.timeToString(hour, minute),
+            ", Heat mode:", bytes[6], ", Set temp:", this.convertTemperature(true, bytes[7]), 
+            ", Temp A:", this.convertTemperature(true, bytes[8]), 
+            ", Temp B:", this.convertTemperature(true, bytes[9]));
         }
         
         return returnValue;

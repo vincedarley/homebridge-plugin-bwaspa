@@ -5,8 +5,10 @@ All notable changes to this project will be documented in this file.
 ## 2.0.0 (03.06.2020)
 - Overhaul of automated spa configuration usage, so that there is no longer a need to
   declare the number of speeds of each pump, etc, in the config.
-- Added support for a "blower", "mister", "aux1", "aux2 on the spa (please test!).
+- Added support for all remaining known Spa devices: "blower", "mister", "aux1", "aux2" (please test!).
 - Various cleanup
+- Corrected corner-case of trying to turn a pump off when that is not possible (e.g. due
+  to the filter schedule)
 
 ## 1.9.18 (29.05.2020)
 - Fix for using Siri to adjust speed of a multi-speed pump, where the on/setRotationSpeed calls are

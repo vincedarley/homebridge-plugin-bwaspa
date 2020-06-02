@@ -19,9 +19,9 @@ Configure the plugin with Homebridge ConfigUI
 
 It supports pumps that are single speed (off or high) and 2-speed (off or low or high). The pump control sliders in Home then step accordingly (0-100% or 0-50%-100%).  Since Homekit doesn't have a notion of a multi-speed jet/pump, they are all treated as fans by Home.
 
-You can control two lights and up to six pumps. 
+You can control two lights and up to six pumps, a mister, a blower, 2 aux devices and the overall heating state of the spa.
 
-The "Thermostat" device type exposes control of the spa's target temperature and high (="Heat" in Home app) vs low (="Cool" in Home app), heating mode.  The target temperature is separate for the two modes and the valid ranges are also different.  If the flow sensor indicates water flow has failed, then the thermostat is "off".  You cannot turn it off yourself - it is not a valid state for the spa itself.
+The "Thermostat" device type exposes control of the spa's target temperature and high (="Heat" in Home app) vs low (="Cool" in Home app), heating mode.  The low mode is generally used as a low-energy vacation mode. The target temperature is separate for the two modes and the valid ranges are also different.  If the flow sensor indicates water flow has failed, then the thermostat is "off".  You cannot turn it off yourself - it is not a valid state for the spa itself.
 
 The Spa's current temperature is visible both in the Thermostat device and in the read-only Temperature Sensor. Up to you if you want/need both devices.
 
@@ -73,11 +73,11 @@ Finally there are other devices on some spas: a "blower" (typically with 3-speed
 
 ## Limitations?
 
-Pumps 4-6 and lights 2 are currently untested (please report if they work for you or not).
+Pumps 4-6, lights 2, and the blower/mister/aux devices are all currently untested (please report if they work for you or not).
 
-The code automatically determines know how many pumps (and their speed options) and lights your spa has. But you do still have to define which pump and light controls you actually want.
+The code automatically determines which devices (e.g. how many pumps, and their speed options) your spa has. But you do still have to choose which pump and light controls you actually want in Home - which you do in the plugin config settings.
 
-Lights are simply on/off.  Balboa provide no capability to control the colour.  So this limitation will never be rectified.
+Lights are simply on/off.  Balboa provide no current capability to control the colour.  So this limitation cannot be rectified, unless Balboa enhance their product.
 
 If the water flow sensor discovers a fault (which it checks for every ten minutes), and you then fix the issue (change/clean filters, etc), the spa does not actually notify that the fault has been corrected. However if you either use 'hold' mode or turn the spa off/on (which you should generally do when changing filters) then a hold or priming event will take precedence and through this plugin the fault will no longer be reported to Homekit. If you don't do either of those actions, then the fault will only be reset in Homekit the following day.
 
