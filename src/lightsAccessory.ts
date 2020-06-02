@@ -7,7 +7,8 @@ import { VERSION } from './settings';
 /**
  * LightsAccessory
  * 
- * Turn Spa lights on or off, and read whether they are on or off
+ * Control Spa lights - on or off. Balboa provides no colour controls (even though the
+ * lights do typically cycle through various colours automatically).
  */
 export class LightsAccessory {
   private service: Service;
@@ -55,6 +56,13 @@ export class LightsAccessory {
     this.platform.log.debug('Set Lights', this.lightNumber, 'On ->', value);
 
     callback(null);
+  }
+
+  spaConfigurationKnown() {
+    if (this.platform.spa.getIsLightOn(this.lightNumber) == undefined) {
+      // This light doesn't exist.
+      this.platform.log.warn("Nonexistent light", this.lightNumber, "accessory declared.");
+    }
   }
 
   // If Spa state has changed, for example using manual controls on the spa, then we must update Homekit.

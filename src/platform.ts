@@ -8,6 +8,8 @@ import { TemperatureAccessory } from './temperatureAccessory';
 import { ThermostatAccessory } from './thermostatAccessory';
 import { WaterFlowProblemAccessory } from './waterFlowProblemAccessory';
 import { HoldSwitchAccessory } from './holdSwitchAccessory';
+import { BlowerAccessory } from './blowerAccessory';
+import { OtherAccessory } from './otherAccessory';
 import { SpaClient } from './spaClient';
 
 /**
@@ -45,8 +47,8 @@ export class SpaHomebridgePlatform implements DynamicPlatformPlugin {
     this.model = config.model ? config.model : 'Unknown model';
 
     // Create and load up our primary client which connects with the spa
-    this.spa = new SpaClient(this.log, config.host, this.updateStateOfAccessories.bind(this),
-      config.ignoreAutomaticConfiguration, config.devMode);
+    this.spa = new SpaClient(this.log, config.host, this.spaConfigurationKnown.bind(this),
+      this.updateStateOfAccessories.bind(this), config.devMode);
     
     // When this event is fired it means Homebridge has restored all cached accessories from disk.
     // Dynamic Platform plugins should only register new accessories after this event was fired,
@@ -75,6 +77,18 @@ export class SpaHomebridgePlatform implements DynamicPlatformPlugin {
 
     // add the restored accessory to the accessories cache so we can track if it has already been registered
     this.accessories.push(accessory);
+  }
+
+  /**
+   * Called once we have received a message from the spa containing the
+   * accurate configuration of number of pumps (and their speed ranges), 
+   * lights, etc.
+   */
+  spaConfigurationKnown() {
+    this.log.debug('Spa configuration known - informing each accessory');
+    this.deviceObjects.forEach(deviceObject => {
+      deviceObject.spaConfigurationKnown();
+    });
   }
 
   private scheduleId : any = undefined;
@@ -119,11 +133,7 @@ export class SpaHomebridgePlatform implements DynamicPlatformPlugin {
   }
 
   isCurrentlyConnected() {
-    // if (this.config.strictConnection) {
-      return this.spa.hasGoodSpaConnection();
-    // } else {
-    //   return true;
-    // }
+    return this.spa.hasGoodSpaConnection();
   }
 
   /**
@@ -223,6 +233,22 @@ export class SpaHomebridgePlatform implements DynamicPlatformPlugin {
       }
       case "Hold Switch": {
         this.deviceObjects.push(new HoldSwitchAccessory(this, accessory));
+        break;
+      }
+      case "Blower": {
+        this.deviceObjects.push(new BlowerAccessory(this, accessory));
+        break;
+      }
+      case "Mister": {
+        this.deviceObjects.push(new OtherAccessory(this, accessory, 0));
+        break;
+      }
+      case "Aux 1": {
+        this.deviceObjects.push(new OtherAccessory(this, accessory, 1));
+        break;
+      }
+      case "Aux 2": {
+        this.deviceObjects.push(new OtherAccessory(this, accessory, 2));
         break;
       }
       default: {

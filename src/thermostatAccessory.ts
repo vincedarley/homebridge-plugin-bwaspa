@@ -226,6 +226,10 @@ export class ThermostatAccessory {
     callback(null);
   }
 
+  spaConfigurationKnown() {
+    // Nothing to do
+  }
+
   // If Spa state has changed, for example using manual controls on the spa, then we must update Homekit.
   updateCharacteristics() {
     if (!this.platform.isCurrentlyConnected()) {

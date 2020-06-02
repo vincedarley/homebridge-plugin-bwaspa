@@ -2,11 +2,6 @@ import * as crc from "crc";
 import type { Logger } from 'homebridge';
 import * as net from "net";
 
-export const PUMP_NOT_EXISTS = "-";
-export const PUMP_OFF = "Off";
-export const PUMP_LOW = "Low";
-export const PUMP_HIGH = "High";
-export const PUMP_STATES = [PUMP_OFF, PUMP_LOW, PUMP_HIGH];
 export const FLOW_GOOD = "Good";
 export const FLOW_LOW = "Low";
 export const FLOW_FAILED = "Failed";
@@ -43,10 +38,21 @@ export class SpaClient {
     socket?: net.Socket;
     // undefined means the light doesn't exist on the spa
     lightIsOn: (boolean | undefined)[];
-    // takes values from PUMP_STATES or PUMP_NOT_EXISTS
-    pumpsCurrentSpeed: string[];
+    // takes values from 0 to pumpsSpeedRange[thisPump]
+    pumpsCurrentSpeed: number[];
     // 0 means doesn't exist, else 1 or 2 indicates number of speeds for this pump
     pumpsSpeedRange: number[];
+
+    // undefined if not on the spa, else 0-3
+    blowerCurrentSpeed: (number|undefined);
+    // 0 means doesn't exist, else 1-3 indicates number of speeds for the blower
+    blowerSpeedRange: number;
+
+    // undefined means the aux doesn't exist on the spa
+    auxIsOn: (boolean | undefined)[];
+
+    // undefined means the mister doesn't exist on the spa
+    misterIsOn: (boolean | undefined);
 
     currentTemp?: number;
     // When spa is in 'high' mode, what is the target temperature
@@ -77,8 +83,6 @@ export class SpaClient {
     // Should be true for almost all of the time, but occasionally the Spa's connection drops
     // and we must reconnect.
     private isCurrentlyConnectedToSpa: boolean;
-    // Don't use the automatically determined configuration to constrain the actions taken.
-    ignoreAutomaticConfiguration: boolean;
     // Stored so that we can cancel it if needed
     faultCheckIntervalId: any;
     devMode: boolean;
@@ -87,18 +91,22 @@ export class SpaClient {
     lastFaultBytes = new Uint8Array();
 
     constructor(public readonly log: Logger, public readonly host: string, 
-      public readonly changesCallback: () => void, ignoreAutomatic?: boolean, devMode?: boolean) {
+      public readonly spaConfigurationKnownCallback: () => void, 
+      public readonly changesCallback: () => void, devMode?: boolean) {
         this.accurateConfigReadFromSpa = false;
         this.isCurrentlyConnectedToSpa = false;
-        this.ignoreAutomaticConfiguration = (ignoreAutomatic ? ignoreAutomatic : false);
         this.devMode = (devMode ? devMode : false);
         // Be generous to start. Once we've read the config we will reduce the number of lights
         // if needed.
         this.lightIsOn = [false,false];
+        this.auxIsOn = [false, false];
+        this.misterIsOn = false;
         // Be generous to start.  Once we've read the config, we'll set reduce
         // the number of pumps and their number of speeds correctly
-        this.pumpsCurrentSpeed = [PUMP_OFF,PUMP_OFF,PUMP_OFF,PUMP_OFF,PUMP_OFF,PUMP_OFF];
+        this.pumpsCurrentSpeed = [0,0,0,0,0,0];
         this.pumpsSpeedRange = [2,2,2,2,2,2];
+        this.blowerCurrentSpeed = 0;
+        this.blowerSpeedRange = 0;
         // All of these will be set by the Spa as soon as we get the first status update
         this.currentTemp = undefined;
         this.hour = 12;
@@ -301,12 +309,53 @@ export class SpaClient {
     getIsLightOn(index: number) {
         // Lights are numbered 1,2 by Balboa
         index--;
-        if (!this.ignoreAutomaticConfiguration && this.lightIsOn[index] == undefined) {
-            this.log.error("Trying to get status of light",(index+1),"which doesn't exist");
-            return false;
-        }
         return this.lightIsOn[index];
     }
+
+    setMisterState(value: boolean) {
+        if ((this.misterIsOn === value)) {
+            return;
+        }
+        if (this.misterIsOn == undefined) {
+            this.log.error("Trying to set state of mister which doesn't exist");
+            return;
+        }
+        if (!this.isCurrentlyConnectedToSpa) {
+            // Should we throw an error, or how do we handle this?
+        }
+        const id = 0x0e;
+        this.send_toggle_message('Mister', id);
+        this.misterIsOn = value;
+
+    }
+
+    getIsMisterOn() {
+        return this.misterIsOn;
+    }
+
+    setAuxState(index: number, value: boolean) {
+        // Aux are numbered 1,2 by Balboa
+        index--;
+        if ((this.auxIsOn[index] === value)) {
+            return;
+        }
+        if (this.auxIsOn[index] == undefined) {
+            this.log.error("Trying to set state of aux",(index+1),"which doesn't exist");
+            return;
+        }
+        if (!this.isCurrentlyConnectedToSpa) {
+            // Should we throw an error, or how do we handle this?
+        }
+        const id = 0x16+index;
+        this.send_toggle_message('Aux'+(index+1), id);
+        this.auxIsOn[index] = value;
+    }
+    
+    getIsAuxOn(index: number) {
+        index--;
+        return this.auxIsOn[index];
+    }
+
     getIsHold() {
         return this.hold;
     }
@@ -335,7 +384,7 @@ export class SpaClient {
         if ((this.lightIsOn[index] === value)) {
             return;
         }
-        if (!this.ignoreAutomaticConfiguration && this.lightIsOn[index] == undefined) {
+        if (this.lightIsOn[index] == undefined) {
             this.log.error("Trying to set state of light",(index+1),"which doesn't exist");
             return;
         }
@@ -359,14 +408,58 @@ export class SpaClient {
         return this.flow;
     }
 
+    getPumpSpeedRange(index: number) {
+        return this.pumpsSpeedRange[index-1];
+    }
+
+    getSpeedAsString(range: number, speed: number) {
+        if (range == 1) {
+            return ["Off", "High"][speed];
+        } else if (range == 2) {
+            return ["Off", "Low", "High"][speed];
+        } else if (range == 3) {
+            return ["Off", "Low", "Medium", "High"][speed];
+        } else {
+            return undefined
+        }
+    }
+
     getPumpSpeed(index: number) {
         // Pumps are numbered 1,2,3,... by Balboa
         index--;
-        if (!this.ignoreAutomaticConfiguration && this.pumpsSpeedRange[index] == 0) {
+        if (this.pumpsSpeedRange[index] == 0) {
             this.log.error("Trying to get speed of pump",(index+1),"which doesn't exist");
-            return PUMP_OFF;
+            return 0;
         }
         return this.pumpsCurrentSpeed[index];
+    }
+
+    getBlowerSpeedRange() {
+        return this.blowerSpeedRange;
+    }
+
+    getBlowerSpeed() {
+        if (this.blowerCurrentSpeed === undefined) {
+            this.log.error("Trying to get speed of blower, which doesn't exist");
+            return 0;
+        }
+        return this.blowerCurrentSpeed!;
+    }
+
+    setBlowerSpeed(desiredSpeed: number) {
+        if (this.blowerCurrentSpeed === undefined) {
+            this.log.error("Trying to set speed of blower, which doesn't exist");
+            return;
+        }
+        let numberOfStates = 4;
+        let oldIdx = this.blowerCurrentSpeed!;
+        let toggleCount = (numberOfStates + desiredSpeed - oldIdx) % numberOfStates;
+        // Anything from 0 to 3 toggles needed.
+        while (toggleCount > 0) {
+            this.send_toggle_message('Blower', 0x0c);
+            toggleCount--;
+        }
+        this.blowerCurrentSpeed = desiredSpeed;
     }
 
     /**
@@ -381,28 +474,29 @@ export class SpaClient {
      * two toggles. But, since "Off" is skipped, we end up back where we started in "High".
      * 
      * @param index pump number (1-6) convert to index lookup (0-5) convert to Balboa message id (4-9)
-     * @param desiredSpeed Off, Low, High
+     * @param desiredSpeed 0...pumpsSpeedRange[index] depending on speed range of the pump
      */
-    setPumpSpeed(index: number, desiredSpeed: string) {
+    setPumpSpeed(index: number, desiredSpeed: number) {
         const pumpName = 'Pump' + index;
         // Pumps are numbered 1,2,3,... by Balboa
         index--;
-        if ((this.pumpsCurrentSpeed[index] === desiredSpeed)) {
+        if (this.pumpsCurrentSpeed[index] === desiredSpeed) {
             // No action needed if pump already at the desired speed
             return;
         }
-        if (!this.ignoreAutomaticConfiguration && this.pumpsSpeedRange[index] == 0) {
+        if (this.pumpsSpeedRange[index] == 0) {
             this.log.error("Trying to set speed of", pumpName, "which doesn't exist");
+            return;
+        }
+        if (desiredSpeed > this.pumpsSpeedRange[index]) {
+            this.log.error("Trying to set speed of", pumpName, " faster (",desiredSpeed,
+              ") than the pump supports (",this.pumpsSpeedRange[index] ,").");
             return;
         }
         // Toggle Pump1 = toggle '4', Pump2 = toggle '5', etc.
         const balboaPumpId = index+4;
         if (this.pumpsSpeedRange[index] == 1) {
-            // It is a 1-speed pump - just off or high settings
-            if (desiredSpeed === PUMP_LOW) {
-                this.log.warn(pumpName, ": Trying to set a 1 speed pump to LOW speed. Switching to HIGH instead.");
-                desiredSpeed = PUMP_HIGH;
-            }
+            // It is a 1-speed pump
             // Any change requires just one toggle. It's either from off to high or high to off
             this.send_toggle_message(pumpName, balboaPumpId);
             this.pumpsCurrentSpeed[index] = desiredSpeed;
@@ -412,15 +506,15 @@ export class SpaClient {
             // This code (but not other code in this class) should actually 
             // work as-is for 3-speed pumps if they exist.
             let numberOfStates = this.pumpsSpeedRange[index]+1;
-            let oldIdx = PUMP_STATES.indexOf(this.pumpsCurrentSpeed[index]);
-            let newIdx = PUMP_STATES.indexOf(desiredSpeed);
+            let oldIdx = this.pumpsCurrentSpeed[index];
+            let newIdx = desiredSpeed;
             // For a 2-speed pump, we'll need to toggle either 1 or 2 times.
             let toggleCount = (numberOfStates + newIdx - oldIdx) % numberOfStates;
-            if (toggleCount == 2 && desiredSpeed === PUMP_LOW) {
+            if (toggleCount == 2 && desiredSpeed === 1) {
                 // Deal with the edge-case complication remarked on above.  
                 // Send one toggle message
                 this.send_toggle_message(pumpName, balboaPumpId);
-                this.pumpsCurrentSpeed[index] = PUMP_OFF;
+                this.pumpsCurrentSpeed[index] = 0;
                 // Then wait a little bit to check what state the pump is in, before
                 // continuing - either we need to do nothing, or we need to do one more
                 // toggle.
@@ -430,10 +524,10 @@ export class SpaClient {
                 // TODO: is this the right amount of waiting? Should we try to explicitly 
                 // synchronise this with the next status update message?
                 setTimeout(() => {
-                    if (this.pumpsCurrentSpeed[index] === PUMP_OFF) {
+                    if (this.pumpsCurrentSpeed[index] === 0) {
                         // This is the normal case. We still have one more toggle to do.
                         this.send_toggle_message(pumpName, balboaPumpId);
-                        this.pumpsCurrentSpeed[index] = PUMP_LOW;
+                        this.pumpsCurrentSpeed[index] = 1;
                     } else {
                         // Spa is in filter mode where this specific pump is not
                         // allowed to turn off. It's already in the right state.
@@ -448,6 +542,13 @@ export class SpaClient {
                     toggleCount--;
                 }
                 this.pumpsCurrentSpeed[index] = desiredSpeed;
+                // TODO the other edge case where we try to turn a pump off
+                // that cannot currently be turned off (scheduled filtering).
+                if (desiredSpeed == 0) {
+                    // Try this to solve the TODO. Will ensure the state of
+                    // everything in home is updated.
+                    this.resetRecentState();
+                }
             }
         }
     }
@@ -495,24 +596,36 @@ export class SpaClient {
         this.sendMessageToSpa("Checking for any Spa faults", PrimaryRequest, GetFaultsMessageContents);   
     }
 
+    /**
+     * Most of the Spa's controls are "toggles" - i.e. we don't set a pump to a specific
+     * speed, or turn a light on, but rather we increment or toggle the state of a device,
+     * so the same action turns a light on as off, and to get a 2-speed pump from off to high
+     * we need to toggle it twice.  Here are the known codes:
+     *  - 0x04 to 0x09 - pumps 1-6
+     *  - 0x11-0x12 - lights 1-2
+     *  - 0x3c - hold. Hold mode is used to disable the pumps during service 
+     *  functions like cleaning or replacing the filter.  Hold mode will last for 1 hour
+     *  unless the mode is exited manually.
+     *  - 0x50 - temperature range (high or low)
+     *  - 0x0c - blower
+     *  
+     *  And these which are unsupported in the code at present:
+     *  - 0x0e - mister
+     *  - 0x16 - aux1, 0x17 - aux2
+     *  - 0x51 - heating mode (ready at rest, etc)
+     *  
+     *  The spa may also have two "lock" settings - locking the control panel completely, or
+     *  just locking the settings (but allowing jets and lights, say, to still be used).
+     *  Don't know what codes to use for those at present (assuming they are controllable).
+     */
     send_toggle_message(itemName: string, code: number) {
         if (code > 255) {
             this.log.error("Toggle only a single byte; had " + code);
             return;
         }
-        // # 0x04 to 0x09 - pumps 1-6
-        // # 0x11-0x12 - lights 1-2
-        // # 0x3c - hold. Hold mode is used to disable the pumps during
-        // service functions like cleaning or replacing the filter.  Hold mode will last for 1 hour
-        // unless the mode is exited manually.
-        // # 0x51 - heating mode (ready at rest, etc) (unsupported at present)
-        // # 0x50 - temperature range (high or low)
-        // # 0x0e - mister (unsupported at present)
-        // # 0x0c - blower (unsupported at present)
-        // # 0x16 - aux1, 0x17 - aux2 (unsupported at present)
-        // The spa may also have two "lock" settings - locking the control panel completely, or
-        // just locking the settings (but allowing jets and lights, say, to still be used).
-        // Don't know what codes to use for those at present.
+        // All of these codes form a 2-byte message - the code and zero.
+        // (no idea why, nor if making that zero something else will change the
+        // outcome).
         this.sendMessageToSpa("Toggle " + itemName + ", using code:"+ code, 
             ToggleItemRequest, new Uint8Array([code, 0x00]));
     }
@@ -535,6 +648,12 @@ export class SpaClient {
     }
 
     stateToString() {
+        let pumpDesc = '[';
+        for (let i = 0; i<6;i++) {
+            pumpDesc += this.getSpeedAsString(this.pumpsSpeedRange[i],this.pumpsCurrentSpeed[i]) + ' ';
+        }
+        pumpDesc += ']';
+
         var s = "Temp: " + this.temperatureToString(this.currentTemp) 
         + ", Target Temp(H): " + this.temperatureToString(this.targetTempModeHigh) 
         + ", Target Temp(L): " + this.temperatureToString(this.targetTempModeLow) 
@@ -545,10 +664,11 @@ export class SpaClient {
         + ", Time Scale: " + this.time_12or24  
         + ", Heating: " + this.isHeatingNow 
         + ", Temp Range: " + (this.tempRangeIsHigh ? "High" : "Low")
-        + ", Pumps: " + this.pumpsCurrentSpeed
+        + ", Pumps: " + pumpDesc
         + ", Circ Pump: " + this.circulationPumpIsOn
         + ", Filtering: " + FILTERSTATES[this.filtering]
         + ", Lights: [" + this.lightIsOn + "]"
+        + ", Blower: " + this.blowerCurrentSpeed
         + (this.lockTheEntirePanel ? ", Panel locked" : "")
         + (this.lockTheSettings ? ", Settings locked" : "")
         + (this.hold ? ", Hold mode activated" : "")
@@ -658,26 +778,39 @@ export class SpaClient {
         // and bytes[22] is set to 64.
         var pump_status1234 = bytes[11];
         // We have a correct determination of the number of pumps automatically.
-        if (this.ignoreAutomaticConfiguration || this.pumpsCurrentSpeed[0] != PUMP_NOT_EXISTS) this.pumpsCurrentSpeed[0] = PUMP_STATES[(pump_status1234 & (1+2))];
-        if (this.ignoreAutomaticConfiguration || this.pumpsCurrentSpeed[1] != PUMP_NOT_EXISTS) this.pumpsCurrentSpeed[1] = PUMP_STATES[((pump_status1234 & (4+8)) >> 2)];
-        if (this.ignoreAutomaticConfiguration || this.pumpsCurrentSpeed[2] != PUMP_NOT_EXISTS) this.pumpsCurrentSpeed[2] = PUMP_STATES[((pump_status1234 & (16+32)) >> 4)];
-        if (this.ignoreAutomaticConfiguration || this.pumpsCurrentSpeed[3] != PUMP_NOT_EXISTS) this.pumpsCurrentSpeed[3] = PUMP_STATES[((pump_status1234 & (64+128)) >> 6)];
+        this.pumpsCurrentSpeed[0] = this.internalSetPumpSpeed(this.pumpsSpeedRange[0], 
+            (pump_status1234 & (1+2)));
+        this.pumpsCurrentSpeed[1] = this.internalSetPumpSpeed(this.pumpsSpeedRange[1], 
+            (pump_status1234 & (4+8)) >> 2);
+        this.pumpsCurrentSpeed[2] = this.internalSetPumpSpeed(this.pumpsSpeedRange[2], 
+            (pump_status1234 & (16+32)) >> 4);
+        this.pumpsCurrentSpeed[3] = this.internalSetPumpSpeed(this.pumpsSpeedRange[3], 
+            (pump_status1234 & (64+128)) >> 6);
         // pumps 5,6 are untested by me.
         var pump_status56 = bytes[12];
-        if (this.ignoreAutomaticConfiguration || this.pumpsCurrentSpeed[4] != PUMP_NOT_EXISTS) this.pumpsCurrentSpeed[4] = PUMP_STATES[(pump_status56 & (1+2))];
-        if (this.ignoreAutomaticConfiguration || this.pumpsCurrentSpeed[5] != PUMP_NOT_EXISTS) this.pumpsCurrentSpeed[5] = PUMP_STATES[((pump_status56 & (4+8)) >> 2)];
+        this.pumpsCurrentSpeed[4] = this.internalSetPumpSpeed(this.pumpsSpeedRange[4], 
+            (pump_status56 & (1+2)));
+        this.pumpsCurrentSpeed[5] = this.internalSetPumpSpeed(this.pumpsSpeedRange[5], 
+            (pump_status56 & (4+8)) >> 2);
         // Not sure if this circ_pump index or logic is correct.
         this.circulationPumpIsOn = ((bytes[13] & 2) !== 0);
         // The lights are in the low order bites of 'bytes[14]'
-        if (this.ignoreAutomaticConfiguration || this.lightIsOn[0] != undefined) this.lightIsOn[0] = ((bytes[14] & (1+2)) === (1+2));
-        if (this.ignoreAutomaticConfiguration || this.lightIsOn[1] != undefined) this.lightIsOn[1] = ((bytes[14] & (4+8)) === (4+8));
+        if (this.lightIsOn[0] != undefined) this.lightIsOn[0] = ((bytes[14] & (1+2)) === (1+2));
+        if (this.lightIsOn[1] != undefined) this.lightIsOn[1] = ((bytes[14] & (4+8)) === (4+8));
         
-        // Believe the following lines are correct, but no way to test on my spa
-        // mister = data[15] & 0x01 - on/off for the mister device.
+        // Believe the following mister/blower/aux lines are correct, but no way to test on my spa
+
+        // Oon/off for the mister device.
+        if (this.misterIsOn != undefined) {
+            this.misterIsOn = (bytes[15] & 0x01) != 0;
+        }
         // Blowers can have 4 states: off, low, medium, high
-        // blower = (data[13] & 0x0c) >> 2
-        // aux1 = data[15] & 0x08 - on/off for device 'aux1'
-        // aux2 = data[15] & 0x10 - on/off for device 'aux2'
+        if (this.blowerCurrentSpeed != undefined) {
+            this.blowerCurrentSpeed = (bytes[13] & 0x0c) >> 2;
+        }
+        // The two aux devices:
+        if (this.auxIsOn[0] != undefined) this.auxIsOn[0] = (bytes[15] & 0x08) !== 0;
+        if (this.auxIsOn[1] != undefined) this.auxIsOn[1] = (bytes[15] & 0x10) !== 0;
 
         // Bytes 16,17,18,19 - unused or unknown at present
         if (this.tempRangeIsHigh) {
@@ -706,12 +839,24 @@ export class SpaClient {
         return false;
     }
 
+    internalSetPumpSpeed(range : number, value: number) {
+        if (range === 1) {
+            // Spa actually uses 0,2 as the state of a 1-speed pump. We convert that to 0,1
+            return value > 0 ? 1 : 0;
+        } else {
+            return value;
+        }
+    }
     /**
      * Get the set of accessories on this spa - how many pumps, lights, etc.
      * 
      * @param bytes 1a(=00011010),00,01,90,00,00 on my spa
      */
     interpretControlTypesReply(bytes: Uint8Array) {
+        if (this.accurateConfigReadFromSpa) {
+            this.log.info("Already discovered Spa configuration.");
+            return false;
+        }
         // 2 bits per pump. Pumps 5 and 6 are apparently P6xxxxP5 in the second byte
         // Line up all the bites in a row
         var pumpFlags1to6 = bytes[0] + 256 * (bytes[1] & 0x03) + 16 * (bytes[1] & 0xc0);
@@ -719,8 +864,11 @@ export class SpaClient {
         for (var idx = 0; idx < 6; idx++) {
             // 0 = no such pump, 1 = off/high pump, 2 = off/low/high pump
             this.pumpsSpeedRange[idx] = pumpFlags1to6 & 0x03;
+            if (this.pumpsSpeedRange[idx] === 3) {
+                this.log.error("3-speed pumps not currently supported.  Please file a bug report.");
+            }
             if (this.pumpsSpeedRange[idx] == 0) {
-                this.pumpsCurrentSpeed[idx] = PUMP_NOT_EXISTS;
+                this.pumpsCurrentSpeed[idx] = 0;
             } else {
                 countPumps++;  
             }
@@ -735,14 +883,20 @@ export class SpaClient {
         var countLights = (lights[0] ? 1 : 0) + (lights[1] ? 1 : 0);
 
         var circ_pump = (bytes[3] & 0x80) != 0;
-        var blower = (bytes[3] & 0x03) != 0;
-        var mister = (bytes[4] & 0x30) != 0;
+        // 0 if it doesn't exist, else number of speeds
+        this.blowerSpeedRange = (bytes[3] & 0x03);
+        this.blowerCurrentSpeed = this.blowerSpeedRange > 0 ? 0 : undefined;
+        this.misterIsOn = (bytes[4] & 0x30) != 0 ? false : undefined;
 
         var aux = [(bytes[4] & 0x01) != 0,(bytes[4] & 0x02) != 0];
+        this.auxIsOn[0] = aux[0] ? false : undefined;
+        this.auxIsOn[1] = aux[1] ? false : undefined;
+
         this.log.info("Discovered",countLights,"light"+(countLights!=1?"s":""));
         this.log.info("Discovered other components: circ_pump",circ_pump,
-            ", blower",blower,", mister",mister,", aux",aux);
+            ", blower", this.blowerSpeedRange,", mister",this.misterIsOn,", aux",aux);
         this.accurateConfigReadFromSpa = true;
+        this.spaConfigurationKnownCallback();
         // If we got an accurate read of all the components, then declare that
         // something has changed. We typically only ever do this once.
         return true;
@@ -760,8 +914,12 @@ export class SpaClient {
      *   which is MS40E in this case (SIREV16 is a value reported by another user).
      * - After that comes 1 byte for 'current setup' and then 4 bytes which encode
      * the 'configuration signature'. 
-     * 3: 05,01,32,63,50,68,61,07,41
-     * - No idea?! ' cPha' is the ascii version of the middle 5 bytes - so probably not ascii!
+     * 3: Results for various people: 
+     * 05,01,32,63,50,68,61,07,41 <- mine
+     * 12,11,32,63,50,68,61,03,41 
+     * 12,04,32,63,50,68,29,03,41
+     * 04,01,32,63,3c,68,08,03,41
+     * - No idea?! ' cPha' is the ascii version of my middle 5 bytes - so probably not ascii!
      * 4: Reminders, cleaning cycle length, etc.: 00,85,00,01,01,02,00,00,00,00,00,00,00,00,00,00,00,00
      * - first 01 = temp scale (F or C)
      * - next 01 = time format (12hour or 24hour)
@@ -794,7 +952,7 @@ export class SpaClient {
             });
             // No idea what these really mean, but they are shown on the spa screen
             let currentSetup = contents[12];
-            let configurationSignature = Buffer.from(contents.slice(13,17)).toString('hex');
+            let configurationSignature = Buffer.from(contents.slice(13,17)).toString('hex').toUpperCase();
             // This is most of the information that shows up in the Spa display
             // when you go to the info screen.
             this.log.info("System Model", motherboard);
@@ -803,7 +961,8 @@ export class SpaClient {
             this.log.info("Configuration Signature",configurationSignature);
             // Not sure what the last 4 bytes 03-0a-44-00 mean
         }
-        // None of the above currently indicate a "change" we need to tell homekit about.
+        // None of the above currently indicate a "change" we need to tell homekit about,
+        // so return false
         return false;
     }
 
@@ -876,24 +1035,30 @@ export class SpaClient {
         return true;
     }
 
+    /**
+     * All fault codes I've found on the internet, e.g. in balboa spa manuals
+     * 
+     * @param code 
+     */
     faultCodeToString(code: number) {
+        if (code == 15) return "sensors may be out of sync";
         if (code == 16) return "the water flow is low";
         if (code == 17) return "the water flow has failed";
         if (code == 19) return "priming (this is not actually a fault - your Spa was recently turned on)"
-        if (code == 28) return "the heater may be dry";
-        if (code == 27) return "the heater is dry";
-        if (code == 30) return "the heater is too hot";
-        if (code == 29) return "the water is too hot";
-        if (code == 15) return "sensors are out of sync";
+        if (code == 20) return "the clock has failed";
+        if (code == 21) return "the settings have been reset (persistent memory error)";
+        if (code == 22) return "program memory failure";
         if (code == 26) return "sensors are out of sync -- call for service";
+        if (code == 27) return "the heater is dry";
+        if (code == 28) return "the heater may be dry";
+        if (code == 29) return "the water is too hot";
+        if (code == 30) return "the heater is too hot";
         if (code == 31) return "sensor A fault";
         if (code == 32) return "sensor B fault";
-        if (code == 22) return "program memory failure";
-        if (code == 21) return "the settings have been reset (persistent memory error)";
-        if (code == 20) return "the clock has failed";
-        if (code == 36) return "the GFCI test failed";
+        if (code == 33) return "safety trip - pump suction blockage";
         if (code == 34) return "a pump may be stuck on";
         if (code == 35) return "hot fault";
+        if (code == 36) return "the GFCI test failed";
         if (code == 37) return "hold mode activated (this is not actually a fault)";
         return "unknown code - check Balboa spa manuals";
     }

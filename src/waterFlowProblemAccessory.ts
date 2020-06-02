@@ -54,6 +54,10 @@ export class WaterFlowProblemAccessory {
     callback(null, flowState === "LOW");
   }
 
+  spaConfigurationKnown() {
+    // nothing to do
+  }
+
   // If Spa state has changed, for example using manual controls on the spa, then we must update Homekit.
   updateCharacteristics() {
     const flowState = this.platform.spa.getFlowState();

@@ -36,26 +36,6 @@
               "placeholder": "my Pump or light or...",
               "required": true
             },
-            "pumpRange": {
-              "title": "Pump speed range (required for pumps)",
-              "type": "integer",
-              "maximum": 2,
-              "oneOf": [
-                {
-                  "title": "Off or High",
-                  "enum": [
-                    1
-                  ]
-                },
-                {
-                  "title": "Off or Low or High",
-                  "enum": [
-                    2
-                  ]
-                }
-              ],
-              "required": false
-            },
             "deviceType": {
               "title": "Device type",
               "type": "string",
@@ -131,6 +111,30 @@
                   "title": "Hold Switch",
                   "enum": [
                     "Hold Switch"
+                  ]
+                },
+                {
+                  "title": "Blower",
+                  "enum": [
+                    "Blower"
+                  ]
+                },
+                {
+                  "title": "Mister",
+                  "enum": [
+                    "Mister"
+                  ]
+                },
+                {
+                  "title": "Aux 1",
+                  "enum": [
+                    "Aux 1"
+                  ]
+                },
+                {
+                  "title": "Aux 2",
+                  "enum": [
+                    "Aux 2"
                   ]
                 }
               ],
