@@ -2,6 +2,9 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2.0.1 (03.06.2020)
+- Logging and documentation improvements
+
 ## 2.0.0 (03.06.2020)
 - Overhaul of automated spa configuration usage, so that there is no longer a need to
   declare the number of speeds of each pump, etc, in the config.

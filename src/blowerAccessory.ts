@@ -171,7 +171,8 @@ export class BlowerAccessory {
     const isOn = speed != 0;
     const speedValue = (100.0*speed)/this.numSpeedSettings;
     
-    this.platform.log.debug('Blower updating to',isOn,'and',speed);
+    this.platform.log.debug('Blower updating to',isOn ? 'On' : 'Off','and',speed, 'which is', 
+      this.platform.spa.getSpeedAsString(this.numSpeedSettings, speed));
     this.service.getCharacteristic(this.platform.Characteristic.On).updateValue(isOn);
     this.service.getCharacteristic(this.platform.Characteristic.RotationSpeed).updateValue(speedValue);
   }
@@ -203,7 +204,8 @@ export class BlowerAccessory {
   }
 
   private setSpeed(speed: number) {
-    this.platform.log.debug('Blower actually setting speed to',speed, this.platform.status());
+    this.platform.log.debug('Blower actually setting speed to',speed,'which is', 
+      this.platform.spa.getSpeedAsString(this.numSpeedSettings, speed), this.platform.status());
     this.platform.spa.setBlowerSpeed(speed);
     if (speed != 0) {
       this.states.lastNonZeroSpeed = speed;

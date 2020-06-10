@@ -749,6 +749,13 @@ export class SpaClient {
         return returnValue;
     }
 
+    /**
+     * By resetting our knowledge of recent state, we ensure the next time the spa reports 
+     * its state, that we broadcast that to Homekit as an update. This is useful whenever
+     * we have reason to believe the state might be out of sync. We therefore use it for
+     * two purposes: (a) immediately after a (re)connection with the spa, (b) when we try
+     * to turn a pump off, but believe it might not be allowed to be off.
+     */
     resetRecentState() {
         this.lastStateBytes = new Uint8Array();
         this.lastFaultBytes = new Uint8Array();
@@ -853,7 +860,7 @@ export class SpaClient {
 
     internalSetPumpSpeed(range : number, value: number) {
         if (range === 1) {
-            // Spa actually uses 0,2 as the state of a 1-speed pump. We convert that to 0,1
+            // Spa actually reports 0,2 as the state of a 1-speed pump. We convert that to 0,1
             return value > 0 ? 1 : 0;
         } else {
             return value;
@@ -878,7 +885,7 @@ export class SpaClient {
             // 0 = no such pump, 1 = off/high pump, 2 = off/low/high pump
             this.pumpsSpeedRange[idx] = pumpFlags1to6 & 0x03;
             if (this.pumpsSpeedRange[idx] === 3) {
-                this.log.error("3-speed pumps not currently supported.  Please file a bug report.");
+                this.log.error("3-speed pumps not fully supported.  Please test carefully and report bugs.");
             }
             if (this.pumpsSpeedRange[idx] == 0) {
                 this.pumpsCurrentSpeed[idx] = 0;

@@ -73,7 +73,7 @@ export class LightsAccessory {
     }
     const isOn = this.platform.spa.getIsLightOn(this.lightNumber);
     if (isOn != undefined) {
-      this.platform.log.debug('Light',this.lightNumber,'updating to',isOn);
+      this.platform.log.debug('Light',this.lightNumber,'updating to',isOn ? 'On' : 'Off');
       this.service.getCharacteristic(this.platform.Characteristic.On).updateValue(isOn);
     }
   }

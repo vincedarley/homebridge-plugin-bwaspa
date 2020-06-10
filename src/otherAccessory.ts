@@ -85,13 +85,13 @@ export class OtherAccessory {
     if (this.type === 0) {
       const isOn = this.platform.spa.getIsMisterOn();
       if (isOn != undefined) {
-        this.platform.log.debug('Mister updating to',isOn);
+        this.platform.log.debug('Mister updating to',isOn ? 'On' : 'Off');
         this.service.getCharacteristic(this.platform.Characteristic.On).updateValue(isOn);
       }
     } else {
       const isOn = this.platform.spa.getIsAuxOn(this.type);
       if (isOn != undefined) {
-        this.platform.log.debug('Aux',this.type,'updating to',isOn);
+        this.platform.log.debug('Aux',this.type,'updating to',isOn ? 'On' : 'Off');
         this.service.getCharacteristic(this.platform.Characteristic.On).updateValue(isOn);
       }
     }

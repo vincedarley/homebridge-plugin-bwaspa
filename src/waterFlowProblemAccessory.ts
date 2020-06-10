@@ -7,8 +7,10 @@ import { VERSION } from './settings';
 /**
  * WaterFlowProblemAccessory
  * 
- * We use a water flow accessory from a LeakSensor to tell us if there's a problem with the
- * water flow in the heating system of the hot tub.
+ * We create a water flow monitor as a Homekit LeakSensor to tell us if there's a problem 
+ * with the water flow in the heating system of the hot tub.  At least in my experience
+ * this is the most common, easily resolvable, but annoying problem that can occur. The
+ * earlier you are notified (hence Home integration), the less troubling it is.
  */
 export class WaterFlowProblemAccessory {
   private service: Service;

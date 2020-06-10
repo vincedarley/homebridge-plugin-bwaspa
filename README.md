@@ -7,7 +7,7 @@
 
 # Homebridge Balboa Spa Plugin
 
-This plugin will connect some Balboa Spas over their wifi, and expose a set of controls (pumps, lights, etc) and its temperature, and temperature control, in HomeKit.  It also exposes a "Leak Sensor" which acts as a sensor for whether the heater water flow in the spa is all good.  You can set that up in Home to send you a notification if anything goes wrong.
+This plugin will connect to Spas/Hot-tubs via their Balboa wifi module, and expose a set of controls (pumps, lights, etc) and its temperature, and temperature control, in HomeKit.  It also exposes a "Leak Sensor" which acts as a sensor for whether the heater water flow in the spa is all good.  You can set that up in Home to send you a notification if anything goes wrong.
 
 The plugin does a good job of ensuring the state of all controls remains in sync whether you manipulate the controls through Home, through Siri, through physical controls on the spa, or through the Balboa spa app, and takes account of situations (e.g. during filtering) where some pumps cannot be turned off.
 
@@ -17,7 +17,7 @@ Configure the plugin with Homebridge ConfigUI
 
 # More details on supported accessories
 
-It supports pumps that are single speed (off or high) and 2-speed (off or low or high). The pump control sliders in Home then step accordingly (0-100% or 0-50%-100%).  Since Homekit doesn't have a notion of a multi-speed jet/pump, they are all treated as fans by Home.
+It supports pumps that are single speed (off or high) and 2-speed (off or low or high). The pump control sliders in Home then step accordingly (0-100% or 0-50%-100%).  Since Homekit doesn't have a notion of a multi-speed jet/pump, they are all treated as "fans" by Home.
 
 You can control two lights and up to six pumps, a mister, a blower, 2 aux devices and the overall heating state of the spa.
 

@@ -66,7 +66,7 @@ export class HoldSwitchAccessory {
       return;
     }
     const isOnHold = this.platform.spa.getIsHold();
-    this.platform.log.debug('Hold updating to',isOnHold);
+    this.platform.log.debug('Hold updating to',isOnHold ? 'On' : 'Off');
     this.service.getCharacteristic(this.platform.Characteristic.On).updateValue(isOnHold);
   }
   
