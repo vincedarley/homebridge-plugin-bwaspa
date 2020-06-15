@@ -23,7 +23,7 @@ export class WaterFlowProblemAccessory {
     // set accessory information
     this.accessory.getService(this.platform.Service.AccessoryInformation)!
       .setCharacteristic(this.platform.Characteristic.Manufacturer, 'Balboa')
-      .setCharacteristic(this.platform.Characteristic.Model, this.platform.model)
+      .setCharacteristic(this.platform.Characteristic.Model, this.platform.name)
       .setCharacteristic(this.platform.Characteristic.SerialNumber, VERSION);
 
     // get the LeakSensor service if it exists, otherwise create a new LeakSensor service

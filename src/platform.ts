@@ -27,7 +27,7 @@ export class SpaHomebridgePlatform implements DynamicPlatformPlugin {
   spa : (SpaClient | undefined);
   devices : any[];
   deviceObjects : any[];
-  model : string;
+  name : string;
 
   connectionProblem = new Error('Connecting...');
 
@@ -46,8 +46,8 @@ export class SpaHomebridgePlatform implements DynamicPlatformPlugin {
     this.spa = undefined;
 
     // If the user has specified the model name, use that.
-    this.model = config.model ? config.model : 'Unknown model';
-
+    this.name = config.name!;
+    
     // When this event is fired it means Homebridge has restored all cached accessories from disk.
     // Dynamic Platform plugins should only register new accessories after this event was fired,
     // in order to ensure they weren't added to homebridge already. This event can also be used
@@ -103,6 +103,9 @@ export class SpaHomebridgePlatform implements DynamicPlatformPlugin {
    * lights, etc.
    */
   spaConfigurationKnown() {
+    if (this.config.autoCreateAccessories) {
+      this.discoverDevices();
+    }
     this.log.debug('Spa configuration known - informing each accessory');
     this.deviceObjects.forEach(deviceObject => {
       deviceObject.spaConfigurationKnown();
@@ -161,41 +164,63 @@ export class SpaHomebridgePlatform implements DynamicPlatformPlugin {
    * must not be registered again to prevent "duplicate UUID" errors.
    */
   discoverDevices() {
+    if (this.config.autoCreateAccessories && this.spa && this.spa.accurateConfigReadFromSpa) {
+      if (this.spa!.getIsLightOn(1) != undefined) this.makeDevice({name: 'Spa Lights 1', deviceType: 'Lights 1'});
+      if (this.spa!.getIsLightOn(2) != undefined) this.makeDevice({name: 'Spa Lights 2', deviceType: 'Lights 2'});
+      for (let pump = 1; pump <=6; pump++) {
+        if (this.spa!.getPumpSpeedRange(pump) != 0) this.makeDevice({name: 'Spa Pump '+pump, deviceType: 'Pump '+pump});
+      }
+      this.makeDevice({name: 'Spa Temperature Sensor', deviceType: 'Temperature Sensor'});
+      this.makeDevice({name: 'Spa Thermostat', deviceType: 'Thermostat'});
+      this.makeDevice({name: 'Spa Flow', deviceType: 'Water Flow Problem Sensor'});
+      this.makeDevice({name: 'Hold Spa', deviceType: 'Hold Switch'});
+      if (this.spa!.getBlowerSpeedRange() != 0) this.makeDevice({name: 'Spa Blower', deviceType: 'Blower'});
+      if (this.spa!.getIsMisterOn() != undefined) this.makeDevice({name: 'Spa Mister', deviceType: 'Mister'});
+      if (this.spa!.getIsAuxOn(1) != undefined) this.makeDevice({name: 'Spa Aux 1', deviceType: 'Aux 1'});
+      if (this.spa!.getIsAuxOn(2) != undefined) this.makeDevice({name: 'Spa Aux 2', deviceType: 'Aux 2'});
+    }
     for (var device of this.devices) {
       if (!device.deviceType) {
         this.log.warn('Device Type Missing')
       } else {
-        // generate a unique id for the accessory this should be generated from
-        // something globally unique, but constant, for example, the device serial
-        // number or MAC address
-        const uuid = this.api.hap.uuid.generate(device.deviceType);
-
-        // check that the device has not already been registered by checking the
-        // cached devices we stored in the `configureAccessory` method above
-        if (!this.accessories.find(accessory => accessory.UUID === uuid)) {
-          this.log.info('Registering new accessory:', device.name , 'of type', device.deviceType);
-          // create a new accessory
-          const accessory = new this.api.platformAccessory(device.name, uuid);
-
-          // store a copy of the device object in the `accessory.context`
-          // the `context` property can be used to store any data about the accessory you may need
-          accessory.context.device = device;
-
-          this.makeAccessory(accessory);
-
-          // link the accessory to your platform
-          this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory]);
-
-          // push into accessory cache
-          this.accessories.push(accessory);
-
-          // it is possible to remove platform accessories at any time using `api.unregisterPlatformAccessories`, eg.:
-          // this.api.unregisterPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory]);
-          // If we do this, we should also remove them from the deviceObjects array.
-        }
+        this.makeDevice(device);
       }
     }
+  }
 
+  private makeDevice(device: any) {
+    // generate a unique id for the accessory this should be generated from
+    // something globally unique, but constant, for example, the device serial
+    // number or MAC address
+    const uuid = this.api.hap.uuid.generate(device.deviceType);
+
+    // check that the device has not already been registered by checking the
+    // cached devices we stored in the `configureAccessory` method above
+    if (!this.accessories.find(accessory => accessory.UUID === uuid)) {
+      this.log.info('Registering new accessory:', device.name, 'of type', device.deviceType);
+      // create a new accessory
+      const accessory = new this.api.platformAccessory(device.name, uuid);
+
+      // store a copy of the device object in the `accessory.context`
+      // the `context` property can be used to store any data about the accessory you may need
+      accessory.context.device = device;
+
+      this.makeAccessory(accessory);
+
+      // link the accessory to your platform
+      this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory]);
+
+      // push into accessory cache
+      this.accessories.push(accessory);
+
+      // it is possible to remove platform accessories at any time using `api.unregisterPlatformAccessories`, eg.:
+      // this.api.unregisterPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory]);
+      // If we do this, we should also remove them from the deviceObjects array.
+    }
+  }
+
+  autoCreateAccessories() {
+    this.spa
   }
 
   /*

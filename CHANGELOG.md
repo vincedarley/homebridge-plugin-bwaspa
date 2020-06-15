@@ -7,6 +7,11 @@ All notable changes to this project will be documented in this file.
   the IP address in the configuration settings is now optional
 - Improved some areas which assumed the spa was currently connected (they generally disconnect
   spontaneously from time to time)
+- Allow automatic creation of all spa controls in homebridge, and use that as the default
+  behaviour. Still allow falling-back to manually created controls if desired by the user.
+- Removed 'model' from config. The plugin simply uses the name you give your spa for that purpose.
+- Together all of the above means the default 'config' for this plugin only requires you to give your
+  Spa a name.
   
 ## 2.0.1 (03.06.2020)
 - Logging and documentation improvements

@@ -16,9 +16,7 @@ export class PumpAccessory {
    * Remember the last speed so that flipping the pump on/off will use the same 
    * speed as last time.
    */
-  private states = {
-    lastNonZeroSpeed: 1
-  }
+  lastNonZeroSpeed = 1;
 
   // Always 1-3
   numSpeedSettings : number;
@@ -32,7 +30,7 @@ export class PumpAccessory {
     // set accessory information
     this.accessory.getService(this.platform.Service.AccessoryInformation)!
       .setCharacteristic(this.platform.Characteristic.Manufacturer, 'Balboa')
-      .setCharacteristic(this.platform.Characteristic.Model, this.platform.model)
+      .setCharacteristic(this.platform.Characteristic.Model, this.platform.name)
       .setCharacteristic(this.platform.Characteristic.SerialNumber, VERSION);
 
     // get the Fan service if it exists, otherwise create a new Fan service
@@ -77,7 +75,7 @@ export class PumpAccessory {
       return;
     }
     if (value as boolean) {
-      this.scheduleSetSpeed(this.states.lastNonZeroSpeed);
+      this.scheduleSetSpeed(this.lastNonZeroSpeed);
     } else {
       this.scheduleSetSpeed(0);
     }
@@ -124,7 +122,7 @@ export class PumpAccessory {
     // value is 0-100, and we want to convert that, to 0-1, 0-2, 0-3 as appropriate.
     const speed = Math.round((value as number)*this.numSpeedSettings/100.0);
     // Store this immediately.
-    this.states.lastNonZeroSpeed = speed;
+    this.lastNonZeroSpeed = speed;
     this.platform.log.debug('Set Pump',this.pumpNumber,'Speed ->', value, 'which is', 
       SpaClient.getSpeedAsString(this.numSpeedSettings, speed), this.platform.status());
 
@@ -213,7 +211,7 @@ export class PumpAccessory {
       SpaClient.getSpeedAsString(this.numSpeedSettings, speed), this.platform.status());
     this.platform.spa!.setPumpSpeed(this.pumpNumber, speed);
     if (speed != 0) {
-      this.states.lastNonZeroSpeed = speed;
+      this.lastNonZeroSpeed = speed;
     }
   }
 }

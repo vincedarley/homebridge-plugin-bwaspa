@@ -12,10 +12,11 @@
         "required": true,
         "placeholder": "My Hot Tub"
       },
-      "model": {
-        "title": "Spa Model",
-        "type": "string",
-        "required": false
+      "autoCreateAccessories": {
+        "title": "Automatically Create All Spa Controls as Accessories",
+        "type": "boolean",
+        "default": true,
+        "required": true
       },
       "host": {
         "title": "IP Address",
@@ -25,8 +26,9 @@
         "format": "hostname"
       },
       "devices": {
-        "title": "Devices",
+        "title": "Manually Created Accessories",
         "type": "array",
+        "required": false,
         "items": {
           "type": "object",
           "properties": {
@@ -39,7 +41,7 @@
             "deviceType": {
               "title": "Device type",
               "type": "string",
-              "default": "Lights 1",
+              "required": true,
               "oneOf": [
                 {
                   "title": "Pump 1",
@@ -137,8 +139,7 @@
                     "Aux 2"
                   ]
                 }
-              ],
-              "required": true
+              ]
             }
           }
         }

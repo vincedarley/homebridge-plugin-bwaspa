@@ -21,7 +21,7 @@ export class HoldSwitchAccessory {
     // set accessory information
     this.accessory.getService(this.platform.Service.AccessoryInformation)!
       .setCharacteristic(this.platform.Characteristic.Manufacturer, 'Balboa')
-      .setCharacteristic(this.platform.Characteristic.Model, this.platform.model)
+      .setCharacteristic(this.platform.Characteristic.Model, this.platform.name)
       .setCharacteristic(this.platform.Characteristic.SerialNumber, VERSION);
 
     this.service = this.accessory.getService(this.platform.Service.Switch) ?? this.accessory.addService(this.platform.Service.Switch);

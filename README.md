@@ -7,11 +7,11 @@
 
 # Homebridge Balboa Spa Plugin
 
-This plugin will connect to Spas/Hot-tubs via their Balboa wifi module, and expose a set of controls (pumps, lights, etc) and its temperature, and temperature control, in HomeKit.  It also exposes a "Leak Sensor" which acts as a sensor for whether the heater water flow in the spa is all good.  You can set that up in Home to send you a notification if anything goes wrong.
+This plugin will connect to Spas/Hot-tubs via their Balboa wifi module, and expose a set of controls (pumps, lights, etc) and the spa temperature, and temperature control, in HomeKit.  It also exposes a "Leak Sensor" which acts as a sensor for whether the heater water flow in the spa is all good.  You can set that up in Home to send you a notification if anything goes wrong.
 
 The plugin does a good job of ensuring the state of all controls remains in sync whether you manipulate the controls through Home, through Siri, through physical controls on the spa, or through the Balboa spa app, and takes account of situations (e.g. during filtering) where some pumps cannot be turned off.
 
-Configure the plugin with Homebridge ConfigUI
+The default behaviour is for the plugin to discover your Spa automatically on your network, query it for all supported controls and make them all available to Homekit automatically.  You can modify much of that behaviour by configuring the plugin with Homebridge ConfigUI.  And of course you can rename or delete accessories in Home to serve your purposes.
 
 [![verified-by-homebridge](https://badgen.net/badge/homebridge/verified/purple)](https://github.com/homebridge/homebridge/wiki/Verified-Plugins)
 
@@ -29,13 +29,24 @@ The flow sensor has 3 states: normal (all good), failed (which triggers a "leak"
 
 There is a "Hold" switch to activate the Spa's hold mode (temporarily turn off all pumps, including the circulation pump, so that you can safely change filters, etc).
 
-Finally there are other devices on some spas: a "blower" (typically with 3-speeds), a "mister" and two auxiliary devices (aux1 and aux2).  They are all supported by this plugin, but not actually properly tested (please test them and report back on success or any problems).
+Finally there are other devices on some spas: a "blower" (typically with 3-speeds), a "mister" and two auxiliary devices (aux1 and aux2).  They are all supported by this plugin, but not yet fully tested (please test them and report back on success or any problems).
 
-## Here is a sample config
+## Here are some sample configs
 
+The default config only requires you to give your Spa a name, with everything else handled automatically:
+```
+        {
+            "name": "MasterSpa MP7",
+            "autoCreateAccessories": true,
+            "platform": "Balboa-Spa"
+        }
+```
+
+However, if you wish to, or need to, make some manual adjustments, you can do so:
 ```
 {
             "name": "My Hot Tub",
+            "autoCreateAccessories": false,
             "host": "192.168.1.151",
             "devices": [
                 {
@@ -75,8 +86,6 @@ Finally there are other devices on some spas: a "blower" (typically with 3-speed
 
 Pumps 4-6, lights 2, and the blower/mister/aux devices are all currently untested (please report if they work for you or not).
 
-The code automatically determines which devices (e.g. how many pumps, and their speed options) your spa has. But you do still have to choose which pump and light controls you actually want in Home - which you do in the plugin config settings.
-
 Lights are simply on/off.  Balboa provide no current capability to control the colour.  So this limitation cannot be rectified, unless Balboa enhance their product.
 
 If the water flow sensor discovers a fault (which it checks for every ten minutes), and you then fix the issue (change/clean filters, etc), the spa does not actually notify that the fault has been corrected. However if you either use 'hold' mode or turn the spa off/on (which you should generally do when changing filters) then a hold or priming event will take precedence and through this plugin the fault will no longer be reported to Homekit. If you don't do either of those actions, then the fault will only be reset in Homekit the following day.
@@ -84,6 +93,10 @@ If the water flow sensor discovers a fault (which it checks for every ten minute
 No current support for setting the heatmode of the spa ('ready', 'ready at rest', etc).
 
 The 'lock' status of the Spa control panel is monitored and logged, but cannot currently be locked/unlocked through this plugin (unclear if that is theoretically possible or not).
+
+## Reliability
+
+There's a fair amount of information on the internet of how the Balboa Wifi module is pretty unreliable.  In particular prior to the '-06' release of the '50350' module, it would regularly disconnect and then be unable to reconnect (with rebooting the power supply to the module).  With my own spa, the module is fairly reliable but even then does disconnect for a few minutes to an hour once every day or two.  But between the module and this plugin's reconnect capability, a reconnection does always ultimately happen.  If your Spa's module is less reliable, I would suggest a first step is to check which module version you have.
 
 ## Improvements
 
