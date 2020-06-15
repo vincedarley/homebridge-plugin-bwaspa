@@ -11,6 +11,7 @@ import { HoldSwitchAccessory } from './holdSwitchAccessory';
 import { BlowerAccessory } from './blowerAccessory';
 import { OtherAccessory } from './otherAccessory';
 import { SpaClient } from './spaClient';
+import { discoverSpas } from './discovery';
 
 /**
  * SpaHomebridgePlatform
@@ -23,7 +24,7 @@ export class SpaHomebridgePlatform implements DynamicPlatformPlugin {
 
   // this is used to track restored cached accessories
   public readonly accessories: PlatformAccessory[] = [];
-  spa : SpaClient;
+  spa : (SpaClient | undefined);
   devices : any[];
   deviceObjects : any[];
   model : string;
@@ -42,14 +43,11 @@ export class SpaHomebridgePlatform implements DynamicPlatformPlugin {
     this.log.debug('Finished initializing platform:', this.config.name);
     this.devices = config.devices || [];
     this.deviceObjects = new Array();
-    
+    this.spa = undefined;
+
     // If the user has specified the model name, use that.
     this.model = config.model ? config.model : 'Unknown model';
 
-    // Create and load up our primary client which connects with the spa
-    this.spa = new SpaClient(this.log, config.host, this.spaConfigurationKnown.bind(this),
-      this.updateStateOfAccessories.bind(this), config.devMode);
-    
     // When this event is fired it means Homebridge has restored all cached accessories from disk.
     // Dynamic Platform plugins should only register new accessories after this event was fired,
     // in order to ensure they weren't added to homebridge already. This event can also be used
@@ -60,10 +58,26 @@ export class SpaHomebridgePlatform implements DynamicPlatformPlugin {
       this.discoverDevices();
     });
 
+    if (config.host && config.host.length() > 0) {
+      // The user provided the IP address in the config
+      this.haveAddressOfSpa(config.devMode, config.host);
+    } else {
+      // We'll go out and find it automatically
+      discoverSpas(log, this.haveAddressOfSpa.bind(this, config.devMode));
+    }
+    
     this.api.on(APIEvent.SHUTDOWN, () => {
       log.debug('Closing down homebridge - closing our connection to the Spa...');
-      this.spa.shutdownSpaConnection();
+      if (this.spa) {
+        this.spa.shutdownSpaConnection();
+      }
     });
+  }
+
+  haveAddressOfSpa(devMode: boolean, ip: string) {
+    // Create and load up our primary client which connects with the spa
+    this.spa = new SpaClient(this.log, ip, this.spaConfigurationKnown.bind(this),
+      this.updateStateOfAccessories.bind(this), devMode);
   }
 
   /**
@@ -125,7 +139,7 @@ export class SpaHomebridgePlatform implements DynamicPlatformPlugin {
   }
 
   status() {
-    if (this.spa.hasGoodSpaConnection()) {
+    if (this.isCurrentlyConnected()) {
       return "(connected)";
     } else {
       return "(not currently connected)";
@@ -133,7 +147,7 @@ export class SpaHomebridgePlatform implements DynamicPlatformPlugin {
   }
 
   isCurrentlyConnected() {
-    return this.spa.hasGoodSpaConnection();
+    return this.spa ? this.spa.hasGoodSpaConnection() : false;
   }
 
   /**

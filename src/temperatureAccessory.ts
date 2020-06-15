@@ -52,16 +52,15 @@ export class TemperatureAccessory {
    * this.service.updateCharacteristic(this.platform.Characteristic.get, true)
    */
   get(callback: CharacteristicGetCallback) {
-    const temperature = this.platform.spa.getCurrentTemp();
-
-    // Seems as if Homekit interprets null as something simply to be ignored, hence Homekit
-    // just uses the previous known value.
-    const val = (temperature == undefined ? null : temperature);
-    this.platform.log.debug('Get Temperature <-', val, this.platform.status());
-
     if (!this.platform.isCurrentlyConnected()) {
       callback(this.platform.connectionProblem);
     } else {
+      const temperature = this.platform.spa!.getCurrentTemp();
+
+      // Seems as if Homekit interprets null as something simply to be ignored, hence Homekit
+      // just uses the previous known value.
+      const val = (temperature == undefined ? null : temperature);
+      this.platform.log.debug('Get Temperature <-', val, this.platform.status());
       callback(null, val);
     }
   }
@@ -77,7 +76,7 @@ export class TemperatureAccessory {
       return;
     }
 
-    const temperature = this.platform.spa.getCurrentTemp();
+    const temperature = this.platform.spa!.getCurrentTemp();
     const val = (temperature == undefined ? null : temperature!);
     this.platform.log.debug('Temperature updating to',val);
     this.service.getCharacteristic(this.platform.Characteristic.CurrentTemperature).updateValue(val);

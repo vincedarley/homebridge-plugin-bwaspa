@@ -52,14 +52,14 @@ export class LightsAccessory {
       return;
     }
     // Turn the light on or off
-    this.platform.spa.setLightState(this.lightNumber, value as boolean);
+    this.platform.spa!.setLightState(this.lightNumber, value as boolean);
     this.platform.log.debug('Set Lights', this.lightNumber, 'On ->', value);
 
     callback(null);
   }
 
   spaConfigurationKnown() {
-    if (this.platform.spa.getIsLightOn(this.lightNumber) == undefined) {
+    if (this.platform.spa!.getIsLightOn(this.lightNumber) == undefined) {
       // This light doesn't exist.
       this.platform.log.warn("Nonexistent light", this.lightNumber, "accessory declared.");
     }
@@ -71,7 +71,7 @@ export class LightsAccessory {
       this.service.getCharacteristic(this.platform.Characteristic.On).updateValue(this.platform.connectionProblem);
       return;
     }
-    const isOn = this.platform.spa.getIsLightOn(this.lightNumber);
+    const isOn = this.platform.spa!.getIsLightOn(this.lightNumber);
     if (isOn != undefined) {
       this.platform.log.debug('Light',this.lightNumber,'updating to',isOn ? 'On' : 'Off');
       this.service.getCharacteristic(this.platform.Characteristic.On).updateValue(isOn);
@@ -92,12 +92,12 @@ export class LightsAccessory {
    * this.service.updateCharacteristic(this.platform.Characteristic.On, true)
    */
   getOn(callback: CharacteristicGetCallback) {
-    // Read whether the light is on or off
-    const isOn = this.platform.spa.getIsLightOn(this.lightNumber);
-    this.platform.log.debug('Get Lights', this.lightNumber, 'On <-', isOn, this.platform.status());
     if (!this.platform.isCurrentlyConnected()) {
       callback(this.platform.connectionProblem);
     } else {
+      // Read whether the light is on or off
+      const isOn = this.platform.spa!.getIsLightOn(this.lightNumber);
+      this.platform.log.debug('Get Lights', this.lightNumber, 'On <-', isOn, this.platform.status());
       callback(null, isOn);
     }
   }

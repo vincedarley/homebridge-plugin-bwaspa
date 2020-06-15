@@ -97,50 +97,62 @@ export class ThermostatAccessory {
    * this.service.updateCharacteristic(this.platform.Characteristic.get, true)
    */
   getCurrentTemperature(callback: CharacteristicGetCallback) {
-    const temperature = this.platform.spa.getCurrentTemp();
-    // Seems as if Homekit interprets null as something simply to be ignored, hence Homekit
-    // just uses the previous known value.
-    const val = (temperature == undefined ? null : temperature);
-
-    this.platform.log.debug('Get Current Temperature <-', val, this.platform.status());
-
-    callback(null, val);
-  }
-
-  getTemperatureDisplayUnits(callback: CharacteristicGetCallback) {
-    const cOrF = this.platform.spa.getTempIsCorF();
-    const units = (cOrF == "Fahrenheit" 
-    ? this.platform.Characteristic.TemperatureDisplayUnits.FAHRENHEIT : this.platform.Characteristic.TemperatureDisplayUnits.CELSIUS);
-    this.platform.log.debug('Get Temperature Display Units <-', cOrF, " ", units, this.platform.status());
-
-    callback(null, units);
-  }
-
-  getHeatingState(callback: CharacteristicGetCallback) {
-    const heating = this.platform.spa.getIsHeatingNow();
-    this.platform.log.debug('Get Heating State <-', heating, this.platform.status());
-
-    callback(null, heating ? this.platform.Characteristic.CurrentHeatingCoolingState.HEAT
-      : this.platform.Characteristic.CurrentHeatingCoolingState.OFF);
-  }
-
-  getTargetHeatingState(callback: CharacteristicGetCallback) {
-    const mode = this.platform.spa.getTempRangeIsHigh();
-    // might want "LOW" or "FAILED" here, rather than just the latter.
-    const flowError = (this.platform.spa.getFlowState() == FLOW_FAILED);
-    var result;
-    if (flowError) {
-      result = this.platform.Characteristic.TargetHeatingCoolingState.OFF;
-    } else {
-      result = mode ? this.platform.Characteristic.TargetHeatingCoolingState.HEAT 
-      : this.platform.Characteristic.TargetHeatingCoolingState.COOL;
-    }
-    this.platform.log.debug('Get Target Heating State <-', 
-    mode ? "HEAT" : "COOL", "Flow error(" + flowError + ")", result, this.platform.status());
-
     if (!this.platform.isCurrentlyConnected()) {
       callback(this.platform.connectionProblem);
     } else {
+      const temperature = this.platform.spa!.getCurrentTemp();
+      // Seems as if Homekit interprets null as something simply to be ignored, hence Homekit
+      // just uses the previous known value.
+      const val = (temperature == undefined ? null : temperature);
+  
+      this.platform.log.debug('Get Current Temperature <-', val, this.platform.status());
+  
+      callback(null, val);
+    }
+  }
+
+  getTemperatureDisplayUnits(callback: CharacteristicGetCallback) {
+    if (!this.platform.isCurrentlyConnected()) {
+      callback(this.platform.connectionProblem);
+    } else {
+      const cOrF = this.platform.spa!.getTempIsCorF();
+      const units = (cOrF == "Fahrenheit" 
+      ? this.platform.Characteristic.TemperatureDisplayUnits.FAHRENHEIT : this.platform.Characteristic.TemperatureDisplayUnits.CELSIUS);
+      this.platform.log.debug('Get Temperature Display Units <-', cOrF, " ", units, this.platform.status());
+  
+      callback(null, units);
+    }    
+  }
+
+  getHeatingState(callback: CharacteristicGetCallback) {
+    if (!this.platform.isCurrentlyConnected()) {
+      callback(this.platform.connectionProblem);
+    } else {
+      const heating = this.platform.spa!.getIsHeatingNow();
+      this.platform.log.debug('Get Heating State <-', heating, this.platform.status());
+  
+      callback(null, heating ? this.platform.Characteristic.CurrentHeatingCoolingState.HEAT
+        : this.platform.Characteristic.CurrentHeatingCoolingState.OFF);
+    }
+  }
+
+  getTargetHeatingState(callback: CharacteristicGetCallback) {
+    if (!this.platform.isCurrentlyConnected()) {
+      callback(this.platform.connectionProblem);
+    } else {
+      const mode = this.platform.spa!.getTempRangeIsHigh();
+      // might want "LOW" or "FAILED" here, rather than just the latter.
+      const flowError = (this.platform.spa!.getFlowState() == FLOW_FAILED);
+      var result;
+      if (flowError) {
+        result = this.platform.Characteristic.TargetHeatingCoolingState.OFF;
+      } else {
+        result = mode ? this.platform.Characteristic.TargetHeatingCoolingState.HEAT 
+        : this.platform.Characteristic.TargetHeatingCoolingState.COOL;
+      }
+      this.platform.log.debug('Get Target Heating State <-', 
+      mode ? "HEAT" : "COOL", "Flow error(" + flowError + ")", result, this.platform.status());
+  
       callback(null, result);
     }
   }
@@ -152,7 +164,7 @@ export class ThermostatAccessory {
     }
     if (value == this.platform.Characteristic.TargetHeatingCoolingState.OFF) {
       // Check if this makes sense or if we should reject the change.
-      if (this.platform.spa.getFlowState() == FLOW_GOOD) {
+      if (this.platform.spa!.getFlowState() == FLOW_GOOD) {
         this.platform.log.debug("Spa doesn't allow turned heating off. Reverting.");
         callback(new Error("Spa doesn't allow turned heating off. Reverting."));
         // value = Characteristic.TargetHeatingCoolingState.COOL;
@@ -160,14 +172,14 @@ export class ThermostatAccessory {
         //   .updateValue(Characteristic.TargetHeatingCoolingState.COOL);
         return;
       }
-    } else if (this.platform.spa.getFlowState() == FLOW_FAILED) {
+    } else if (this.platform.spa!.getFlowState() == FLOW_FAILED) {
       // Can only be in the "off" state
       callback(new Error("Water flow has failed. Heating off"));
       return;
     }
     // HEAT means "high".  If users chooses "cool" or "off", we treat those as "low"
     const heating = (value == this.platform.Characteristic.TargetHeatingCoolingState.HEAT);
-    this.platform.spa.setTempRangeIsHigh(heating);
+    this.platform.spa!.setTempRangeIsHigh(heating);
     this.platform.log.debug('Set Target Heating State ->', heating ? "HEAT" : "COOL", 
       value, "(and need to adjust valid range)", this.platform.status());
     // Adjust the allowed range
@@ -175,17 +187,17 @@ export class ThermostatAccessory {
     // We need to change the target temperature (which the Spa adjust automatically when switching
     // from High to Low), else it will take a while for HomeKit to pick that up automatically.
     this.service.getCharacteristic(this.platform.Characteristic.TargetTemperature)
-          .updateValue(this.platform.spa.getTargetTemp());
+          .updateValue(this.platform.spa!.getTargetTemp());
     callback(null);
   }
 
   getTargetTemperature(callback: CharacteristicGetCallback) {
-    const temperature = this.platform.spa.getTargetTemp();
-    this.platform.log.debug('Get Target Temperature <-', temperature, this.platform.status());
-
     if (!this.platform.isCurrentlyConnected()) {
       callback(this.platform.connectionProblem);
     } else {
+      const temperature = this.platform.spa!.getTargetTemp();
+      this.platform.log.debug('Get Target Temperature <-', temperature, this.platform.status());
+  
       callback(null, temperature);
     }
   }
@@ -196,7 +208,7 @@ export class ThermostatAccessory {
       return;
     }
     var temp = value as number;
-    if (this.platform.spa.getTempRangeIsHigh()) {
+    if (this.platform.spa!.getTempRangeIsHigh()) {
       if (temp < 26.5) {
         temp = 26.5;
         // TODO: This line doesn't actually seem to update homekit.  Unless we can find
@@ -219,7 +231,7 @@ export class ThermostatAccessory {
         return;
       }
     }
-    this.platform.spa.setTargetTemperature(temp);
+    this.platform.spa!.setTargetTemperature(temp);
     this.platform.log.debug('Set Target Temperature ->', temp, 
       " (may be different to", value, ")", this.platform.status());
 
@@ -239,13 +251,13 @@ export class ThermostatAccessory {
       this.service.getCharacteristic(this.platform.Characteristic.CurrentHeatingCoolingState).updateValue(this.platform.connectionProblem);
       return;
     }
-    const mode = this.platform.spa.getTempRangeIsHigh();
-    const heating = this.platform.spa.getIsHeatingNow();
-    const temperature = this.platform.spa.getCurrentTemp();
+    const mode = this.platform.spa!.getTempRangeIsHigh();
+    const heating = this.platform.spa!.getIsHeatingNow();
+    const temperature = this.platform.spa!.getCurrentTemp();
     const val = (temperature == undefined ? null : temperature!);
 
-    const targetTemperature = this.platform.spa.getTargetTemp();
-    const flowState = this.platform.spa.getFlowState();
+    const targetTemperature = this.platform.spa!.getTargetTemp();
+    const flowState = this.platform.spa!.getFlowState();
 
     this.platform.log.debug('Thermostat updating to: target:',targetTemperature,'(current:',
       val,'), is high:', mode, ', is heating:', heating, ', flow state:', flowState);

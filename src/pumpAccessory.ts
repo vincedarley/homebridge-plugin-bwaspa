@@ -3,6 +3,7 @@ import type { Service, PlatformAccessory, CharacteristicValue, CharacteristicSet
 
 import { SpaHomebridgePlatform } from './platform';
 import { VERSION } from './settings';
+import { SpaClient } from './spaClient';
 
 /**
  * Control a 1- or 2- speed pump as a homekit "fan". If 3 speed pumps exist,
@@ -121,7 +122,7 @@ export class PumpAccessory {
     // Store this immediately.
     this.states.lastNonZeroSpeed = speed;
     this.platform.log.debug('Set Pump',this.pumpNumber,'Speed ->', value, 'which is', 
-      this.platform.spa.getSpeedAsString(this.numSpeedSettings, speed), this.platform.status());
+      SpaClient.getSpeedAsString(this.numSpeedSettings, speed), this.platform.status());
     if (!this.platform.isCurrentlyConnected()) {
       callback(this.platform.connectionProblem);
       return;
@@ -141,7 +142,7 @@ export class PumpAccessory {
     // of the number of speeds the pump has
     const value = (100.0*speed)/this.numSpeedSettings;
     this.platform.log.debug('Get Pump',this.pumpNumber,'Speed <-', value, 'which is', 
-      this.platform.spa.getSpeedAsString(this.numSpeedSettings, speed), this.platform.status());
+      SpaClient.getSpeedAsString(this.numSpeedSettings, speed), this.platform.status());
     if (!this.platform.isCurrentlyConnected()) {
       callback(this.platform.connectionProblem);
     } else {
@@ -150,12 +151,12 @@ export class PumpAccessory {
   }
 
   spaConfigurationKnown() {
-    if (this.platform.spa.getPumpSpeedRange(this.pumpNumber) === 0) {
+    if (this.platform.spa!.getPumpSpeedRange(this.pumpNumber) === 0) {
       // This pump doesn't exist.
       this.platform.log.warn("Nonexistent pump", this.pumpNumber, "accessory declared.");
       return;
     }
-    this.numSpeedSettings = this.platform.spa.getPumpSpeedRange(this.pumpNumber);
+    this.numSpeedSettings = this.platform.spa!.getPumpSpeedRange(this.pumpNumber);
     this.platform.log.info("Pump", this.pumpNumber, "has", this.numSpeedSettings, "speeds.");
     // Tell Home about the minimum step size to use (e.g. 50% means values of 0, 50%, 100% are ok)
     this.service.getCharacteristic(this.platform.Characteristic.RotationSpeed)
@@ -175,14 +176,14 @@ export class PumpAccessory {
     const speedValue = (100.0*speed)/this.numSpeedSettings;
     
     this.platform.log.debug('Pump',this.pumpNumber,'updating to',isOn ? 'On' : 'Off','and',speed,'which is', 
-      this.platform.spa.getSpeedAsString(this.numSpeedSettings, speed));
+      SpaClient.getSpeedAsString(this.numSpeedSettings, speed));
     this.service.getCharacteristic(this.platform.Characteristic.On).updateValue(isOn);
     this.service.getCharacteristic(this.platform.Characteristic.RotationSpeed).updateValue(speedValue);
   }
 
   private getSpeed() {
     // return 0, 1 or 2.
-    return this.platform.spa.getPumpSpeed(this.pumpNumber);
+    return this.platform.spa!.getPumpSpeed(this.pumpNumber);
   }
 
   private scheduleId : any = undefined;
@@ -208,8 +209,8 @@ export class PumpAccessory {
 
   private setSpeed(speed: number) {
     this.platform.log.debug('Pump',this.pumpNumber,'actually setting speed to',speed,'which is', 
-      this.platform.spa.getSpeedAsString(this.numSpeedSettings, speed), this.platform.status());
-    this.platform.spa.setPumpSpeed(this.pumpNumber, speed);
+      SpaClient.getSpeedAsString(this.numSpeedSettings, speed), this.platform.status());
+    this.platform.spa!.setPumpSpeed(this.pumpNumber, speed);
     if (speed != 0) {
       this.states.lastNonZeroSpeed = speed;
     }

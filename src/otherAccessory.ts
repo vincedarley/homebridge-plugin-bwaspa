@@ -52,10 +52,10 @@ export class OtherAccessory {
     }
     // Turn the item on or off
     if (this.type === 0) {
-      this.platform.spa.setMisterState(value as boolean);
+      this.platform.spa!.setMisterState(value as boolean);
       this.platform.log.debug('Set Mister On ->', value);
     } else {
-      this.platform.spa.setAuxState(this.type, value as boolean);
+      this.platform.spa!.setAuxState(this.type, value as boolean);
       this.platform.log.debug('Set Aux', this.type, 'On ->', value);
     }
 
@@ -64,12 +64,12 @@ export class OtherAccessory {
 
   spaConfigurationKnown() {
     if (this.type === 0) {
-      if (this.platform.spa.getIsMisterOn() == undefined) {
+      if (this.platform.spa!.getIsMisterOn() == undefined) {
         // The mister doesn't exist.
         this.platform.log.warn("Nonexistent mister accessory declared.");
       }
     } else {
-      if (this.platform.spa.getIsAuxOn(this.type) == undefined) {
+      if (this.platform.spa!.getIsAuxOn(this.type) == undefined) {
         // This aux device doesn't exist.
         this.platform.log.warn("Nonexistent aux", this.type, "accessory declared.");
       }
@@ -83,13 +83,13 @@ export class OtherAccessory {
       return;
     }
     if (this.type === 0) {
-      const isOn = this.platform.spa.getIsMisterOn();
+      const isOn = this.platform.spa!.getIsMisterOn();
       if (isOn != undefined) {
         this.platform.log.debug('Mister updating to',isOn ? 'On' : 'Off');
         this.service.getCharacteristic(this.platform.Characteristic.On).updateValue(isOn);
       }
     } else {
-      const isOn = this.platform.spa.getIsAuxOn(this.type);
+      const isOn = this.platform.spa!.getIsAuxOn(this.type);
       if (isOn != undefined) {
         this.platform.log.debug('Aux',this.type,'updating to',isOn ? 'On' : 'Off');
         this.service.getCharacteristic(this.platform.Characteristic.On).updateValue(isOn);
@@ -111,17 +111,17 @@ export class OtherAccessory {
    * this.service.updateCharacteristic(this.platform.Characteristic.On, true)
    */
   getOn(callback: CharacteristicGetCallback) {
-    let isOn : boolean | undefined;
-    if (this.type === 0) {
-      isOn = this.platform.spa.getIsMisterOn();
-      this.platform.log.debug('Get Mister On <-', isOn, this.platform.status());
-    } else {
-      isOn = this.platform.spa.getIsAuxOn(this.type);
-      this.platform.log.debug('Get Aux', this.type, 'On <-', isOn, this.platform.status());
-    }
     if (!this.platform.isCurrentlyConnected()) {
       callback(this.platform.connectionProblem);
     } else {
+      let isOn : boolean | undefined;
+      if (this.type === 0) {
+        isOn = this.platform.spa!.getIsMisterOn();
+        this.platform.log.debug('Get Mister On <-', isOn, this.platform.status());
+      } else {
+        isOn = this.platform.spa!.getIsAuxOn(this.type);
+        this.platform.log.debug('Get Aux', this.type, 'On <-', isOn, this.platform.status());
+      }
       callback(null, isOn);
     }
   }

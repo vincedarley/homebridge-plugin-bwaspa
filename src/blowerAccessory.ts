@@ -3,6 +3,7 @@ import type { Service, PlatformAccessory, CharacteristicValue, CharacteristicSet
 
 import { SpaHomebridgePlatform } from './platform';
 import { VERSION } from './settings';
+import { SpaClient } from './spaClient';
 
 /**
  * Control a 1-3 speed blower as a homekit "fan".
@@ -118,7 +119,7 @@ export class BlowerAccessory {
     // Store this immediately.
     this.states.lastNonZeroSpeed = speed;
     this.platform.log.debug('Set Blower Speed ->', value, 'which is', 
-      this.platform.spa.getSpeedAsString(this.numSpeedSettings, speed) , this.platform.status());
+      SpaClient.getSpeedAsString(this.numSpeedSettings, speed) , this.platform.status());
     if (!this.platform.isCurrentlyConnected()) {
       callback(this.platform.connectionProblem);
       return;
@@ -138,7 +139,7 @@ export class BlowerAccessory {
     // of the number of speeds the blower has
     const value = (100.0*speed)/this.numSpeedSettings;
     this.platform.log.debug('Get Blower Speed <-', value, 'which is', 
-      this.platform.spa.getSpeedAsString(this.numSpeedSettings, speed), this.platform.status());
+      SpaClient.getSpeedAsString(this.numSpeedSettings, speed), this.platform.status());
     if (!this.platform.isCurrentlyConnected()) {
       callback(this.platform.connectionProblem);
     } else {
@@ -147,12 +148,12 @@ export class BlowerAccessory {
   }
 
   spaConfigurationKnown() {
-    if (this.platform.spa.getBlowerSpeed() == undefined) {
+    if (this.platform.spa!.getBlowerSpeed() == undefined) {
       // The blower doesn't exist.
       this.platform.log.warn("Nonexistent blower accessory declared.");
       return;
     }
-    this.numSpeedSettings = this.platform.spa.getBlowerSpeedRange();
+    this.numSpeedSettings = this.platform.spa!.getBlowerSpeedRange();
     this.platform.log.info("Blower has", this.numSpeedSettings, "speeds.");
     // Tell Home about the minimum step size to use.
     this.service.getCharacteristic(this.platform.Characteristic.RotationSpeed)
@@ -172,14 +173,14 @@ export class BlowerAccessory {
     const speedValue = (100.0*speed)/this.numSpeedSettings;
     
     this.platform.log.debug('Blower updating to',isOn ? 'On' : 'Off','and',speed, 'which is', 
-      this.platform.spa.getSpeedAsString(this.numSpeedSettings, speed));
+      SpaClient.getSpeedAsString(this.numSpeedSettings, speed));
     this.service.getCharacteristic(this.platform.Characteristic.On).updateValue(isOn);
     this.service.getCharacteristic(this.platform.Characteristic.RotationSpeed).updateValue(speedValue);
   }
 
   private getSpeed() {
     // return 0-3
-    return this.platform.spa.getBlowerSpeed();
+    return this.platform.spa!.getBlowerSpeed();
   }
 
   private scheduleId : any = undefined;
@@ -205,8 +206,8 @@ export class BlowerAccessory {
 
   private setSpeed(speed: number) {
     this.platform.log.debug('Blower actually setting speed to',speed,'which is', 
-      this.platform.spa.getSpeedAsString(this.numSpeedSettings, speed), this.platform.status());
-    this.platform.spa.setBlowerSpeed(speed);
+      SpaClient.getSpeedAsString(this.numSpeedSettings, speed), this.platform.status());
+    this.platform.spa!.setBlowerSpeed(speed);
     if (speed != 0) {
       this.states.lastNonZeroSpeed = speed;
     }

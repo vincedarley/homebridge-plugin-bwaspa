@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2.0.2 (03.06.2020)
+- Use UDP discovery to find your Spa's IP address automatically on your local network. This means 
+  the address given in the config is now optional
+- Improved some areas which assumed the spa was currently connected (they generally disconnect
+  spontaneously from time to time)
+  
 ## 2.0.1 (03.06.2020)
 - Logging and documentation improvements
 

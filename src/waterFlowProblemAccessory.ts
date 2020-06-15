@@ -45,15 +45,23 @@ export class WaterFlowProblemAccessory {
   }
 
   handleLeakDetectedGet(callback: CharacteristicGetCallback) {
-    const flowState = this.platform.spa.getFlowState();
-    this.platform.log.debug('Get Flow State <-', flowState);
-    callback(null, flowState === "FAILED");
+    if (!this.platform.isCurrentlyConnected()) {
+      callback(this.platform.connectionProblem);
+    } else {
+      const flowState = this.platform.spa!.getFlowState();
+      this.platform.log.debug('Get Flow State <-', flowState);
+      callback(null, flowState === "FAILED");
+    }
   }
 
   handleFaultDetectedGet(callback: CharacteristicGetCallback) {
-    const flowState = this.platform.spa.getFlowState();
-    this.platform.log.debug('Get Flow Fault <-', flowState);
-    callback(null, flowState === "LOW");
+    if (!this.platform.isCurrentlyConnected()) {
+      callback(this.platform.connectionProblem);
+    } else {
+      const flowState = this.platform.spa!.getFlowState();
+      this.platform.log.debug('Get Flow Fault <-', flowState);
+      callback(null, flowState === "LOW");
+    }
   }
 
   spaConfigurationKnown() {
@@ -62,7 +70,12 @@ export class WaterFlowProblemAccessory {
 
   // If Spa state has changed, for example using manual controls on the spa, then we must update Homekit.
   updateCharacteristics() {
-    const flowState = this.platform.spa.getFlowState();
+    if (!this.platform.isCurrentlyConnected()) {
+      this.service.getCharacteristic(this.platform.Characteristic.LeakDetected).updateValue(this.platform.connectionProblem);
+      this.service.getCharacteristic(this.platform.Characteristic.StatusFault).updateValue(this.platform.connectionProblem);
+      return;
+    }
+    const flowState = this.platform.spa!.getFlowState();
     this.service.getCharacteristic(this.platform.Characteristic.LeakDetected).updateValue(flowState === "FAILED");
     this.service.getCharacteristic(this.platform.Characteristic.StatusFault).updateValue(flowState === "LOW");
   }

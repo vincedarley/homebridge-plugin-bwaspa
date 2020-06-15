@@ -49,7 +49,7 @@ export class HoldSwitchAccessory {
       return;
     }
     // Turn the switch on or off
-    this.platform.spa.setIsHold(value as boolean);
+    this.platform.spa!.setIsHold(value as boolean);
     this.platform.log.debug('Set Hold On ->', value);
 
     callback(null);
@@ -65,7 +65,7 @@ export class HoldSwitchAccessory {
       this.service.getCharacteristic(this.platform.Characteristic.On).updateValue(this.platform.connectionProblem);
       return;
     }
-    const isOnHold = this.platform.spa.getIsHold();
+    const isOnHold = this.platform.spa!.getIsHold();
     this.platform.log.debug('Hold updating to',isOnHold ? 'On' : 'Off');
     this.service.getCharacteristic(this.platform.Characteristic.On).updateValue(isOnHold);
   }
@@ -84,11 +84,11 @@ export class HoldSwitchAccessory {
    * this.service.updateCharacteristic(this.platform.Characteristic.On, true)
    */
   getOn(callback: CharacteristicGetCallback) {
-    const isOnHold = this.platform.spa.getIsHold();
-    this.platform.log.debug('Get Hold On <-', isOnHold, this.platform.status());
     if (!this.platform.isCurrentlyConnected()) {
       callback(this.platform.connectionProblem);
     } else {
+      const isOnHold = this.platform.spa!.getIsHold();
+      this.platform.log.debug('Get Hold On <-', isOnHold, this.platform.status());
       callback(null, isOnHold);
     }
   }

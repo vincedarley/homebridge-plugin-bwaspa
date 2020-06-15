@@ -412,7 +412,7 @@ export class SpaClient {
         return this.pumpsSpeedRange[index-1];
     }
 
-    getSpeedAsString(range: number, speed: number) {
+    static getSpeedAsString(range: number, speed: number) {
         if (range == 1) {
             return ["Off", "High"][speed];
         } else if (range == 2) {
@@ -420,7 +420,7 @@ export class SpaClient {
         } else if (range == 3) {
             return ["Off", "Low", "Medium", "High"][speed];
         } else {
-            return undefined
+            return undefined;
         }
     }
 
@@ -659,7 +659,7 @@ export class SpaClient {
         let pumpDesc = '[';
         for (let i = 0; i<6;i++) {
             if (this.pumpsSpeedRange[i] > 0) {
-                pumpDesc += this.getSpeedAsString(this.pumpsSpeedRange[i],this.pumpsCurrentSpeed[i]) + ' ';
+                pumpDesc += SpaClient.getSpeedAsString(this.pumpsSpeedRange[i],this.pumpsCurrentSpeed[i]) + ' ';
             }
         }
         pumpDesc += ']';
