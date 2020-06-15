@@ -68,11 +68,11 @@ export class BlowerAccessory {
    * being called and that will discover the correct new value. 
    */
   setOn(value: CharacteristicValue, callback: CharacteristicSetCallback) {
-    this.platform.log.debug('Set Blower ->', value? 'On': 'Off', this.platform.status());
     if (!this.platform.isCurrentlyConnected()) {
       callback(this.platform.connectionProblem);
       return;
     }
+    this.platform.log.debug('Set Blower ->', value? 'On': 'Off', this.platform.status());
     if (value as boolean) {
       this.scheduleSetSpeed(this.states.lastNonZeroSpeed);
     } else {
@@ -96,12 +96,12 @@ export class BlowerAccessory {
    * this.service.updateCharacteristic(this.platform.Characteristic.On, true)
    */
   getOn(callback: CharacteristicGetCallback) {
-    const isOn = this.getSpeed() != 0;
-    this.platform.log.debug('Get Blower','<-',isOn?'On':'Off', this.platform.status());
-    
     if (!this.platform.isCurrentlyConnected()) {
       callback(this.platform.connectionProblem);
     } else {
+      const isOn = this.getSpeed() != 0;
+      this.platform.log.debug('Get Blower','<-',isOn?'On':'Off', this.platform.status());
+      
       callback(null, isOn);
     }
   }
@@ -114,16 +114,17 @@ export class BlowerAccessory {
    * being called and that will discover the correct new value.  
    */
   setRotationSpeed(value: CharacteristicValue, callback: CharacteristicSetCallback) {
+    if (!this.platform.isCurrentlyConnected()) {
+      callback(this.platform.connectionProblem);
+      return;
+    }
     // value is 0-100, and we want to convert that to [0,numSpeedSettings]
     const speed = Math.round(((value as number)*this.numSpeedSettings)/100.0);
     // Store this immediately.
     this.states.lastNonZeroSpeed = speed;
     this.platform.log.debug('Set Blower Speed ->', value, 'which is', 
       SpaClient.getSpeedAsString(this.numSpeedSettings, speed) , this.platform.status());
-    if (!this.platform.isCurrentlyConnected()) {
-      callback(this.platform.connectionProblem);
-      return;
-    }
+
     this.scheduleSetSpeed(speed);
 
     callback(null);
@@ -134,15 +135,16 @@ export class BlowerAccessory {
    * These are sent when the user changes the state of an accessory, for example, changing the Brightness
    */
   getRotationSpeed(callback: CharacteristicSetCallback) {
-    const speed = this.getSpeed();
-    // As above we convert the speed of 0-3 to a value of 0-100, taking account
-    // of the number of speeds the blower has
-    const value = (100.0*speed)/this.numSpeedSettings;
-    this.platform.log.debug('Get Blower Speed <-', value, 'which is', 
-      SpaClient.getSpeedAsString(this.numSpeedSettings, speed), this.platform.status());
     if (!this.platform.isCurrentlyConnected()) {
       callback(this.platform.connectionProblem);
     } else {
+      const speed = this.getSpeed();
+      // As above we convert the speed of 0-3 to a value of 0-100, taking account
+      // of the number of speeds the blower has
+      const value = (100.0*speed)/this.numSpeedSettings;
+      this.platform.log.debug('Get Blower Speed <-', value, 'which is', 
+        SpaClient.getSpeedAsString(this.numSpeedSettings, speed), this.platform.status());
+
       callback(null, value);
     }
   }

@@ -74,9 +74,13 @@ export class SpaHomebridgePlatform implements DynamicPlatformPlugin {
     });
   }
 
-  haveAddressOfSpa(devMode: boolean, ip: string) {
+  haveAddressOfSpa(devMode: boolean, ipAddress: string) {
+    if (this.spa) {
+      this.log.error('Already have a spa set up. If you wish to control two or more Spas, please file a bug report.');
+      return;
+    }
     // Create and load up our primary client which connects with the spa
-    this.spa = new SpaClient(this.log, ip, this.spaConfigurationKnown.bind(this),
+    this.spa = new SpaClient(this.log, ipAddress, this.spaConfigurationKnown.bind(this),
       this.updateStateOfAccessories.bind(this), devMode);
   }
 
