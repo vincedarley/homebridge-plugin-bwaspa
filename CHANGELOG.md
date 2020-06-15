@@ -2,6 +2,9 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2.0.3 (15.06.2020)
+- Fix to typo in checking host length
+
 ## 2.0.2 (15.06.2020)
 - Use UDP discovery to find your Spa's IP address automatically on your local network. This means 
   the IP address in the configuration settings is now optional

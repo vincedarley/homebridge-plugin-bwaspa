@@ -58,7 +58,7 @@ export class SpaHomebridgePlatform implements DynamicPlatformPlugin {
       this.discoverDevices();
     });
 
-    if (config.host && config.host.length() > 0) {
+    if (config.host && config.host.length > 0) {
       // The user provided the IP address in the config
       this.haveAddressOfSpa(config.devMode, config.host);
     } else {
