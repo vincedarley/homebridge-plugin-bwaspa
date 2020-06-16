@@ -1,8 +1,31 @@
 {
   "pluginAlias": "Balboa-Spa",
   "pluginType": "platform",
-  "headerDisplay": "This plugin works with Balboa-Spa wifi modules. Each pump, lights, etc are exposed HomeKit as separate accessories.",
+  "headerDisplay": "This plugin works with Balboa-Spa wifi modules. Each pump, lights, etc are exposed HomeKit as separate accessories. In most situations, all you need to do is give your spa a name below, with the remaining configuration being automatic.",
   "singular": true,
+  "layout": [
+    {
+      "items": [
+        "name", 
+        "autoCreateAccessories"
+      ]
+    },
+    {
+      "ref": "devices",
+      "type": "array",
+      "expandable": true,
+      "buttonText": "Add device",
+      "items": [
+        "devices[].name",
+        "devices[].deviceType"
+      ]
+    },
+    {
+      "items": [
+        "host"
+      ]
+    }
+  ],
   "schema": {
     "type": "object",
     "properties": {
@@ -19,7 +42,7 @@
         "required": true
       },
       "host": {
-        "title": "IP Address",
+        "title": "Spa IP Address",
         "type": "string",
         "placeholder": "192.168.1.151 (plugin will attempt to discover automatically if blank)",
         "required": false,

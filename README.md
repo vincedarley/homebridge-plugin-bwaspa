@@ -96,7 +96,7 @@ The 'lock' status of the Spa control panel is monitored and logged, but cannot c
 
 ## Reliability
 
-There's a fair amount of information on the internet of how the Balboa Wifi module is pretty unreliable.  In particular prior to the '-06' release of the '50350' module, it would regularly disconnect and then be unable to reconnect (with rebooting the power supply to the module).  With my own spa, the module is fairly reliable but even then does disconnect for a few minutes to an hour once every day or two.  But between the module and this plugin's reconnect capability, a reconnection does always ultimately happen.  If your Spa's module is less reliable, I would suggest a first step is to check which module version you have.
+There's a fair amount of information on the internet of how the Balboa Wifi module is pretty unreliable.  In particular prior to the '-06' release of the '50350' module, it would regularly disconnect and then be unable to reconnect (without rebooting the power supply to the module).  With my own spa, the module is fairly reliable but even then does disconnect for a few minutes to an hour once every day or two.  But between the module and this plugin's reconnect capability, a reconnection does always ultimately happen.  If your Spa's module is less reliable, I would suggest a first step is to check which module version you have.
 
 ## Improvements
 

@@ -36,7 +36,7 @@ export class SpaHomebridgePlatform implements DynamicPlatformPlugin {
     public readonly config: PlatformConfig,
     public readonly api: API,
   ) {
-    if (!config || !Array.isArray(config.devices)) {
+    if (!config) {
       log.warn('No configuration found for %s', PLUGIN_NAME);
     }
 
@@ -104,6 +104,8 @@ export class SpaHomebridgePlatform implements DynamicPlatformPlugin {
    */
   spaConfigurationKnown() {
     if (this.config.autoCreateAccessories) {
+      // Make sure we create all devices before we try to accurately
+      // configure them all.
       this.discoverDevices();
     }
     this.log.debug('Spa configuration known - informing each accessory');
@@ -165,6 +167,7 @@ export class SpaHomebridgePlatform implements DynamicPlatformPlugin {
    */
   discoverDevices() {
     if (this.config.autoCreateAccessories && this.spa && this.spa.accurateConfigReadFromSpa) {
+      this.log.info('Autocreating accessories...');
       if (this.spa!.getIsLightOn(1) != undefined) this.makeDevice({name: 'Spa Lights 1', deviceType: 'Lights 1'});
       if (this.spa!.getIsLightOn(2) != undefined) this.makeDevice({name: 'Spa Lights 2', deviceType: 'Lights 2'});
       for (let pump = 1; pump <=6; pump++) {
