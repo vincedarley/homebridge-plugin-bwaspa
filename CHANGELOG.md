@@ -5,6 +5,7 @@ All notable changes to this project will be documented in this file.
 ## 2.0.4 (16.06.2020)
 - Improved spa discovery with retries if the spa can't initially be found
 - Nicer UI for spa configuration
+- Improved Readme documentation, including a new getting started section with screenshots
 
 ## 2.0.3 (15.06.2020)
 - Fix to typo in checking host length
