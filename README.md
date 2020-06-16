@@ -17,6 +17,9 @@ The default behaviour is for the plugin to discover your Spa automatically on yo
 
 <p align="left">
   <a href="https://github.com/vincedarley/plugin-bwaspa"><img src="https://raw.githubusercontent.com/vincedarley/homebridge-plugin-bwaspa/master/graphics/home.png" height="400"></a>
+  <a href="https://github.com/vincedarley/plugin-bwaspa"><img src="https://raw.githubusercontent.com/vincedarley/homebridge-plugin-bwaspa/master/graphics/thermostat.png" height="400"></a>
+  <a href="https://github.com/vincedarley/plugin-bwaspa"><img src="https://raw.githubusercontent.com/vincedarley/homebridge-plugin-bwaspa/master/graphics/pump.png" height="400"></a>
+  <a href="https://github.com/vincedarley/plugin-bwaspa"><img src="https://raw.githubusercontent.com/vincedarley/homebridge-plugin-bwaspa/master/graphics/lights.png" height="400"></a>
 </p>
 
 # Getting started
@@ -36,7 +39,7 @@ With a typical setup, all you need to do is give your spa a name here. Everythin
 want to make available if you wish.
 
 <p align="left">
-  <a href="https://github.com/vincedarley/plugin-bwaspa"><img src="https://raw.githubusercontent.com/vincedarley/homebridge-plugin-bwaspa/master/graphics/settings.png" height="667"></a>
+  <a href="https://github.com/vincedarley/plugin-bwaspa"><img src="https://raw.githubusercontent.com/vincedarley/homebridge-plugin-bwaspa/master/graphics/settings.png" height="400"></a>
 </p>
 
 
