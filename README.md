@@ -15,6 +15,27 @@ The default behaviour is for the plugin to discover your Spa automatically on yo
 
 [![verified-by-homebridge](https://badgen.net/badge/homebridge/verified/purple)](https://github.com/homebridge/homebridge/wiki/Verified-Plugins)
 
+# Getting started
+
+Install everything:
+1. Follow the step-by-step instructions on the [Homebridge Wiki](https://github.com/homebridge/homebridge/wiki) for how to install Homebridge.
+2. Follow the step-by-step instructions on the [Homebridge Config UI X](https://github.com/oznu/homebridge-config-ui-x/wiki) for how to install Homebridge Config UI X.
+3. Install homebridge-balboa-spa using: `npm install -g homebridge-balboa-spa` or search for `Balboa Spa` in Config UI X.
+
+Restart homebridge so it reloads the new plugin.  Click through to the Balboa Spa plugin settings
+
+<p align="left">
+  <a href="https://github.com/vincedarley/plugin-bwaspa"><img src="https://raw.githubusercontent.com/vincedarley/homebridge-plugin-bwaspa/master/graphics/plugin.png" height="154"></a>
+</p>
+
+With a typical setup, all you need to do is give your spa a name here. Everything else should be automatic. However, you can manually specify the IP address and the particular set of controls you
+want to make available if you wish.
+
+<p align="left">
+  <a href="https://github.com/vincedarley/plugin-bwaspa"><img src="https://raw.githubusercontent.com/vincedarley/homebridge-plugin-bwaspa/master/graphics/settings.png" height="667"></a>
+</p>
+
+
 # More details on supported accessories
 
 It supports pumps that are single speed (off or high) and 2-speed (off or low or high). The pump control sliders in Home then step accordingly (0-100% or 0-50%-100%).  Since Homekit doesn't have a notion of a multi-speed jet/pump, they are all treated as "fans" by Home.
