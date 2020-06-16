@@ -15,6 +15,10 @@ The default behaviour is for the plugin to discover your Spa automatically on yo
 
 [![verified-by-homebridge](https://badgen.net/badge/homebridge/verified/purple)](https://github.com/homebridge/homebridge/wiki/Verified-Plugins)
 
+<p align="left">
+  <a href="https://github.com/vincedarley/plugin-bwaspa"><img src="https://raw.githubusercontent.com/vincedarley/homebridge-plugin-bwaspa/master/graphics/home.png" height="400"></a>
+</p>
+
 # Getting started
 
 Install everything:
