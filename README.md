@@ -14,12 +14,13 @@ The plugin does a good job of ensuring the state of all controls remains in sync
 The default behaviour is for the plugin to discover your Spa automatically on your network, query it for all supported controls and make them all available to Homekit automatically.  You can modify much of that behaviour by configuring the plugin with Homebridge ConfigUI.  And of course you can rename or delete accessories in Home to serve your purposes.
 
 [![verified-by-homebridge](https://badgen.net/badge/homebridge/verified/purple)](https://github.com/homebridge/homebridge/wiki/Verified-Plugins)
+[![npm](https://badgen.net/npm/dt/homebridge-plugin-bwaspa?color=purple)](https://www.npmjs.com/package/homebridge-plugin-bwaspa) [![npm]
 
 <p align="left">
-  <a href="https://github.com/vincedarley/plugin-bwaspa"><img src="https://raw.githubusercontent.com/vincedarley/homebridge-plugin-bwaspa/master/graphics/home.png" height="400"></a>
-  <a href="https://github.com/vincedarley/plugin-bwaspa"><img src="https://raw.githubusercontent.com/vincedarley/homebridge-plugin-bwaspa/master/graphics/thermostat.png" height="400"></a>
-  <a href="https://github.com/vincedarley/plugin-bwaspa"><img src="https://raw.githubusercontent.com/vincedarley/homebridge-plugin-bwaspa/master/graphics/pump.png" height="400"></a>
-  <a href="https://github.com/vincedarley/plugin-bwaspa"><img src="https://raw.githubusercontent.com/vincedarley/homebridge-plugin-bwaspa/master/graphics/lights.png" height="400"></a>
+  <a href="https://github.com/vincedarley/homebridge-plugin-bwaspa"><img src="https://raw.githubusercontent.com/vincedarley/homebridge-plugin-bwaspa/master/graphics/home.png" height="400"></a>
+  <a href="https://github.com/vincedarley/homebridge-plugin-bwaspa"><img src="https://raw.githubusercontent.com/vincedarley/homebridge-plugin-bwaspa/master/graphics/thermostat.png" height="400"></a>
+  <a href="https://github.com/vincedarley/homebridge-plugin-bwaspa"><img src="https://raw.githubusercontent.com/vincedarley/homebridge-plugin-bwaspa/master/graphics/pump.png" height="400"></a>
+  <a href="https://github.com/vincedarley/homebridge-plugin-bwaspa"><img src="https://raw.githubusercontent.com/vincedarley/homebridge-plugin-bwaspa/master/graphics/lights.png" height="400"></a>
 </p>
 
 # Getting started
@@ -32,14 +33,14 @@ Install everything:
 Restart homebridge so it reloads the new plugin.  Click through to the Balboa Spa plugin settings
 
 <p align="center">
-  <a href="https://github.com/vincedarley/plugin-bwaspa"><img src="https://raw.githubusercontent.com/vincedarley/homebridge-plugin-bwaspa/master/graphics/plugin.png" height="154"></a>
+  <a href="https://github.com/vincedarley/homebridge-plugin-bwaspa"><img src="https://raw.githubusercontent.com/vincedarley/homebridge-plugin-bwaspa/master/graphics/plugin.png" height="154"></a>
 </p>
 
 With a typical setup, all you need to do is give your spa a name here. Everything else should be automatic. However, you can manually specify the IP address and the particular set of controls you
 want to make available if you wish (or in particular if your spa cannot be automatically discovered on your network - you'll see errors in the log if that is the case). Click save and restart homebridge so the changes take effect.
 
 <p align="center">
-  <a href="https://github.com/vincedarley/plugin-bwaspa"><img src="https://raw.githubusercontent.com/vincedarley/homebridge-plugin-bwaspa/master/graphics/settings.png" height="400"></a>
+  <a href="https://github.com/vincedarley/homebridge-plugin-bwaspa"><img src="https://raw.githubusercontent.com/vincedarley/homebridge-plugin-bwaspa/master/graphics/settings.png" height="400"></a>
 </p>
 
 
