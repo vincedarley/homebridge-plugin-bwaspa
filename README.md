@@ -14,7 +14,7 @@ The plugin does a good job of ensuring the state of all controls remains in sync
 The default behaviour is for the plugin to discover your Spa automatically on your network, query it for all supported controls and make them all available to Homekit automatically.  You can modify much of that behaviour by configuring the plugin with Homebridge ConfigUI.  And of course you can rename or delete accessories in Home to serve your purposes.
 
 [![verified-by-homebridge](https://badgen.net/badge/homebridge/verified/purple)](https://github.com/homebridge/homebridge/wiki/Verified-Plugins)
-[![npm](https://badgen.net/npm/dt/homebridge-plugin-bwaspa?color=purple)](https://www.npmjs.com/package/homebridge-plugin-bwaspa) [![npm]
+[![npm](https://badgen.net/npm/dt/homebridge-balboa-spa?color=purple)](https://www.npmjs.com/package/homebridge-balboa-spa) [![npm]
 
 <p align="left">
   <a href="https://github.com/vincedarley/homebridge-plugin-bwaspa"><img src="https://raw.githubusercontent.com/vincedarley/homebridge-plugin-bwaspa/master/graphics/home.png" height="400"></a>
