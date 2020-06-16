@@ -841,6 +841,8 @@ export class SpaClient {
         // We ignore it here, since we capture locks above.
         // byte[22] is set to 64 when we activate 'hold' mode. See bytes[10] above.
         this.hold = (bytes[22] & 64) != 0;
+        // byte[22] also apparently contains some further state: 0=Ok, 16=Spa not communicating,
+        // 32=startup, 48=priming, 64=hold, 80=panel.
 
         // Store this for next time
         const oldBytes = this.lastStateBytes;

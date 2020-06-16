@@ -73,8 +73,20 @@ The default config only requires you to give your Spa a name, with everything el
             "platform": "Balboa-Spa"
         }
 ```
+In this case your homebridge log should end up containing lines like these, which show successful automatic spa discovery, connection and pump/light/etc configuration discovery and accessory creation.  You can then add these to Home and organise/rename them as you wish.
+```
+[MasterSpa MP7] Discovered a Spa at 192.168.1.151
+[MasterSpa MP7] Successfully connected to Spa at 192.168.1.151 on port 4257
+[MasterSpa MP7] Discovered 3 pumps with speeds [ 2, 2, 1, 0, 0, 0 ]
+[MasterSpa MP7] Discovered 1 light
+[MasterSpa MP7] Discovered other components: circ_pump true , blower 0 , mister undefined , aux [ false, false ]
+[MasterSpa MP7] Autocreating accessories...
+[MasterSpa MP7] Pump 1 has 2 speeds.
+[MasterSpa MP7] Pump 2 has 2 speeds.
+[MasterSpa MP7] Pump 3 has 1 speeds.
+```
 
-However, if you wish to, or need to, make some manual adjustments, you can do so:
+However, if you wish to, or need to, make some manual adjustments, you can provide (or create via Config UI) a more elaborate config, for example:
 ```
 {
             "name": "My Hot Tub",

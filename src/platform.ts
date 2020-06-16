@@ -160,11 +160,8 @@ export class SpaHomebridgePlatform implements DynamicPlatformPlugin {
   }
 
   /**
-   * We read all accessories from the config.json file.
-   * 
-   * Accessories must only be registered once, previously created accessories
-   * must not be registered again to prevent "duplicate UUID" errors.
-   */
+   * We get all accessories either from the spa itself or from the config.json file.
+    */
   discoverDevices() {
     if (this.config.autoCreateAccessories && this.spa && this.spa.accurateConfigReadFromSpa) {
       this.log.info('Autocreating accessories...');
@@ -191,6 +188,10 @@ export class SpaHomebridgePlatform implements DynamicPlatformPlugin {
     }
   }
 
+  /**
+   * Accessories must only be registered once, previously created accessories
+   * must not be registered again to prevent "duplicate UUID" errors.
+   */
   private makeDevice(device: any) {
     // generate a unique id for the accessory this should be generated from
     // something globally unique, but constant, for example, the device serial
@@ -220,10 +221,6 @@ export class SpaHomebridgePlatform implements DynamicPlatformPlugin {
       // this.api.unregisterPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory]);
       // If we do this, we should also remove them from the deviceObjects array.
     }
-  }
-
-  autoCreateAccessories() {
-    this.spa
   }
 
   /*
