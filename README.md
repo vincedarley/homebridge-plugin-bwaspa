@@ -6,9 +6,11 @@
 </p>
 
 <span align="center">
+
 # Homebridge Balboa Spa Plugin
 [![verified-by-homebridge](https://badgen.net/badge/homebridge/verified/purple)](https://github.com/homebridge/homebridge/wiki/Verified-Plugins)
 [![npm](https://badgen.net/npm/dt/homebridge-balboa-spa?color=purple)](https://www.npmjs.com/package/homebridge-balboa-spa)
+
 </span>
 
 This plugin will connect to Spas/Hot-tubs via their Balboa wifi module, and expose a set of controls (pumps, lights, etc) and the spa temperature, and temperature control, in HomeKit.  It also exposes a "Leak Sensor" which acts as a sensor for whether the heater water flow in the spa is all good.  You can set that up in Home to send you a notification if anything goes wrong.
