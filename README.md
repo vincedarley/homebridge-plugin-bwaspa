@@ -63,6 +63,17 @@ There is a "Hold" switch to activate the Spa's hold mode (temporarily turn off a
 
 Finally there are other devices on some spas: a "blower" (typically with 3-speeds), a "mister" and two auxiliary devices (aux1 and aux2).  They are all supported by this plugin, but not yet fully tested (please test them and report back on success or any problems).
 
+## Siri
+
+If you give your accessories good names, Siri works very well. You may need to consider the
+fact that Siri understands your jets/pumps as "fans".  Also in english, "two" and "to" sound the same and I find Siri has trouble therefore with "Jet two".  But overall it works pretty well.
+
+<p align="left">
+  <a href="https://github.com/vincedarley/homebridge-plugin-bwaspa"><img src="https://raw.githubusercontent.com/vincedarley/homebridge-plugin-bwaspa/master/graphics/siri-jet.png" height="400"></a>
+  <a href="https://github.com/vincedarley/homebridge-plugin-bwaspa"><img src="https://raw.githubusercontent.com/vincedarley/homebridge-plugin-bwaspa/master/graphics/siri-temperature.png" height="400"></a>
+</p>
+
+
 ## Here are some sample configs
 
 The default config only requires you to give your Spa a name, with everything else handled automatically:
