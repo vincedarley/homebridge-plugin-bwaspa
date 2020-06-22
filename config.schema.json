@@ -1,13 +1,13 @@
 {
   "pluginAlias": "Balboa-Spa",
   "pluginType": "platform",
-  "headerDisplay": "This plugin works with Balboa-Spa wifi modules. Each pump, lights, etc are exposed HomeKit as separate accessories. In most situations, all you need to do is give your spa a name below, with the remaining configuration being automatic.",
+  "headerDisplay": "This plugin works with Balboa-Spa wifi modules. Each pump, lights, etc are exposed HomeKit as separate accessories. In most situations, if you're fine with the defaults, the configuration is automatic. Else you can give your Spa a name below, and modify other settings...",
   "singular": true,
   "layout": [
     {
       "items": [
-        "name", 
-        "autoCreateAccessories"
+        "autoCreateAccessories",
+        "name"
       ]
     },
     {
@@ -33,7 +33,7 @@
         "title": "Name",
         "type": "string",
         "required": true,
-        "placeholder": "My Hot Tub"
+        "default": "Spa"
       },
       "autoCreateAccessories": {
         "title": "Automatically Create All Spa Controls as Accessories",

@@ -55,6 +55,7 @@ export function discoverSpas(log: Logger, foundSpaCallback: (ip: string) => void
     // Try every 20 seconds to discover the Spa, waiting 10 seconds each time for a response.
     let broadcastIntervalId = setInterval(discoveryFunction, 20 * 1000);
     // But start immediately.
+    log.info("Searching for spa on the local network - will re-broadcast every 20 seconds until success.");
     discoveryFunction();
 
 }

@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2.0.6 (16.06.2020)
+- Better discovery logging
+- The spa 'name' config, which is largely cosmetic, now has a default. This means under most
+  circumstances all configuration is automatic.
+- Updated Readme
+
 ## 2.0.5 (16.06.2020)
 - Minor cleanup
 - Improved documentation

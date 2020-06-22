@@ -38,8 +38,7 @@ Restart homebridge so it reloads the new plugin.  Click through to the Balboa Sp
   <a href="https://github.com/vincedarley/homebridge-plugin-bwaspa"><img src="https://raw.githubusercontent.com/vincedarley/homebridge-plugin-bwaspa/master/graphics/plugin.png" height="154"></a>
 </p>
 
-With a typical setup, all you need to do is give your spa a name here. Everything else should be automatic. However, you can manually specify the IP address and the particular set of controls you
-want to make available if you wish (or in particular if your spa cannot be automatically discovered on your network - you'll see errors in the log if that is the case). Click save and restart homebridge so the changes take effect.
+With a typical setup, there is nothing more you need to do (if you wish you can specify your Spa's model name). Everything should be automatic. However, you can manually specify the IP address and the particular set of controls you want to make available if you wish (or in particular if your spa cannot be automatically discovered on your network - you'll see errors in the log if that is the case). Click save and restart homebridge so the changes take effect.
 
 <p align="center">
   <a href="https://github.com/vincedarley/homebridge-plugin-bwaspa"><img src="https://raw.githubusercontent.com/vincedarley/homebridge-plugin-bwaspa/master/graphics/settings.png" height="400"></a>
@@ -76,31 +75,31 @@ fact that Siri understands your jets/pumps as "fans".  Also in english, "two" an
 
 ## Here are some sample configs
 
-The default config only requires you to give your Spa a name, with everything else handled automatically:
+The default config handles everything automatically:
 ```
         {
-            "name": "MasterSpa MP7",
             "autoCreateAccessories": true,
+            "name": "Spa",
             "platform": "Balboa-Spa"
         }
 ```
 In this case your homebridge log should end up containing lines like these, which show successful automatic spa discovery, connection and pump/light/etc configuration discovery and accessory creation.  You can then add these to Home and organise/rename them as you wish.
 ```
-[MasterSpa MP7] Discovered a Spa at 192.168.1.151
-[MasterSpa MP7] Successfully connected to Spa at 192.168.1.151 on port 4257
-[MasterSpa MP7] Discovered 3 pumps with speeds [ 2, 2, 1, 0, 0, 0 ]
-[MasterSpa MP7] Discovered 1 light
-[MasterSpa MP7] Discovered other components: circ_pump true , blower 0 , mister undefined , aux [ false, false ]
-[MasterSpa MP7] Autocreating accessories...
-[MasterSpa MP7] Pump 1 has 2 speeds.
-[MasterSpa MP7] Pump 2 has 2 speeds.
-[MasterSpa MP7] Pump 3 has 1 speeds.
+[Spa] Discovered a Spa at 192.168.1.151
+[Spa] Successfully connected to Spa at 192.168.1.151 on port 4257
+[Spa] Discovered 3 pumps with speeds [ 2, 2, 1, 0, 0, 0 ]
+[Spa] Discovered 1 light
+[Spa] Discovered other components: circ_pump true , blower 0 , mister undefined , aux [ false, false ]
+[Spa] Autocreating accessories...
+[Spa] Pump 1 has 2 speeds.
+[Spa] Pump 2 has 2 speeds.
+[Spa] Pump 3 has 1 speeds.
 ```
 
 However, if you wish to, or need to, make some manual adjustments, you can provide (or create via Config UI) a more elaborate config, for example:
 ```
 {
-            "name": "My Hot Tub",
+            "name": "MasterSpa MP7",
             "autoCreateAccessories": false,
             "host": "192.168.1.151",
             "devices": [
@@ -184,6 +183,8 @@ If you wish to help with any further improvements, pleasre report any problems, 
 and submit those details (which will probably contain slightly different numbers) in [this issue](https://github.com/vincedarley/homebridge-plugin-bwaspa/issues/1) on github, along with the physical configuration of your spa (number of pumps, speed settings, etc). Hopefully with a bit more data we can ensure everything is interpreted correctly, if it isn't already.  The above, for example, shows that my Spa has 3 pumps, where Pump 1 is 2-speed, Pump 2 is 2-speed and Pump 3 is 1-speed. And my Spa has 1 light. This was all therefore discovered correctly.
 
 The Spa can report many more faults/errors (some completely critical) beyond the water flow problems mentioned above. The plugin code currently ignores all other errors - it does report them in the log, but nothing more.
+
+If you have more than one Spa, with minor modifications this plugin could happily handle that situation - please submit a bug report (and/or try to make the code changes yourself).
 
 ## Thanks
 
