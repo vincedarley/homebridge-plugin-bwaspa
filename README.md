@@ -186,8 +186,11 @@ The Spa can report many more faults/errors (some completely critical) beyond the
 
 If you have more than one Spa, with minor modifications this plugin could happily handle that situation - please submit a bug report (and/or try to make the code changes yourself).
 
+## Other related work
+
+[Here you can read about](https://github.com/ccutrer/balboa_worldwide_app/wiki) other related work on controlling Balboa spas - including some work to understand the direct protocols the spa uses so that e.g. a raspberry pi could be used instead of the unreliable Balboa wifi module.
+
 ## Thanks
 
-The homebridge plugin template project was the basis for this, and some Python code for connecting to balboa helped a lot in education about the communication protocols.  The node-red/MQTT/Balboa implementation served as some inspiration, but I really wanted something simpler to install and configure, and customise more precisely to deal with things like faults and temperature controls and multi-speed pumps, and with close to 100% accuracy of synchronisation between Spa state and Home state.
+The homebridge plugin template project was the basis for this, and some Python code for connecting to balboa helped a lot in education about the communication protocols.  The node-red/MQTT/Balboa implementation served as some inspiration, but I really wanted something simpler to install and configure, and customise more precisely to deal with things like faults and temperature controls and multi-speed pumps, and with close to 100% accuracy of synchronisation between Spa state and Home state. Hence writing this plugin.
 
-My first Typescript or Homebridge project...
