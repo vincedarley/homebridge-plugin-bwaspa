@@ -8,6 +8,9 @@ export const FLOW_FAILED = "Failed";
 export const FLOW_STATES = [FLOW_GOOD, FLOW_LOW, FLOW_FAILED];
 const FILTERSTATES = ['Off', 'Cycle 1', 'Cycle 2', 'Cycle 1 and 2'];
 
+const CELSIUS = 'Celsius';
+const FAHRENHEIT = 'Fahrenheit';
+
 const PrimaryRequest = new Uint8Array([0x0a, 0xbf, 0x22]);
 const GetFaultsMessageContents = new Uint8Array([0x20, 0xff, 0x00]);
 const GetFaultsReply = new Uint8Array([0x0a,0xbf,0x28]);
@@ -300,6 +303,25 @@ export class SpaClient {
     getTempIsCorF() {
         return this.temp_CorF;
     }
+
+    convertTempToC(temp: number) {
+        if (temp == undefined) return undefined;
+        if (this.getTempIsCorF() === CELSIUS) {
+            return temp;
+        } else {
+            return (temp-32.0)*5/9;
+        }
+    }
+
+    convertTempFromC(temp: number) {
+        if (temp == undefined) return undefined;
+        if (this.getTempIsCorF() === CELSIUS) {
+            return temp;
+        } else {
+            return (temp*9/5.0)+32.0;
+        }
+    }
+
     getTempRangeIsHigh() {
         return this.tempRangeIsHigh;
     }
@@ -370,6 +392,11 @@ export class SpaClient {
     get_heating_mode() {
         return this.heatingMode;
     }
+    
+    /**
+     * Returns in C or F depending on what the user has defined in the Spa
+     * control panel. 
+     */
     getCurrentTemp() {
         if (this.currentTemp == undefined) {
             return undefined;
@@ -640,7 +667,7 @@ export class SpaClient {
 
     // Celsius temperatures are communicated by the Spa in half degrees.
     convertTemperature(internalToExternal : boolean, temperature : number) {
-        if (this.temp_CorF === "Fahrenheit") return temperature;
+        if (this.temp_CorF === FAHRENHEIT) return temperature;
         // It's a celsius value which needs either dividing or multiplying by 2
         if (internalToExternal) {
             return temperature/2.0;
@@ -651,7 +678,7 @@ export class SpaClient {
 
     temperatureToString(temperature? : number) {
         if (temperature == undefined) return "Unknown";
-        if (this.temp_CorF === "Fahrenheit") return temperature.toString();
+        if (this.temp_CorF === FAHRENHEIT) return temperature.toString();
         return this.convertTemperature(true, temperature).toFixed(1).toString() 
     }
 
@@ -780,9 +807,14 @@ export class SpaClient {
         this.hour = bytes[3];
         this.minute = bytes[4];
         this.heatingMode = ["Ready", "Rest", "Ready in Rest"][bytes[5]];
-        // Bytes 6,7,8 -- unused or unknown at present.
+        // Byte 6 = unknown/zero
+        // Byte 7 = Sensor A Temperature / Hold Timer: Minutes if Hold Mode else Temperature 
+        // (scaled by Temperature Scale) if A/B Temps else 0x00
+        // Byte 8 = 0x00 if A/B Temps if OFF else Temperature (scaled by Temperature Scale)
+
+        // Byte 9 = Temperature Scale, Clock Mode, Filter Mode
         var variousFlags = bytes[9];
-        this.temp_CorF = (((variousFlags & 1) === 0) ? "Fahrenheit" : "Celsius");
+        this.temp_CorF = (((variousFlags & 1) === 0) ? FAHRENHEIT : CELSIUS);
         this.time_12or24 = (((variousFlags & 2) === 0) ? "12 Hr" : "24 Hr");
         // Filtering mode we just put in the log. It has 4 states (off, cycle1, cycle2, cycle 1 and 2)
         this.filtering = (variousFlags & 0x0c) >> 2; // values of 0,1,2,3

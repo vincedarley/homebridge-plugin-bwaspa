@@ -2,6 +2,9 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2.0.7 (02.07.2020)
+- Fixes for when Spa is set to operate in Fahrenheit
+
 ## 2.0.6 (16.06.2020)
 - Better discovery logging
 - The spa 'name' config, which is largely cosmetic, now has a default. This means under most

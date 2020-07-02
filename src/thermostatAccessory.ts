@@ -103,8 +103,8 @@ export class ThermostatAccessory {
       const temperature = this.platform.spa!.getCurrentTemp();
       // Seems as if Homekit interprets null as something simply to be ignored, hence Homekit
       // just uses the previous known value.
-      const val = (temperature == undefined ? null : temperature);
-  
+      const val = (temperature == undefined ? null : this.platform.spa!.convertTempToC(temperature!));
+
       this.platform.log.debug('Get Current Temperature <-', val, this.platform.status());
   
       callback(null, val);
@@ -195,7 +195,7 @@ export class ThermostatAccessory {
     if (!this.platform.isCurrentlyConnected()) {
       callback(this.platform.connectionProblem);
     } else {
-      const temperature = this.platform.spa!.getTargetTemp();
+      const temperature = this.platform.spa!.convertTempToC(this.platform.spa!.getTargetTemp());
       this.platform.log.debug('Get Target Temperature <-', temperature, this.platform.status());
   
       callback(null, temperature);
@@ -231,7 +231,7 @@ export class ThermostatAccessory {
         return;
       }
     }
-    this.platform.spa!.setTargetTemperature(temp);
+    this.platform.spa!.setTargetTemperature(this.platform.spa!.convertTempFromC(temp)!);
     this.platform.log.debug('Set Target Temperature ->', temp, 
       " (may be different to", value, ")", this.platform.status());
 
@@ -254,16 +254,17 @@ export class ThermostatAccessory {
     const mode = this.platform.spa!.getTempRangeIsHigh();
     const heating = this.platform.spa!.getIsHeatingNow();
     const temperature = this.platform.spa!.getCurrentTemp();
-    const val = (temperature == undefined ? null : temperature!);
+    const tempVal = (temperature == undefined ? null : this.platform.spa!.convertTempToC(temperature!)!);
 
     const targetTemperature = this.platform.spa!.getTargetTemp();
+    const targetTempVal = (targetTemperature == undefined ? null : this.platform.spa!.convertTempToC(targetTemperature!)!);
     const flowState = this.platform.spa!.getFlowState();
 
     this.platform.log.debug('Thermostat updating to: target:',targetTemperature,'(current:',
-      val,'), is high:', mode, ', is heating:', heating, ', flow state:', flowState);
+      temperature,'), is high:', mode, ', is heating:', heating, ', flow state:', flowState);
 
-    this.service.getCharacteristic(this.platform.Characteristic.CurrentTemperature).updateValue(val);
-    this.service.getCharacteristic(this.platform.Characteristic.TargetTemperature).updateValue(targetTemperature);
+    this.service.getCharacteristic(this.platform.Characteristic.CurrentTemperature).updateValue(tempVal);
+    this.service.getCharacteristic(this.platform.Characteristic.TargetTemperature).updateValue(targetTempVal);
     this.service.getCharacteristic(this.platform.Characteristic.TargetHeatingCoolingState).updateValue(
       flowState != FLOW_GOOD ? this.platform.Characteristic.TargetHeatingCoolingState.OFF : 
       (mode ? this.platform.Characteristic.TargetHeatingCoolingState.HEAT : this.platform.Characteristic.TargetHeatingCoolingState.COOL)
