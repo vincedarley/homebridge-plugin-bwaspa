@@ -64,7 +64,8 @@ export class SpaClient {
     targetTempModeLow: number;
     // Is spa in low or high mode.
     tempRangeIsHigh: boolean;
-    // Time of day, according to the Spa (sync it with the Balboa mobile app if you wish)
+    // Time of day, based on the last message we've received, according to the Spa 
+    // (sync it with the Balboa mobile app if you wish)
     hour: number;
     minute: number;
     // ready, ready at rest, etc.
@@ -78,6 +79,7 @@ export class SpaClient {
     lockTheSettings: boolean;
     lockTheEntirePanel: boolean;
     hold: boolean;
+    receivedStateUpdate: boolean;
 
     // Takes values from FLOW_STATES
     flow: string;
@@ -127,6 +129,7 @@ export class SpaClient {
         this.lockTheSettings = false;
         this.lockTheEntirePanel = false;
         this.hold = false;
+        this.receivedStateUpdate = true;
         // This isn't updated as frequently as the above
         this.flow = FLOW_GOOD;
         // Our communications channel with the spa
@@ -233,6 +236,29 @@ export class SpaClient {
             }, 10 * 60 * 1000);
         }, 5000);
 
+        // Every 15 minutes, make sure we update the log. And if we haven't
+        // received a state update, then message the spa so it starts sending
+        // us messages again.
+        setInterval(() => {
+            if (this.isCurrentlyConnectedToSpa) {
+                this.checkWeHaveReceivedStateUpdate();
+            }
+        }, 15 * 60 * 1000)
+    }
+
+    checkWeHaveReceivedStateUpdate() {
+        if (this.receivedStateUpdate) {
+            // All good - reset for next time
+            this.log.info('Latest spa state', this.stateToString());
+            this.receivedStateUpdate = false;
+        } else {
+            this.log.error('No spa state update received for some time.  Last state was', 
+                this.stateToString());
+            // What we should do is send a message to the Spa so it restarts sending
+            // us state updates.
+
+            // TODO
+        }
     }
 
     reconnecting: boolean = false;
@@ -795,6 +821,8 @@ export class SpaClient {
      * Return true if anything important has changed (i.e. ignore the time changing!)
      */
     readStateFromBytes(bytes: Uint8Array) {
+        this.receivedStateUpdate = true;
+
         // Seems like priming goes through different states, so not sure this simplicity is correct
         this.priming = ((bytes[1] & 1) === 1);
         // If current_temp = 255, then the Spa is still not fully initialised

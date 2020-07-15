@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2.0.9 (15.07.2020)
+- Improved logging
+- Updated dependencies (fixing an 'npm audit' low severity problem)
+
+## 2.0.8 (04.07.2020)
+- Check whether the Spa has continued to broadcast state updates and report an error if not
+
 ## 2.0.7 (02.07.2020)
 - Fixes for when Spa is set to operate in Fahrenheit
 
