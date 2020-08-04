@@ -168,7 +168,7 @@ If you wish to help with any further improvements, pleasre report any problems, 
 [My Hot Tub] System Model MS40E   
 [My Hot Tub] SoftwareID (SSID) M100_225 V36
 [My Hot Tub] Current Setup 1
-[My Hot Tub] Configuration Signature c3479636
+[My Hot Tub] Configuration Signature C3479636
 [My Hot Tub] ControlPanelRequest3 Sending:7e,08,0a,bf,22,04,00,00,f4,7e
 [My Hot Tub] Control Panel reply 3:05,01,32,63,50,68,61,07,41
 [My Hot Tub] ControlPanelRequest4 Sending:7e,08,0a,bf,22,08,00,00,0e,7e

@@ -20,7 +20,7 @@ const ControlTypesReply = new Uint8Array([0x0a,0xbf,0x2e]);
 
 // This one is sent to us automatically every second - no need to request it
 const StateReply = new Uint8Array([0xff,0xaf,0x13]);
-// These two either don't have a reply or we don't care about it.
+// These three either don't have a reply or we don't care about it.
 const ToggleItemRequest = new Uint8Array([0x0a, 0xbf, 0x11]);
 const LockPanelRequest = new Uint8Array([0x0a, 0xbf, 0x2d]);
 const SetTargetTempRequest = new Uint8Array([0x0a, 0xbf, 0x20]);
@@ -313,6 +313,9 @@ export class SpaClient {
         message = this.concat(message, new Uint8Array([checksum]));
         message = this.concat(message, prefixSuffix);
         this.log.debug(purpose, "Sending:" + this.prettify(message));
+        if (this.devMode) {
+            this.log.info(purpose, "Sending:" + this.prettify(message));
+        }
         this.socket?.write(message);
     }
 
@@ -763,7 +766,7 @@ export class SpaClient {
     }
 
     /**
-     * Return true if anything important has changed as a result of the message
+     * Return true if anything in the state has changed as a result of the message
      * received.
      * 
      * @param chunk - first and last bytes are 0x7e. Second byte is message length.
@@ -784,27 +787,29 @@ export class SpaClient {
         }
         var contents = chunk.slice(5, length);
         var msgType = chunk.slice(2,5);
-        var returnValue : boolean;
+        var stateChanged : boolean;
+        var avoidHighFreqDevMessage : boolean = true;
         if (this.equal(msgType,StateReply)) {
-            returnValue = this.readStateFromBytes(contents);
+            stateChanged = this.readStateFromBytes(contents);
+            avoidHighFreqDevMessage = stateChanged;
         } else if (this.equal(msgType, GetFaultsReply)) {
-            returnValue = this.readFaults(contents);
+            stateChanged = this.readFaults(contents);
         } else if (this.equal(msgType, ControlTypesReply)) {
             this.log.info("Control types reply(" + this.prettify(msgType) 
              + "):"+ this.prettify(contents));
-            returnValue = this.interpretControlTypesReply(contents);
+            stateChanged = this.interpretControlTypesReply(contents);
         } else if (this.equal(msgType, ConfigReply)) {
             this.log.info("Config reply with MAC address (" + this.prettify(msgType) 
             + "):"+ this.prettify(contents));
             // Bytes 3-8 are the MAC address of the Spa.  They are also repeated later
             // on in the string, but split into two halves with two bytes inbetween (ff, ff)
-            returnValue = false;
+            stateChanged = false;
         } else {
-            returnValue = false;
+            stateChanged = false;
             let recognised = false;
             for (var id = 0; id<4; id++) {
                 if (this.equal(msgType, ControlPanelRequest[id][1])) {
-                    returnValue = this.interpretControlPanelReply(id+1, contents);
+                    stateChanged = this.interpretControlPanelReply(id+1, contents);
                     recognised = true;
                     break;
                 }
@@ -817,11 +822,12 @@ export class SpaClient {
                 " contents: "+ this.prettify(contents));
             }
         }
-        if (this.devMode && returnValue) {
-            // If dev mode is activated and something changed, then log it, with info level.
+        if (this.devMode && avoidHighFreqDevMessage) {
+            // If dev mode is activated, then log it, with info level.  Unless it is
+            // just the high frequencing status message (and no state has changed).
             this.log.info("Received:", this.prettify(msgType), this.prettify(contents));
         }
-        return returnValue;
+        return stateChanged;
     }
 
     /**
@@ -840,7 +846,7 @@ export class SpaClient {
      * Interpret the standard response, which we are sent about every 1 second, covering
      * all of the primary state of the spa.
      * 
-     * Return true if anything important has changed (i.e. ignore the time changing!)
+     * Return true if anything important has changed (e.g. ignore the time changing!)
      */
     readStateFromBytes(bytes: Uint8Array) {
         this.receivedStateUpdate = true;
@@ -1071,7 +1077,8 @@ export class SpaClient {
     }
 
     /**
-     * 	Get log of faults. Return true if there were faults of relevance
+     * 	Get log of faults. Return true if there were faults of relevance which require a 
+     *  homekit state change
      */ 
     readFaults(bytes: Uint8Array) {
         var daysAgo = bytes[3];
@@ -1087,7 +1094,7 @@ export class SpaClient {
         this.flow = FLOW_GOOD;
 
         let message : string;
-        let returnValue = false;
+        let stateChanged = false;
 
         // Check if there are any new faults and report them.  I've chosen just to do 
         // that for codes 16 and 17.  But potentially any code except 19 (Priming) should
@@ -1106,7 +1113,7 @@ export class SpaClient {
             // This state change will also be used to switch the thermostat control accessory into 
             // a state of 'off' when water flow fails.
             message = "Recent, alerted fault found";
-            returnValue = true;
+            stateChanged = true;
         } else {
             message = "Recent, but not alerted fault found:";
         }
@@ -1127,7 +1134,7 @@ export class SpaClient {
             ", Temp B:", this.convertTemperature(true, bytes[9]));
         }
         
-        return returnValue;
+        return stateChanged;
     }
 
     equal(one: Uint8Array, two: Uint8Array) {
