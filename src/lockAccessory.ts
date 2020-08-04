@@ -55,7 +55,7 @@ export class LockAccessory {
     }
     // Turn the switch on or off
     this.platform.spa!.setIsLocked(this.entireSpa, value as boolean);
-    this.platform.log.debug('Set Locked',this.entireSpa ? 'Spa' : 'Settings','On ->', value);
+    this.platform.log.debug('Set Locked Spa',this.entireSpa ? 'Panel' : 'Settings','On ->', value);
 
     callback(null);
   }
@@ -72,7 +72,7 @@ export class LockAccessory {
       return;
     }
     const isLocked = this.platform.spa!.getIsLocked(this.entireSpa);
-    this.platform.log.debug('Locked',this.entireSpa ? 'Spa' : 'Settings','updating to', isLocked ? 'On' : 'Off');
+    this.platform.log.debug('Locked Spa',this.entireSpa ? 'Panel' : 'Settings','updating to', isLocked ? 'On' : 'Off');
     this.service.getCharacteristic(this.platform.Characteristic.LockCurrentState).updateValue(isLocked);
     this.service.getCharacteristic(this.platform.Characteristic.LockTargetState).updateValue(isLocked);
   }
@@ -87,7 +87,7 @@ export class LockAccessory {
       callback(this.platform.connectionProblem);
     } else {
       const isLocked = this.platform.spa!.getIsLocked(this.entireSpa);
-      this.platform.log.debug('Get Locked',this.entireSpa ? 'Spa' : 'Settings','On <-', isLocked, this.platform.status());
+      this.platform.log.debug('Get Locked Spa',this.entireSpa ? 'Panel' : 'Settings','On <-', isLocked, this.platform.status());
       callback(null, isLocked);
     }
   }

@@ -2,6 +2,9 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2.0.12 (04.08.2020)
+- Better default naming of the two locks
+
 ## 2.0.11 (04.08.2020)
 - Better dev mode logging
 
