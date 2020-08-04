@@ -2,7 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
-## 2.0.10 (15.07.2020)
+## 2.0.11 (04.08.2020)
+- Better dev mode logging
+
+## 2.0.10 (04.08.2020)
 - Fix to some logging issues with Fahrenheit
 - Added two new Lock accessories: to lock/unlock the spa settings and to lock/unlock the full spa
   control panel.

@@ -314,7 +314,7 @@ export class SpaClient {
         message = this.concat(message, prefixSuffix);
         this.log.debug(purpose, "Sending:" + this.prettify(message));
         if (this.devMode) {
-            this.log.info(purpose, "Sending:" + this.prettify(message));
+            this.log.info("DEV", purpose, "Sending:" + this.prettify(message));
         }
         this.socket?.write(message);
     }
@@ -595,7 +595,7 @@ export class SpaClient {
                 // continuing - either we need to do nothing, or we need to do one more
                 // toggle.
                 if (this.devMode) {
-                    this.log.info("Edge case triggered on", pumpName);
+                    this.log.info("DEV Edge case triggered on", pumpName);
                 }
                 // TODO: is this the right amount of waiting? Should we try to explicitly 
                 // synchronise this with the next status update message?
@@ -608,7 +608,7 @@ export class SpaClient {
                         // Spa is in filter mode where this specific pump is not
                         // allowed to turn off. It's already in the right state.
                         if (this.devMode) {
-                            this.log.info("Pump already in correct state");
+                            this.log.info("DEV Pump already in correct state");
                         }
                     }
                 }, 500);
@@ -825,7 +825,7 @@ export class SpaClient {
         if (this.devMode && avoidHighFreqDevMessage) {
             // If dev mode is activated, then log it, with info level.  Unless it is
             // just the high frequencing status message (and no state has changed).
-            this.log.info("Received:", this.prettify(msgType), this.prettify(contents));
+            this.log.info("DEV Received:" + this.prettify(msgType) + ":" + this.prettify(contents));
         }
         return stateChanged;
     }
