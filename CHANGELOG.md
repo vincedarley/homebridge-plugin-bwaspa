@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2.0.10 (15.07.2020)
+- Fix to some logging issues with Fahrenheit
+- Added two new Lock accessories: to lock/unlock the spa settings and to lock/unlock the full spa
+  control panel.
+  (thanks to https://github.com/ccutrer/balboa_worldwide_app/wiki#toggle-test-setting-request for the mechanism for this)
+
 ## 2.0.9 (15.07.2020)
 - Improved logging
 - Updated dependencies (fixing an 'npm audit' low severity problem)

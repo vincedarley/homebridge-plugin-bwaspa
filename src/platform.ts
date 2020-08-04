@@ -8,6 +8,7 @@ import { TemperatureAccessory } from './temperatureAccessory';
 import { ThermostatAccessory } from './thermostatAccessory';
 import { WaterFlowProblemAccessory } from './waterFlowProblemAccessory';
 import { HoldSwitchAccessory } from './holdSwitchAccessory';
+import { LockAccessory } from './lockAccessory';
 import { BlowerAccessory } from './blowerAccessory';
 import { OtherAccessory } from './otherAccessory';
 import { SpaClient } from './spaClient';
@@ -174,6 +175,8 @@ export class SpaHomebridgePlatform implements DynamicPlatformPlugin {
       this.makeDevice({name: 'Spa Thermostat', deviceType: 'Thermostat'});
       this.makeDevice({name: 'Spa Flow', deviceType: 'Water Flow Problem Sensor'});
       this.makeDevice({name: 'Hold Spa', deviceType: 'Hold Switch'});
+      this.makeDevice({name: 'Lock Settings', deviceType: 'Lock Settings'});
+      this.makeDevice({name: 'Lock Spa', deviceType: 'Lock Spa'});
       if (this.spa!.getBlowerSpeedRange() != 0) this.makeDevice({name: 'Spa Blower', deviceType: 'Blower'});
       if (this.spa!.getIsMisterOn() != undefined) this.makeDevice({name: 'Spa Mister', deviceType: 'Mister'});
       if (this.spa!.getIsAuxOn(1) != undefined) this.makeDevice({name: 'Spa Aux 1', deviceType: 'Aux 1'});
@@ -276,6 +279,14 @@ export class SpaHomebridgePlatform implements DynamicPlatformPlugin {
       }
       case "Hold Switch": {
         this.deviceObjects.push(new HoldSwitchAccessory(this, accessory));
+        break;
+      }
+      case "Lock Settings": {
+        this.deviceObjects.push(new LockAccessory(this, accessory, false));
+        break;
+      }
+      case "Lock Spa": {
+        this.deviceObjects.push(new LockAccessory(this, accessory, true));
         break;
       }
       case "Blower": {

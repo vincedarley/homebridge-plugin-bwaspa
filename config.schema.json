@@ -139,6 +139,18 @@
                   ]
                 },
                 {
+                  "title": "Lock Settings",
+                  "enum": [
+                    "Lock Settings"
+                  ]
+                },
+                {
+                  "title": "Lock Spa",
+                  "enum": [
+                    "Lock Spa"
+                  ]
+                },
+                {
                   "title": "Blower",
                   "enum": [
                     "Blower"

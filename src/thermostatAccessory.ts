@@ -151,7 +151,7 @@ export class ThermostatAccessory {
         : this.platform.Characteristic.TargetHeatingCoolingState.COOL;
       }
       this.platform.log.debug('Get Target Heating State <-', 
-      mode ? "HEAT" : "COOL", "Flow error(" + flowError + ")", result, this.platform.status());
+      mode ? "HEAT" : "COOL", ", Flow error(" + flowError + ")", result, this.platform.status());
   
       callback(null, result);
     }
@@ -260,8 +260,9 @@ export class ThermostatAccessory {
     const targetTempVal = (targetTemperature == undefined ? null : this.platform.spa!.convertTempToC(targetTemperature!)!);
     const flowState = this.platform.spa!.getFlowState();
 
-    this.platform.log.debug('Thermostat updating to: target:',targetTemperature,'(current:',
-      temperature,'), is high:', mode, ', is heating:', heating, ', flow state:', flowState);
+    this.platform.log.debug('Thermostat updating to: target:',targetTemperature,'(='+targetTempVal+'C)',
+      ', current:', temperature,'(='+tempVal+'C), is high:', mode, 
+      ', is heating:', heating, ', flow state:', flowState);
 
     this.service.getCharacteristic(this.platform.Characteristic.CurrentTemperature).updateValue(tempVal);
     this.service.getCharacteristic(this.platform.Characteristic.TargetTemperature).updateValue(targetTempVal);

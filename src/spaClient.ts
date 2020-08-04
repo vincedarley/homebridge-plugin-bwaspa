@@ -22,6 +22,7 @@ const ControlTypesReply = new Uint8Array([0x0a,0xbf,0x2e]);
 const StateReply = new Uint8Array([0xff,0xaf,0x13]);
 // These two either don't have a reply or we don't care about it.
 const ToggleItemRequest = new Uint8Array([0x0a, 0xbf, 0x11]);
+const LockPanelRequest = new Uint8Array([0x0a, 0xbf, 0x2d]);
 const SetTargetTempRequest = new Uint8Array([0x0a, 0xbf, 0x20]);
 // These we send once, but don't actually currently make use of the results
 // Need to investigate how to interpret them. 
@@ -59,9 +60,9 @@ export class SpaClient {
 
     currentTemp?: number;
     // When spa is in 'high' mode, what is the target temperature
-    targetTempModeHigh: number;
+    targetTempModeHigh?: number;
     // When spa is in 'low' mode, what is the target temperature
-    targetTempModeLow: number;
+    targetTempModeLow?: number;
     // Is spa in low or high mode.
     tempRangeIsHigh: boolean;
     // Time of day, based on the last message we've received, according to the Spa 
@@ -119,8 +120,8 @@ export class SpaClient {
         this.heatingMode = "";
         this.temp_CorF = "";
         this.tempRangeIsHigh = true;
-        this.targetTempModeLow = 2*18;
-        this.targetTempModeHigh = 2*38;
+        this.targetTempModeLow = undefined;
+        this.targetTempModeHigh = undefined;
         this.priming = false;
         this.time_12or24 = "12 Hr";
         this.isHeatingNow = false;
@@ -324,7 +325,7 @@ export class SpaClient {
     }
     getTargetTemp() {
         return this.convertTemperature(true, this.tempRangeIsHigh 
-            ? this.targetTempModeHigh : this.targetTempModeLow);
+            ? this.targetTempModeHigh! : this.targetTempModeLow!);
     }
     getTempIsCorF() {
         return this.temp_CorF;
@@ -412,6 +413,20 @@ export class SpaClient {
         this.send_toggle_message('Hold', 0x3c);
         this.hold = value;
     }
+
+    getIsLocked(entirePanel: boolean) {
+        return entirePanel ? this.lockTheEntirePanel : this.lockTheSettings;
+    }
+    setIsLocked(entirePanel: boolean, value: boolean) {
+        if (this.getIsLocked(entirePanel) == value) return;
+        this.send_lock_settings(entirePanel, value);
+        if (entirePanel) {
+            this.lockTheEntirePanel = value;
+        } else {
+            this.lockTheSettings = value;
+        }
+    }
+
     getIsHeatingNow() {
         return this.isHeatingNow;
     }
@@ -689,6 +704,13 @@ export class SpaClient {
         // outcome).
         this.sendMessageToSpa("Toggle " + itemName + ", using code:"+ code, 
             ToggleItemRequest, new Uint8Array([code, 0x00]));
+    }
+
+    // See https://github.com/ccutrer/balboa_worldwide_app/wiki#lock-request
+    // 1 = lock settings, 2 = lock panel, 3 = unlock settings, 4 = unlock panel
+    send_lock_settings(entirePanel: boolean, lock: boolean) {
+        let value = (entirePanel ? 1 : 0) + (lock ? 1 : 3);
+        this.sendMessageToSpa("Lock", LockPanelRequest, new Uint8Array([value]));   
     }
 
     // Celsius temperatures are communicated by the Spa in half degrees.

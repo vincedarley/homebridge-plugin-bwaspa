@@ -60,6 +60,9 @@ The flow sensor has 3 states: normal (all good), failed (which triggers a "leak"
 
 There is a "Hold" switch to activate the Spa's hold mode (temporarily turn off all pumps, including the circulation pump, so that you can safely change filters, etc).
 
+There are two "Locks" - to lock the spa settings (while still allowing control over pumps, lights, etc) and to lock the Spa completely (preventing use of any panel controls until unlocked). These
+are the same locking/unlocking as Balboa provides in the Spa control panel.
+
 Finally there are other devices on some spas: a "blower" (typically with 3-speeds), a "mister" and two auxiliary devices (aux1 and aux2).  They are all supported by this plugin, but not yet fully tested (please test them and report back on success or any problems).
 
 ## Siri
@@ -138,15 +141,11 @@ However, if you wish to, or need to, make some manual adjustments, you can provi
 
 ## Limitations?
 
-Pumps 4-6, lights 2, and the blower/mister/aux devices are all currently untested (please report if they work for you or not).
-
 Lights are simply on/off.  Balboa provide no current capability to control the colour.  So this limitation cannot be rectified, unless Balboa enhance their product.
 
 If the water flow sensor discovers a fault (which it checks for every ten minutes), and you then fix the issue (change/clean filters, etc), the spa does not actually notify that the fault has been corrected. However if you either use 'hold' mode or turn the spa off/on (which you should generally do when changing filters) then a hold or priming event will take precedence and through this plugin the fault will no longer be reported to Homekit. If you don't do either of those actions, then the fault will only be reset in Homekit the following day.
 
-No current support for setting the heatmode of the spa ('ready', 'ready at rest', etc).
-
-The 'lock' status of the Spa control panel is monitored and logged, but cannot currently be locked/unlocked through this plugin (unclear if that is theoretically possible or not).
+The plugin does not currently implement any support for setting the heatmode of the spa ('ready', 'ready at rest', etc). You don't normally need to adjust this, so not really a limitation.
 
 ## Reliability
 

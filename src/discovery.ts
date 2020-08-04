@@ -46,7 +46,7 @@ export function discoverSpas(log: Logger, foundSpaCallback: (ip: string) => void
         });
         
         setTimeout(() => {
-            log.debug('No spa found - waiting to retry');
+            log.debug('Closing spa discovery search');
             client.close()
         }, timeout);
         
