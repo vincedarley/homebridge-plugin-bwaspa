@@ -89,8 +89,12 @@ export class SpaClient {
     // Should be true for almost all of the time, but occasionally the Spa's connection drops
     // and we must reconnect.
     private isCurrentlyConnectedToSpa: boolean;
-    // Stored so that we can cancel it if needed
+    numberOfConnectionsSoFar: number = 0;
+    liveSinceDate: Date;
+    // Stored so that we can cancel intervals if needed
     faultCheckIntervalId: any;
+    stateUpdateCheckIntervalId: any;
+    // Can be set in the overall config to provide more detailed logging
     devMode: boolean;
 
     lastStateBytes = new Uint8Array();
@@ -133,6 +137,7 @@ export class SpaClient {
         this.receivedStateUpdate = true;
         // This isn't updated as frequently as the above
         this.flow = FLOW_GOOD;
+        this.liveSinceDate = new Date();
         // Our communications channel with the spa
         this.socket = this.get_socket(host);
     }
@@ -147,7 +152,13 @@ export class SpaClient {
             port: 4257, 
             host: host
         }, () => {
-            this.log.info('Successfully connected to Spa at', host, "on port 4257");
+            this.numberOfConnectionsSoFar++;
+            this.liveSinceDate.getUTCDay
+            let diff = Math.abs(this.liveSinceDate.getTime() - new Date().getTime());
+            let diffDays = Math.ceil(diff / (1000 * 3600 * 24)); 
+            this.log.info('Successfully connected to Spa at', host, 
+                'on port 4257. This is connection number', this.numberOfConnectionsSoFar,
+                'in', diffDays, 'days');
             this.successfullyConnectedToSpa();
         });
         this.socket?.on('end', () => {
@@ -240,7 +251,10 @@ export class SpaClient {
         // Every 15 minutes, make sure we update the log. And if we haven't
         // received a state update, then message the spa so it starts sending
         // us messages again.
-        setInterval(() => {
+        if (this.stateUpdateCheckIntervalId) {
+            this.log.error("Shouldn't ever already have a state update check interval running here.");
+        }
+        this.stateUpdateCheckIntervalId = setInterval(() => {
             if (this.isCurrentlyConnectedToSpa) {
                 this.checkWeHaveReceivedStateUpdate();
             }
@@ -284,6 +298,10 @@ export class SpaClient {
             clearInterval(this.faultCheckIntervalId);
             this.faultCheckIntervalId = undefined;
         }
+        if (this.stateUpdateCheckIntervalId) {
+            clearInterval(this.stateUpdateCheckIntervalId);
+            this.stateUpdateCheckIntervalId = undefined;
+        }
         // Not sure I understand enough about these sockets to be sure
         // of best way to clean them up.
         if (this.socket != undefined) {
@@ -312,9 +330,10 @@ export class SpaClient {
         message = this.concat(message, typepayload);
         message = this.concat(message, new Uint8Array([checksum]));
         message = this.concat(message, prefixSuffix);
-        this.log.debug(purpose, "Sending:" + this.prettify(message));
         if (this.devMode) {
-            this.log.info("DEV", purpose, "Sending:" + this.prettify(message));
+            this.log.info("DEV Sending (" + purpose + "):" + this.prettify(message));
+        } else {
+            this.log.debug("Sending (" + purpose + "):" + this.prettify(message));
         }
         this.socket?.write(message);
     }

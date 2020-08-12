@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2.0.15 (12.08.2020)
+- Add count of days uptime, so we can assess wifi module reliability
+
+## 2.0.14 (12.08.2020)
+- Keep count of reconnections in log, so we can assess wifi module reliability
+
+## 2.0.13 (12.08.2020)
+- Improve logging corner case over multiple spa reconnections
+
 ## 2.0.12 (04.08.2020)
 - Better default naming of the two locks
 

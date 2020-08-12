@@ -48,6 +48,9 @@ With a typical setup, there is nothing more you need to do (if you wish you can 
 
 # More details on supported accessories
 
+This section details how this plugin translates the Spa's controls and settings into the world
+of accessories and devices that Homekit provides...
+
 It supports pumps that are single speed (off or high) and 2-speed (off or low or high). The pump control sliders in Home then step accordingly (0-100% or 0-50%-100%).  Since Homekit doesn't have a notion of a multi-speed jet/pump, they are all treated as "fans" by Home.
 
 You can control two lights and up to six pumps, a mister, a blower, 2 aux devices and the overall heating state of the spa.
