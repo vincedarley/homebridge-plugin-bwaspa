@@ -2,6 +2,9 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2.0.16 (19.08.2020)
+- Merged branch to support HOOBS (thank you!)
+
 ## 2.0.15 (12.08.2020)
 - Add count of days uptime, so we can assess wifi module reliability
 
