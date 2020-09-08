@@ -801,8 +801,18 @@ export class SpaClient {
         if (length == 0) {
             return false;
         }
+        if (length > (chunk.length-2)) {
+            this.log.error("Incomplete message received", this.prettify(chunk), 
+                "missing", (length - chunk.length +2), "bytes");
+            return false;
+        }
+        if (length < (chunk.length-2)) {
+            this.log.error("Message too long or corrupted", this.prettify(chunk));
+            return false;
+        }
         if (chunk[length] != this.compute_checksum(new Uint8Array([length]), chunk.slice(2,length))) {
             this.log.error("Bad checksum ", chunk[length], "for", this.prettify(chunk));
+            return false;
         }
         var contents = chunk.slice(5, length);
         var msgType = chunk.slice(2,5);
@@ -1123,12 +1133,21 @@ export class SpaClient {
 
         if (daysAgo > 0) {
             message = "No recent faults. Last fault";
-        } else if (code == 16 || code == 17) {
-            // Water flow is low (16) or water flow failed (17). These generally indicate
-            // the filter needs cleaning/change urgently. Hot tub will stop heating
-            // and therefore cool down without a change. Important to alert the user
+        } else if (code == 16 || code == 28) {
+            // These indicate a problem, where the spa and/or heater will temporarily shut 
+            // down for 1-15 minutes. These generally indicate
+            // the filter needs cleaning/change very soon. Important to alert the user
             // of them.
-            this.flow = FLOW_STATES[code-15];
+            this.flow = FLOW_LOW;
+            // This state change will also be used to switch the thermostat control accessory into 
+            // a state of 'off' when water flow fails.
+            message = "Recent, alerted fault found";
+            stateChanged = true;
+        } else if (code == 17 || code == 27 || code == 30) {
+            // These are all serious problems. The spa has been shut down. 
+            // Hot tub will stop heating and therefore cool down without a change. 
+            // Important to alert the user of them.
+            this.flow = FLOW_FAILED;
             // This state change will also be used to switch the thermostat control accessory into 
             // a state of 'off' when water flow fails.
             message = "Recent, alerted fault found";

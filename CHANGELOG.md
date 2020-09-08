@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2.0.17 (08.09.2020)
+- Added some heater-problem error codes to the ones that are alerted by the 'leak sensor'
+- Better handling or at least logging of problems with checksum and message lengths from the spa
+
 ## 2.0.16 (19.08.2020)
 - Merged branch to support HOOBS (thank you!)
 

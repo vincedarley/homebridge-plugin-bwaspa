@@ -7,6 +7,12 @@ import { FLOW_FAILED, FLOW_GOOD } from './spaClient';
 
 /**
  * A thermostat temperature control for the Spa.
+ * 
+ * It looks like it might be possible to move the Flow sensor to a pair of "Filter Condition", 
+ * "Filter life" settings on the thermostat. Might be a slightly better fit for Homekit's approach.
+ * At least we could have a "change soon" indicator on the thermostat alerting the user.
+ * See https://developer.apple.com/documentation/homekit/hmcharacteristictypefilterlifelevel and 
+ * related topics.
  */
 export class ThermostatAccessory {
   private service: Service;
