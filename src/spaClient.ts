@@ -20,6 +20,9 @@ const ControlTypesReply = new Uint8Array([0x0a,0xbf,0x2e]);
 
 // This one is sent to us automatically every second - no need to request it
 const StateReply = new Uint8Array([0xff,0xaf,0x13]);
+// Sent if the user sets the spa time from the Balboa app
+const PreferencesReply = new Uint8Array([0xff,0xaf,0x26]);
+
 // These three either don't have a reply or we don't care about it.
 const ToggleItemRequest = new Uint8Array([0x0a, 0xbf, 0x11]);
 const LockPanelRequest = new Uint8Array([0x0a, 0xbf, 0x2d]);
@@ -190,29 +193,7 @@ export class SpaClient {
         // seems to do every second.
         this.socket?.on('data', (data: any) => {
             var bufView = new Uint8Array(data);
-            const somethingChanged = this.readAndActOnMessage(bufView);
-            if (somethingChanged) {
-                // Only log state when something has changed.
-                this.log.debug("State change:", this.stateToString());
-                // Call whoever has registered with us - this is our homekit platform plugin
-                // which will arrange to go through each accessory and check if the state of
-                // it has changed. There are 3 cases here to be aware of:
-                // 1) The user adjusted something in Home and therefore this callback is completely
-                // unnecessary, since Home is already aware.
-                // 2) The user adjusted something in Home, but that change could not actually take
-                // effect - for example the user tried to turn off the primary filter pump during
-                // a filtration cycle, and the Spa will ignore such a change.  In this case this
-                // callback is essential for the Home app to reflect reality
-                // 3) The user adjusted something using the physical spa controls (or the Balboa app),
-                // and again this callback is essential for Home to be in sync with those changes.
-                //
-                // Theoretically we could be cleverer and not call this for the unnecessary cases, but
-                // that seems like a lot of complex work for little benefit.  Also theoretically we
-                // could specify just the controls that have changed, and hence reduce the amount of
-                // activity.  But again little genuine benefit really from that, versus the code complexity
-                // it would require.
-                this.changesCallback();
-            }
+            this.readAndActOnSocketContents(bufView);
         });
 
         // No need to do this once we already have all the config information once.
@@ -259,6 +240,69 @@ export class SpaClient {
                 this.checkWeHaveReceivedStateUpdate();
             }
         }, 15 * 60 * 1000)
+    }
+
+    readAndActOnSocketContents(chunk: Uint8Array) {
+        let messagesProcessed = 0;
+        // eslint-disable-next-line no-constant-condition
+        while (true) {
+            if (chunk.length == 0) {
+                // Silently move on
+                return messagesProcessed;
+            }
+            if (chunk.length < 2) {
+                this.log.error("Very short message received (ignored)", this.prettify(chunk));
+                return messagesProcessed;
+            }
+            // Length is the length of the message, which excludes the checksum and 0x7e end.
+            var length = chunk[1];
+            if (length == 0) {
+                return messagesProcessed;
+            }
+            if (length > (chunk.length-2)) {
+                // TODO? Cache this because more contents is coming in the next packet?
+                this.log.error("Incomplete message received (ignored)", this.prettify(chunk), 
+                    "missing", (length - chunk.length +2), "bytes");
+                return messagesProcessed;
+            }
+            if (length <= (chunk.length-2)) {
+                if (chunk[0] == 0x7e && chunk[length+1] == 0x7e) {
+                    // Seems like a good message
+                    this.actOnOneCompleteMessage(length, chunk[length], chunk.slice(0,length+2));
+                    messagesProcessed++;
+                } else {
+                    this.log.error("Message with bad terminations encountered:", this.prettify(chunk));
+                }
+                // Process rest of the message, as needed
+                chunk = chunk.slice(length+2);
+            }
+        }
+    }   
+
+    actOnOneCompleteMessage(length: number, checksum: number, chunk: Uint8Array) {
+        const somethingChanged = this.readAndActOnMessage(length, checksum, chunk);
+        if (somethingChanged) {
+            // Only log state when something has changed.
+            this.log.debug("State change:", this.stateToString());
+            // Call whoever has registered with us - this is our homekit platform plugin
+            // which will arrange to go through each accessory and check if the state of
+            // it has changed. There are 3 cases here to be aware of:
+            // 1) The user adjusted something in Home and therefore this callback is completely
+            // unnecessary, since Home is already aware.
+            // 2) The user adjusted something in Home, but that change could not actually take
+            // effect - for example the user tried to turn off the primary filter pump during
+            // a filtration cycle, and the Spa will ignore such a change.  In this case this
+            // callback is essential for the Home app to reflect reality
+            // 3) The user adjusted something using the physical spa controls (or the Balboa app),
+            // and again this callback is essential for Home to be in sync with those changes.
+            //
+            // Theoretically we could be cleverer and not call this for the unnecessary cases, but
+            // that seems like a lot of complex work for little benefit.  Also theoretically we
+            // could specify just the controls that have changed, and hence reduce the amount of
+            // activity.  But again little genuine benefit really from that, versus the code complexity
+            // it would require.
+            this.changesCallback();
+        }
     }
 
     checkWeHaveReceivedStateUpdate() {
@@ -788,30 +832,16 @@ export class SpaClient {
      * Return true if anything in the state has changed as a result of the message
      * received.
      * 
+     * @param length
+     * @param checksum
      * @param chunk - first and last bytes are 0x7e. Second byte is message length.
      * Second-last byte is the checksum.  Then bytes 3,4,5 are the message type.
      * Everything in between is the content.
      */
-    readAndActOnMessage(chunk: Uint8Array) {
-        if (chunk.length < 2) {
-            return false;
-        }
-        // Length is the length of the message, which excludes the checksum and 0x7e end.
-        var length = chunk[1];
-        if (length == 0) {
-            return false;
-        }
-        if (length > (chunk.length-2)) {
-            this.log.error("Incomplete message received", this.prettify(chunk), 
-                "missing", (length - chunk.length +2), "bytes");
-            return false;
-        }
-        if (length < (chunk.length-2)) {
-            this.log.error("Message too long or corrupted", this.prettify(chunk));
-            return false;
-        }
-        if (chunk[length] != this.compute_checksum(new Uint8Array([length]), chunk.slice(2,length))) {
-            this.log.error("Bad checksum ", chunk[length], "for", this.prettify(chunk));
+    readAndActOnMessage(length: number, checksum: number, chunk: Uint8Array) {
+        if (chunk[0] != 0x7e || chunk[1] != length || chunk[length] != checksum || chunk[length+1] != 0x7e || chunk.length != (length+2)) {
+            this.log.error("Bad internal data in message handling. Please report a bug:", 
+              length, checksum, this.prettify(chunk));
             return false;
         }
         var contents = chunk.slice(5, length);
@@ -833,6 +863,11 @@ export class SpaClient {
             // Bytes 3-8 are the MAC address of the Spa.  They are also repeated later
             // on in the string, but split into two halves with two bytes inbetween (ff, ff)
             stateChanged = false;
+        } else if (this.equal(msgType, PreferencesReply)) {
+            // Nothing to do here
+            this.log.info("Set preferences reply (" + this.prettify(msgType) 
+            + "):"+ this.prettify(contents));
+            stateChanged = false;
         } else {
             stateChanged = false;
             let recognised = false;
@@ -846,7 +881,7 @@ export class SpaClient {
             // Various messages about controls, filters, etc. In theory we could
             // choose to implement more things here, but limited value in it.
             if (!recognised) {
-                this.log.info("Not understood a received spa message ", 
+                this.log.info("Not understood a received spa message", 
                 "(nothing critical, but please do report this):" + this.prettify(msgType), 
                 " contents: "+ this.prettify(contents));
             }

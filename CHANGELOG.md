@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2.0.20 (08.09.2020)
+- Fix to logging problem
+
+## 2.0.19 (08.09.2020)
+- Handle, and safely ignore, a response after the user manually sets the spa time,
+  and other similar "preference responses"
+
+## 2.0.18 (08.09.2020)
+- Improved handling of low-level spa data over the socket, opportunity revealed by logging
+  improvements in the previous release. Enables multiple messages sent in a single packet to be interpreted correctly. Likely more improvements still needed
+
 ## 2.0.17 (08.09.2020)
 - Added some heater-problem error codes to the ones that are alerted by the 'leak sensor'
 - Better handling or at least logging of problems with checksum and message lengths from the spa
