@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2.0.21 (11.09.2020)
+- Put back in the message checksum validation that was omitted in the last couple of releases
+- Cleaner code for low-level handling of messages from the spa
+- Handle merging spa messages that are split across two chunks in the socket
+
 ## 2.0.20 (08.09.2020)
 - Fix to logging problem
 

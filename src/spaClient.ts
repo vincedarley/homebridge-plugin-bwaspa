@@ -242,68 +242,97 @@ export class SpaClient {
         }, 15 * 60 * 1000)
     }
 
+    lastIncompleteChunk: (Uint8Array|undefined) = undefined;
+    lastChunkTimestamp: (Date|undefined) = undefined;
+
+    /**
+     * We got some data from the Spa. Often one "chunk" exactly equals one message.
+     * But sometimes a single chunk will contain multiple messages back to back, and
+     * so we need to process each in turn. And sometimes a chunk will not contain a full
+     * message - it is incomplete - and we should store it and wait for the rest to
+     * arrive (or discard it if the rest doesn't arrive).
+     * 
+     * @param chunk 
+     */
     readAndActOnSocketContents(chunk: Uint8Array) {
-        let messagesProcessed = 0;
-        // eslint-disable-next-line no-constant-condition
-        while (true) {
-            if (chunk.length == 0) {
-                // Silently move on
-                return messagesProcessed;
+        // If we have a lastIncompleteChunk, then it may be the new chunk is just what is needed to
+        // complete that.
+        if (this.lastIncompleteChunk) {
+            let diff = Math.abs(this.lastChunkTimestamp!.getTime() - new Date().getTime());
+            if (diff < 1000) {
+                // Merge the messages, if timestamp difference less than 1 second
+                chunk = this.concat(this.lastIncompleteChunk, chunk);
+                this.log.debug("Merging messages of length", this.lastIncompleteChunk.length, "and", chunk.length);
+            } else {
+                this.log.warn("Discarding old, incomplete message", this.prettify(this.lastIncompleteChunk));
             }
+            this.lastIncompleteChunk = undefined;
+            this.lastChunkTimestamp = undefined;
+        }
+
+        let messagesProcessed = 0;
+
+        while (chunk.length > 0) {
             if (chunk.length < 2) {
                 this.log.error("Very short message received (ignored)", this.prettify(chunk));
-                return messagesProcessed;
+                break;
             }
             // Length is the length of the message, which excludes the checksum and 0x7e end.
-            var length = chunk[1];
-            if (length == 0) {
-                return messagesProcessed;
+            var msgLength = chunk[1];
+
+            if (msgLength > (chunk.length-2)) {
+                // Cache this because more contents is coming in the next packet, hopefully
+                this.lastIncompleteChunk = chunk;
+                this.lastChunkTimestamp = new Date();
+                this.log.debug("Incomplete message received (awaiting more data)", this.prettify(chunk), 
+                    "missing", (msgLength - chunk.length +2), "bytes");
+                break;
             }
-            if (length > (chunk.length-2)) {
-                // TODO? Cache this because more contents is coming in the next packet?
-                this.log.error("Incomplete message received (ignored)", this.prettify(chunk), 
-                    "missing", (length - chunk.length +2), "bytes");
-                return messagesProcessed;
-            }
-            if (length <= (chunk.length-2)) {
-                if (chunk[0] == 0x7e && chunk[length+1] == 0x7e) {
-                    // Seems like a good message
-                    this.actOnOneCompleteMessage(length, chunk[length], chunk.slice(0,length+2));
+            if (msgLength <= (chunk.length-2)) {
+                if (chunk[0] == 0x7e && chunk[msgLength+1] == 0x7e) {
+                    if (msgLength > 0) {
+                        // Seems like a good message. Check the checksum is ok
+                        if (chunk[msgLength] != this.compute_checksum(new Uint8Array([msgLength]), chunk.slice(2,msgLength))) {
+                            this.log.error("Bad checksum ", chunk[msgLength], "for", this.prettify(chunk.slice(0,msgLength+2)));
+                        } else {
+                            const somethingChanged = this.readAndActOnMessage(msgLength, chunk[msgLength], chunk.slice(0,msgLength+2));
+                            if (somethingChanged) {
+                                // Only log state when something has changed.
+                                this.log.debug("State change:", this.stateToString());
+                                // Call whoever has registered with us - this is our homekit platform plugin
+                                // which will arrange to go through each accessory and check if the state of
+                                // it has changed. There are 3 cases here to be aware of:
+                                // 1) The user adjusted something in Home and therefore this callback is completely
+                                // unnecessary, since Home is already aware.
+                                // 2) The user adjusted something in Home, but that change could not actually take
+                                // effect - for example the user tried to turn off the primary filter pump during
+                                // a filtration cycle, and the Spa will ignore such a change.  In this case this
+                                // callback is essential for the Home app to reflect reality
+                                // 3) The user adjusted something using the physical spa controls (or the Balboa app),
+                                // and again this callback is essential for Home to be in sync with those changes.
+                                //
+                                // Theoretically we could be cleverer and not call this for the unnecessary cases, but
+                                // that seems like a lot of complex work for little benefit.  Also theoretically we
+                                // could specify just the controls that have changed, and hence reduce the amount of
+                                // activity.  But again little genuine benefit really from that, versus the code complexity
+                                // it would require.
+                                this.changesCallback();
+                            }
+                        }
+                    } else {
+                        // Message length zero means there is no content at all. Not sure if this ever happens,
+                        // but no harm in just ignoring it.
+                    }
                     messagesProcessed++;
                 } else {
                     this.log.error("Message with bad terminations encountered:", this.prettify(chunk));
                 }
-                // Process rest of the message, as needed
-                chunk = chunk.slice(length+2);
+                // Process rest of the chunk, as needed
+                chunk = chunk.slice(msgLength+2);
             }
         }
+        return messagesProcessed;
     }   
-
-    actOnOneCompleteMessage(length: number, checksum: number, chunk: Uint8Array) {
-        const somethingChanged = this.readAndActOnMessage(length, checksum, chunk);
-        if (somethingChanged) {
-            // Only log state when something has changed.
-            this.log.debug("State change:", this.stateToString());
-            // Call whoever has registered with us - this is our homekit platform plugin
-            // which will arrange to go through each accessory and check if the state of
-            // it has changed. There are 3 cases here to be aware of:
-            // 1) The user adjusted something in Home and therefore this callback is completely
-            // unnecessary, since Home is already aware.
-            // 2) The user adjusted something in Home, but that change could not actually take
-            // effect - for example the user tried to turn off the primary filter pump during
-            // a filtration cycle, and the Spa will ignore such a change.  In this case this
-            // callback is essential for the Home app to reflect reality
-            // 3) The user adjusted something using the physical spa controls (or the Balboa app),
-            // and again this callback is essential for Home to be in sync with those changes.
-            //
-            // Theoretically we could be cleverer and not call this for the unnecessary cases, but
-            // that seems like a lot of complex work for little benefit.  Also theoretically we
-            // could specify just the controls that have changed, and hence reduce the amount of
-            // activity.  But again little genuine benefit really from that, versus the code complexity
-            // it would require.
-            this.changesCallback();
-        }
-    }
 
     checkWeHaveReceivedStateUpdate() {
         if (this.receivedStateUpdate) {
