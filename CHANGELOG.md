@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2.0.22 (18.09.2020)
+- Small clean up to message handling
+- Clean up to temperature conversion code, resulting in slightly clearer logging
+
 ## 2.0.21 (11.09.2020)
 - Put back in the message checksum validation that was omitted in the last couple of releases
 - Cleaner code for low-level handling of messages from the spa

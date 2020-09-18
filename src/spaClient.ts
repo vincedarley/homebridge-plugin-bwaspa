@@ -61,6 +61,13 @@ export class SpaClient {
     // undefined means the mister doesn't exist on the spa
     misterIsOn: (boolean | undefined);
 
+    // Is Spa set to operate in FAHRENHEIT or CELSIUS
+    temp_CorF: string;
+
+    // If temp_CorF is FAHRENHEIT, temperatures are all stored as degrees F, integers 
+    // (so the resolution is 1 degree F).
+    // If temp_CorF is CELSIUS, temperatures are all stored as 2x degrees C, integers 
+    // (so the resolution is 0.5 degrees C).
     currentTemp?: number;
     // When spa is in 'high' mode, what is the target temperature
     targetTempModeHigh?: number;
@@ -74,7 +81,6 @@ export class SpaClient {
     minute: number;
     // ready, ready at rest, etc.
     heatingMode: string;
-    temp_CorF: string;
     priming: boolean;
     time_12or24: string;
     isHeatingNow: boolean;
@@ -288,48 +294,52 @@ export class SpaClient {
                     "missing", (msgLength - chunk.length +2), "bytes");
                 break;
             }
-            if (msgLength <= (chunk.length-2)) {
-                if (chunk[0] == 0x7e && chunk[msgLength+1] == 0x7e) {
-                    if (msgLength > 0) {
-                        // Seems like a good message. Check the checksum is ok
-                        if (chunk[msgLength] != this.compute_checksum(new Uint8Array([msgLength]), chunk.slice(2,msgLength))) {
-                            this.log.error("Bad checksum ", chunk[msgLength], "for", this.prettify(chunk.slice(0,msgLength+2)));
-                        } else {
-                            const somethingChanged = this.readAndActOnMessage(msgLength, chunk[msgLength], chunk.slice(0,msgLength+2));
-                            if (somethingChanged) {
-                                // Only log state when something has changed.
-                                this.log.debug("State change:", this.stateToString());
-                                // Call whoever has registered with us - this is our homekit platform plugin
-                                // which will arrange to go through each accessory and check if the state of
-                                // it has changed. There are 3 cases here to be aware of:
-                                // 1) The user adjusted something in Home and therefore this callback is completely
-                                // unnecessary, since Home is already aware.
-                                // 2) The user adjusted something in Home, but that change could not actually take
-                                // effect - for example the user tried to turn off the primary filter pump during
-                                // a filtration cycle, and the Spa will ignore such a change.  In this case this
-                                // callback is essential for the Home app to reflect reality
-                                // 3) The user adjusted something using the physical spa controls (or the Balboa app),
-                                // and again this callback is essential for Home to be in sync with those changes.
-                                //
-                                // Theoretically we could be cleverer and not call this for the unnecessary cases, but
-                                // that seems like a lot of complex work for little benefit.  Also theoretically we
-                                // could specify just the controls that have changed, and hence reduce the amount of
-                                // activity.  But again little genuine benefit really from that, versus the code complexity
-                                // it would require.
-                                this.changesCallback();
-                            }
-                        }
+            // We appear to have a full message, perhaps more than one.
+            if (chunk[0] == 0x7e && chunk[msgLength+1] == 0x7e) {
+                // All spa messages start and end with 0x7e
+                if (msgLength > 0) {
+                    let thisMsg = chunk.slice(0, msgLength+2);
+                    let checksum = thisMsg[msgLength];
+                    // Seems like a good message. Check the checksum is ok
+                    if (checksum != this.compute_checksum(new Uint8Array([msgLength]), thisMsg.slice(2,msgLength))) {
+                        this.log.error("Bad checksum", checksum, "for", this.prettify(thisMsg));
                     } else {
-                        // Message length zero means there is no content at all. Not sure if this ever happens,
-                        // but no harm in just ignoring it.
+                        const somethingChanged = this.readAndActOnMessage(msgLength, checksum, thisMsg);
+                        if (somethingChanged) {
+                            // Only log state when something has changed.
+                            this.log.debug("State change:", this.stateToString());
+                            // Call whoever has registered with us - this is our homekit platform plugin
+                            // which will arrange to go through each accessory and check if the state of
+                            // it has changed. There are 3 cases here to be aware of:
+                            // 1) The user adjusted something in Home and therefore this callback is completely
+                            // unnecessary, since Home is already aware.
+                            // 2) The user adjusted something in Home, but that change could not actually take
+                            // effect - for example the user tried to turn off the primary filter pump during
+                            // a filtration cycle, and the Spa will ignore such a change.  In this case this
+                            // callback is essential for the Home app to reflect reality
+                            // 3) The user adjusted something using the physical spa controls (or the Balboa app),
+                            // and again this callback is essential for Home to be in sync with those changes.
+                            //
+                            // Theoretically we could be cleverer and not call this for the unnecessary cases, but
+                            // that seems like a lot of complex work for little benefit.  Also theoretically we
+                            // could specify just the controls that have changed, and hence reduce the amount of
+                            // activity.  But again little genuine benefit really from that, versus the code complexity
+                            // it would require.
+                            this.changesCallback();
+                        }
                     }
-                    messagesProcessed++;
                 } else {
-                    this.log.error("Message with bad terminations encountered:", this.prettify(chunk));
+                    // Message length zero means there is no content at all. Not sure if this ever happens,
+                    // but no harm in just ignoring it.
                 }
-                // Process rest of the chunk, as needed
-                chunk = chunk.slice(msgLength+2);
+                messagesProcessed++;
+            } else {
+                // Message didn't start/end correctly
+                this.log.error("Message with bad terminations encountered:", this.prettify(chunk));
             }
+            // Process rest of the chunk, as needed (go round the while loop).
+            // It might contain more messages
+            chunk = chunk.slice(msgLength+2);
         }
         return messagesProcessed;
     }   
@@ -419,7 +429,7 @@ export class SpaClient {
         return Buffer.from(message).toString('hex').match(/.{1,2}/g);
     }
     getTargetTemp() {
-        return this.convertTemperature(true, this.tempRangeIsHigh 
+        return this.convertSpaTemperatureToExternal(this.tempRangeIsHigh 
             ? this.targetTempModeHigh! : this.targetTempModeLow!);
     }
     getTempIsCorF() {
@@ -537,7 +547,7 @@ export class SpaClient {
         if (this.currentTemp == undefined) {
             return undefined;
         } else {
-            return this.convertTemperature(true, this.currentTemp);
+            return this.convertSpaTemperatureToExternal(this.currentTemp);
         }
     }
 
@@ -740,10 +750,10 @@ export class SpaClient {
     setTargetTemperature(temp: number) {
         var sendTemp;
         if (this.tempRangeIsHigh) {
-            this.targetTempModeHigh = this.convertTemperature(false, temp);
+            this.targetTempModeHigh = this.convertExternalTemperatureToSpa(temp);
             sendTemp = this.targetTempModeHigh;
         } else {
-            this.targetTempModeLow = this.convertTemperature(false, temp);
+            this.targetTempModeLow = this.convertExternalTemperatureToSpa(temp);
             sendTemp = this.targetTempModeLow;
         }
         this.sendMessageToSpa("SetTargetTempRequest", SetTargetTempRequest, new Uint8Array([sendTemp]));
@@ -808,21 +818,27 @@ export class SpaClient {
         this.sendMessageToSpa("Lock", LockPanelRequest, new Uint8Array([value]));   
     }
 
-    // Celsius temperatures are communicated by the Spa in half degrees.
-    convertTemperature(internalToExternal : boolean, temperature : number) {
+    // Celsius temperatures are stored/communicated by the Spa in half degrees.
+    // So '80' stored/sent by the Spa means 40.0 degrees celsius, IF the spa
+    // is operating in Celsius. If in Fahrenheit then no conversions needed.
+    convertSpaTemperatureToExternal(temperature : number) {
         if (this.temp_CorF === FAHRENHEIT) return temperature;
         // It's a celsius value which needs either dividing or multiplying by 2
-        if (internalToExternal) {
-            return temperature/2.0;
-        } else {
-            return Math.round(temperature * 2.0);
-        }
+        return temperature/2.0;
     }
 
-    temperatureToString(temperature? : number) {
+    // Celsius temperatures are stored/communicated by the Spa in half degrees.
+    // So '80' stored/sent by the Spa means 40.0 degrees celsius, IF the spa
+    // is operating in Celsius. If in Fahrenheit then no conversions needed.
+    convertExternalTemperatureToSpa(temperature : number) {
+        if (this.temp_CorF === FAHRENHEIT) return temperature;
+        return Math.round(temperature * 2.0);
+    }
+
+    internalTemperatureToString(temperature? : number) {
         if (temperature == undefined) return "Unknown";
-        if (this.temp_CorF === FAHRENHEIT) return temperature.toString();
-        return this.convertTemperature(true, temperature).toFixed(1).toString() 
+        if (this.temp_CorF === FAHRENHEIT) return temperature.toString() + "F";
+        return this.convertSpaTemperatureToExternal(temperature).toFixed(1).toString() + "C"; 
     }
 
     stateToString() {
@@ -834,9 +850,9 @@ export class SpaClient {
         }
         pumpDesc += ']';
 
-        var s = "Temp: " + this.temperatureToString(this.currentTemp) 
-        + ", Target Temp(H): " + this.temperatureToString(this.targetTempModeHigh) 
-        + ", Target Temp(L): " + this.temperatureToString(this.targetTempModeLow) 
+        var s = "Temp: " + this.internalTemperatureToString(this.currentTemp) 
+        + ", Target Temp(H): " + this.internalTemperatureToString(this.targetTempModeHigh) 
+        + ", Target Temp(L): " + this.internalTemperatureToString(this.targetTempModeLow) 
         + ", Time: " + this.timeToString(this.hour, this.minute)
         + ", Priming: " + this.priming.toString()
         + ", Heating Mode: " + this.heatingMode 
@@ -1231,9 +1247,9 @@ export class SpaClient {
             "Fault Entries:", bytes[0], ", Num:", bytes[1]+1,
             ", Error code:", "M0"+code, ", Days ago:", daysAgo,
             ", Time:", this.timeToString(hour, minute),
-            ", Heat mode:", bytes[6], ", Set temp:", this.convertTemperature(true, bytes[7]), 
-            ", Temp A:", this.convertTemperature(true, bytes[8]), 
-            ", Temp B:", this.convertTemperature(true, bytes[9]));
+            ", Heat mode:", bytes[6], ", Set temp:", this.internalTemperatureToString(bytes[7]), 
+            ", Temp A:", this.internalTemperatureToString(bytes[8]), 
+            ", Temp B:", this.internalTemperatureToString(bytes[9]));
         }
         
         return stateChanged;
