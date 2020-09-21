@@ -2,6 +2,9 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2.1.0 (21.09.2020)
+- Add ability to toggle between 'ready' and 'rest' heating mode, with a new switch accessory type
+
 ## 2.0.22 (18.09.2020)
 - Small clean up to message handling
 - Clean up to temperature conversion code, resulting in slightly clearer logging

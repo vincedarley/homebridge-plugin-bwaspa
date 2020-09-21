@@ -7,6 +7,7 @@ export const FLOW_LOW = "Low";
 export const FLOW_FAILED = "Failed";
 export const FLOW_STATES = [FLOW_GOOD, FLOW_LOW, FLOW_FAILED];
 const FILTERSTATES = ['Off', 'Cycle 1', 'Cycle 2', 'Cycle 1 and 2'];
+const HEATINGMODES = ['Ready', 'Rest', 'Ready in Rest'];
 
 const CELSIUS = 'Celsius';
 const FAHRENHEIT = 'Fahrenheit';
@@ -535,10 +536,37 @@ export class SpaClient {
     getIsHeatingNow() {
         return this.isHeatingNow;
     }
-    get_heating_mode() {
+
+    // Three-state: ready, rest, ready-at-rest (the latter indicating it is in 'rest' mode and a
+    // pump has been turned on so the spa will heat if necessary). This is what is shown in
+    // the spa display.
+    getHeatingMode() {
         return this.heatingMode;
     }
-    
+
+    // See below
+    isHeatingModeAlwaysReady() {
+        return (this.heatingMode == 'Ready');
+    }
+
+    /** 
+     * Boolean either
+     * - 'ready' (always heating if needed) or
+     * - 'rest' (only heating when a pump is running)
+     * 
+     * In winter it is advisable to keep the spa in ready mode (at a low temperature if preferred)
+     * to avoid freezing.
+     */
+    setHeatingModeAlwaysReady(isAlwaysReady: boolean) {
+        let isSetToAlwaysReady = (this.heatingMode == 'Ready');
+        if (isSetToAlwaysReady == isAlwaysReady) {
+            // Already set correctly
+            return;
+        }
+        this.send_toggle_message('Heating Mode', 0x51);
+        this.heatingMode = HEATINGMODES[isAlwaysReady? 0 : 1];
+    }
+
     /**
      * Returns in C or F depending on what the user has defined in the Spa
      * control panel. 
@@ -791,13 +819,12 @@ export class SpaClient {
      *  - 0x0e - mister
      *  - 0x16 - aux1
      *  - 0x17 - aux2
-     *  
-     *  And these which are unsupported in the code at present:
-     *  - 0x51 - heating mode (ready, ready at rest, etc)
+     *  - 0x51 - heating mode (ready = always trying to maintain temperature, rest = only
+     *           heat when pumps are running)
      *  
      *  The spa may also have two "lock" settings - locking the control panel completely, or
-     *  just locking the settings (but allowing jets and lights, say, to still be used).
-     *  Don't know what codes to use for those at present (assuming they are controllable).
+     *  just locking the settings (but allowing jets and lights, say, to still be used). Those
+     *  are set below in 'send_lock_settings' and do not use the toggle mechanism.
      */
     send_toggle_message(itemName: string, code: number) {
         if (code > 255) {
@@ -971,7 +998,8 @@ export class SpaClient {
         this.currentTemp = (bytes[2] == 255 ? undefined : bytes[2]);
         this.hour = bytes[3];
         this.minute = bytes[4];
-        this.heatingMode = ["Ready", "Rest", "Ready in Rest"][bytes[5]];
+        // Three possible states for heating mode. We can only set it to two states though.
+        this.heatingMode = HEATINGMODES[bytes[5]];
         // Byte 6 = unknown/zero
         // Byte 7 = Sensor A Temperature / Hold Timer: Minutes if Hold Mode else Temperature 
         // (scaled by Temperature Scale) if A/B Temps else 0x00

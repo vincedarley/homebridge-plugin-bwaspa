@@ -151,6 +151,12 @@
                   ]
                 },
                 {
+                  "title": "Spa Heat Mode Ready",
+                  "enum": [
+                    "Spa Heat Mode Ready"
+                  ]
+                },
+                {
                   "title": "Blower",
                   "enum": [
                     "Blower"
