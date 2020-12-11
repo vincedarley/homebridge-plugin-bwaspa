@@ -2,6 +2,9 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2.1.2 (11.12.2020)
+- Better handling of water flow problems.
+
 ## 2.1.1 (11.12.2020)
 - Fix to alerting when water flow is low/failed
 

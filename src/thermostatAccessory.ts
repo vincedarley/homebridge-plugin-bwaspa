@@ -171,19 +171,22 @@ export class ThermostatAccessory {
     if (value == this.platform.Characteristic.TargetHeatingCoolingState.OFF) {
       // Check if this makes sense or if we should reject the change.
       if (this.platform.spa!.getFlowState() == FLOW_GOOD) {
-        this.platform.log.debug("Spa doesn't allow turned heating off. Reverting.");
-        callback(new Error("Spa doesn't allow turned heating off. Reverting."));
+        this.platform.log.debug("Spa doesn't allow turning heating off (only heat or cool). Reverting.");
+        callback(new Error("Spa doesn't allow turning heating off (only heat or cool). Reverting."));
         // value = Characteristic.TargetHeatingCoolingState.COOL;
         // this.service.getCharacteristic(this.platform.Characteristic.TargetHeatingCoolingState)
         //   .updateValue(Characteristic.TargetHeatingCoolingState.COOL);
-        return;
       }
-    } else if (this.platform.spa!.getFlowState() == FLOW_FAILED) {
+      // Even if we don't reject the change, we don't act on it further below. The device is
+      // effectively locked into the "off" state until something is fixed.
+      return;
+    } else if (this.platform.spa!.getFlowState() != FLOW_GOOD) {
+      // Trying to set it to cool or heat. But has flow problems. 
       // Can only be in the "off" state
-      callback(new Error("Water flow has failed. Heating off"));
+      callback(new Error("Water flow is low or has failed. Heating off"));
       return;
     }
-    // HEAT means "high".  If users chooses "cool" or "off", we treat those as "low"
+    // HEAT means "high".  If users chooses "cool", we treat that as "low"
     const heating = (value == this.platform.Characteristic.TargetHeatingCoolingState.HEAT);
     this.platform.spa!.setTempRangeIsHigh(heating);
     this.platform.log.debug('Set Target Heating State ->', heating ? "HEAT" : "COOL", 
