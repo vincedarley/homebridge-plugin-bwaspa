@@ -3,6 +3,7 @@ import type { Service, PlatformAccessory, CharacteristicGetCallback} from 'homeb
 
 import { SpaHomebridgePlatform } from './platform';
 import { VERSION } from './settings';
+import { FLOW_FAILED, FLOW_LOW } from './spaClient';
 
 /**
  * WaterFlowProblemAccessory
@@ -50,7 +51,7 @@ export class WaterFlowProblemAccessory {
     } else {
       const flowState = this.platform.spa!.getFlowState();
       this.platform.log.debug('Get Flow State <-', flowState);
-      callback(null, flowState === "FAILED");
+      callback(null, flowState === FLOW_FAILED);
     }
   }
 
@@ -60,7 +61,7 @@ export class WaterFlowProblemAccessory {
     } else {
       const flowState = this.platform.spa!.getFlowState();
       this.platform.log.debug('Get Flow Fault <-', flowState);
-      callback(null, flowState === "LOW");
+      callback(null, flowState === FLOW_LOW);
     }
   }
 
@@ -76,8 +77,8 @@ export class WaterFlowProblemAccessory {
       return;
     }
     const flowState = this.platform.spa!.getFlowState();
-    this.service.getCharacteristic(this.platform.Characteristic.LeakDetected).updateValue(flowState === "FAILED");
-    this.service.getCharacteristic(this.platform.Characteristic.StatusFault).updateValue(flowState === "LOW");
+    this.service.getCharacteristic(this.platform.Characteristic.LeakDetected).updateValue(flowState === FLOW_FAILED);
+    this.service.getCharacteristic(this.platform.Characteristic.StatusFault).updateValue(flowState === FLOW_LOW);
   }
 
 }

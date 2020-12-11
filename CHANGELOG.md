@@ -2,6 +2,9 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2.1.1 (11.12.2020)
+- Fix to alerting when water flow is low/failed
+
 ## 2.1.0 (21.09.2020)
 - Add ability to toggle between 'ready' and 'rest' heating mode, with a new switch accessory type
 

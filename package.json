@@ -1,7 +1,7 @@
 {
   "displayName": "Balboa Spa",
   "name": "homebridge-balboa-spa",
-  "version": "2.1.0",
+  "version": "2.1.1",
   "description": "Homebridge control of a balboa spa.",
   "license": "Apache-2.0",
   "repository": {
@@ -30,20 +30,20 @@
   ],
   "dependencies": {
     "crc": "^3.8.0",
-    "socket.io-client": "^2.3.0"
+    "socket.io-client": "^2.3.1"
   },
   "devDependencies": {
     "@types/crc": "^3.4.0",
-    "@types/socket.io": "^2.1.4",
-    "@types/socket.io-client": "^1.4.32",
-    "@types/node": "^13.13.4",
-    "@typescript-eslint/eslint-plugin": "^2.31.0",
-    "@typescript-eslint/parser": "^2.31.0",
+    "@types/node": "^13.13.35",
+    "@types/socket.io": "^2.1.12",
+    "@types/socket.io-client": "^1.4.34",
+    "@typescript-eslint/eslint-plugin": "^2.34.0",
+    "@typescript-eslint/parser": "^2.34.0",
     "eslint": "^6.8.0",
-    "homebridge": "^1.0.5-beta.13",
-    "nodemon": "^2.0.3",
+    "homebridge": "^1.1.6",
+    "nodemon": "^2.0.6",
     "rimraf": "^3.0.2",
-    "ts-node": "^8.10.1",
-    "typescript": "^3.8.3"
+    "ts-node": "^8.10.2",
+    "typescript": "^3.9.7"
   }
 }

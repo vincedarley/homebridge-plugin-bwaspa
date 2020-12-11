@@ -148,8 +148,6 @@ Lights are simply on/off.  Balboa provide no current capability to control the c
 
 If the water flow sensor discovers a fault (which it checks for every ten minutes), and you then fix the issue (change/clean filters, etc), the spa does not actually notify that the fault has been corrected. However if you either use 'hold' mode or turn the spa off/on (which you should generally do when changing filters) then a hold or priming event will take precedence and through this plugin the fault will no longer be reported to Homekit. If you don't do either of those actions, then the fault will only be reset in Homekit the following day.
 
-The plugin does not currently implement any support for setting the heatmode of the spa ('ready', 'ready at rest', etc). You don't normally need to adjust this, so not really a limitation.
-
 ## Reliability
 
 There's a fair amount of information on the internet of how the Balboa Wifi module is pretty unreliable.  In particular prior to the '-06' release of the '50350' module, it would regularly disconnect and then be unable to reconnect (without rebooting the power supply to the module).  With my own spa, the module is fairly reliable but even then does disconnect for a few minutes to an hour once every day or two.  But between the module and this plugin's reconnect capability, a reconnection does always ultimately happen.  If your Spa's module is less reliable, I would suggest a first step is to check which module version you have.
