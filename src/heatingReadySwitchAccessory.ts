@@ -48,7 +48,7 @@ export class HeatingReadySwitchAccessory {
       return;
     }
     // Turn the switch on or off
-    let isHeatingAlwaysReady = value as boolean;
+    const isHeatingAlwaysReady = value as boolean;
     this.platform.spa!.setHeatingModeAlwaysReady(isHeatingAlwaysReady);
     this.platform.log.debug('Set Heating Always Ready On ->', isHeatingAlwaysReady, 
       'which is', (isHeatingAlwaysReady ? 'Ready' : 'Rest'), 'mode');

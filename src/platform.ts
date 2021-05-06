@@ -184,7 +184,7 @@ export class SpaHomebridgePlatform implements DynamicPlatformPlugin {
       if (this.spa!.getIsAuxOn(1) != undefined) this.makeDevice({name: 'Spa Aux 1', deviceType: 'Aux 1'});
       if (this.spa!.getIsAuxOn(2) != undefined) this.makeDevice({name: 'Spa Aux 2', deviceType: 'Aux 2'});
     }
-    for (var device of this.devices) {
+    for (const device of this.devices) {
       if (!device.deviceType) {
         this.log.warn('Device Type Missing')
       } else {

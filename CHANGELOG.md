@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2.1.3 (06.05.2021)
+- Update of plugin dependencies
+- Auto-adjust the Spa's clock if it is meaningfully different to the time known by this plugin
+  (most usefully this will typically auto-adjust for daylight savings)
+
 ## 2.1.2 (11.12.2020)
 - Better handling of water flow problems.
 

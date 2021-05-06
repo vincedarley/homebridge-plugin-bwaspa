@@ -149,7 +149,7 @@ export class ThermostatAccessory {
       const mode = this.platform.spa!.getTempRangeIsHigh();
       // might want "LOW" or "FAILED" here, rather than just the latter.
       const flowError = (this.platform.spa!.getFlowState() == FLOW_FAILED);
-      var result;
+      let result;
       if (flowError) {
         result = this.platform.Characteristic.TargetHeatingCoolingState.OFF;
       } else {
@@ -216,7 +216,7 @@ export class ThermostatAccessory {
       callback(this.platform.connectionProblem);
       return;
     }
-    var temp = value as number;
+    let temp = value as number;
     if (this.platform.spa!.getTempRangeIsHigh()) {
       if (temp < 26.5) {
         temp = 26.5;

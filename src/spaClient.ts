@@ -27,6 +27,7 @@ const PreferencesReply = new Uint8Array([0xff,0xaf,0x26]);
 // These three either don't have a reply or we don't care about it.
 const ToggleItemRequest = new Uint8Array([0x0a, 0xbf, 0x11]);
 const LockPanelRequest = new Uint8Array([0x0a, 0xbf, 0x2d]);
+const SetTimeOfDayRequest = new Uint8Array([0x0a, 0xbf, 0x21]);
 const SetTargetTempRequest = new Uint8Array([0x0a, 0xbf, 0x20]);
 // These we send once, but don't actually currently make use of the results
 // Need to investigate how to interpret them. 
@@ -91,6 +92,7 @@ export class SpaClient {
     lockTheEntirePanel: boolean;
     hold: boolean;
     receivedStateUpdate: boolean;
+    autoSetSpaClock: boolean = true;
 
     // Takes values from FLOW_STATES
     flow: string;
@@ -164,8 +166,8 @@ export class SpaClient {
         }, () => {
             this.numberOfConnectionsSoFar++;
             this.liveSinceDate.getUTCDay
-            let diff = Math.abs(this.liveSinceDate.getTime() - new Date().getTime());
-            let diffDays = Math.ceil(diff / (1000 * 3600 * 24)); 
+            const diff = Math.abs(this.liveSinceDate.getTime() - new Date().getTime());
+            const diffDays = Math.ceil(diff / (1000 * 3600 * 24)); 
             this.log.info('Successfully connected to Spa at', host, 
                 'on port 4257. This is connection number', this.numberOfConnectionsSoFar,
                 'in', diffDays, 'days');
@@ -199,7 +201,7 @@ export class SpaClient {
         // We have sent, or can be the standard sending of status that the spa
         // seems to do every second.
         this.socket?.on('data', (data: any) => {
-            var bufView = new Uint8Array(data);
+            const bufView = new Uint8Array(data);
             this.readAndActOnSocketContents(bufView);
         });
 
@@ -265,7 +267,7 @@ export class SpaClient {
         // If we have a lastIncompleteChunk, then it may be the new chunk is just what is needed to
         // complete that.
         if (this.lastIncompleteChunk) {
-            let diff = Math.abs(this.lastChunkTimestamp!.getTime() - new Date().getTime());
+            const diff = Math.abs(this.lastChunkTimestamp!.getTime() - new Date().getTime());
             if (diff < 1000) {
                 // Merge the messages, if timestamp difference less than 1 second
                 chunk = this.concat(this.lastIncompleteChunk, chunk);
@@ -285,7 +287,7 @@ export class SpaClient {
                 break;
             }
             // Length is the length of the message, which excludes the checksum and 0x7e end.
-            var msgLength = chunk[1];
+            const msgLength = chunk[1];
 
             if (msgLength > (chunk.length-2)) {
                 // Cache this because more contents is coming in the next packet, hopefully
@@ -299,8 +301,8 @@ export class SpaClient {
             if (chunk[0] == 0x7e && chunk[msgLength+1] == 0x7e) {
                 // All spa messages start and end with 0x7e
                 if (msgLength > 0) {
-                    let thisMsg = chunk.slice(0, msgLength+2);
-                    let checksum = thisMsg[msgLength];
+                    const thisMsg = chunk.slice(0, msgLength+2);
+                    const checksum = thisMsg[msgLength];
                     // Seems like a good message. Check the checksum is ok
                     if (checksum != this.compute_checksum(new Uint8Array([msgLength]), thisMsg.slice(2,msgLength))) {
                         this.log.error("Bad checksum", checksum, "for", this.prettify(thisMsg));
@@ -350,6 +352,9 @@ export class SpaClient {
             // All good - reset for next time
             this.log.info('Latest spa state', this.stateToString());
             this.receivedStateUpdate = false;
+
+            // We use this periodic occasion to see if we should correct the Spa's clock
+            this.checkAndSetTimeOfDay();
         } else {
             this.log.error('No spa state update received for some time.  Last state was', 
                 this.stateToString());
@@ -406,11 +411,11 @@ export class SpaClient {
      * @param payload 
      */
     sendMessageToSpa(purpose: string, type: Uint8Array, payload: Uint8Array) {
-        var length = (5 + payload.length);
-        var typepayload = this.concat(type, payload);
-        var checksum = this.compute_checksum(new Uint8Array([length]), typepayload);
-        var prefixSuffix = new Uint8Array([0x7e]);
-        var message = this.concat(prefixSuffix, new Uint8Array([length]));
+        const length = (5 + payload.length);
+        const typepayload = this.concat(type, payload);
+        const checksum = this.compute_checksum(new Uint8Array([length]), typepayload);
+        const prefixSuffix = new Uint8Array([0x7e]);
+        let message = this.concat(prefixSuffix, new Uint8Array([length]));
         message = this.concat(message, typepayload);
         message = this.concat(message, new Uint8Array([checksum]));
         message = this.concat(message, prefixSuffix);
@@ -558,7 +563,7 @@ export class SpaClient {
      * to avoid freezing.
      */
     setHeatingModeAlwaysReady(isAlwaysReady: boolean) {
-        let isSetToAlwaysReady = (this.heatingMode == 'Ready');
+        const isSetToAlwaysReady = (this.heatingMode == 'Ready');
         if (isSetToAlwaysReady == isAlwaysReady) {
             // Already set correctly
             return;
@@ -652,8 +657,8 @@ export class SpaClient {
             this.log.error("Trying to set speed of blower, which doesn't exist");
             return;
         }
-        let numberOfStates = 4;
-        let oldIdx = this.blowerCurrentSpeed!;
+        const numberOfStates = 4;
+        const oldIdx = this.blowerCurrentSpeed!;
         let toggleCount = (numberOfStates + desiredSpeed - oldIdx) % numberOfStates;
         // Anything from 0 to 3 toggles needed.
         while (toggleCount > 0) {
@@ -711,9 +716,9 @@ export class SpaClient {
             // to the desired speed?  For a 2-speed pump, allowed speeds are 0,1,2.
             // This code (but not other code in this class) should actually 
             // work as-is for 3-speed pumps if they exist.
-            let numberOfStates = this.pumpsSpeedRange[index]+1;
-            let oldIdx = this.pumpsCurrentSpeed[index];
-            let newIdx = desiredSpeed;
+            const numberOfStates = this.pumpsSpeedRange[index]+1;
+            const oldIdx = this.pumpsCurrentSpeed[index];
+            const newIdx = desiredSpeed;
             // For a 2-speed pump, we'll need to toggle either 1 or 2 times.
             let toggleCount = (numberOfStates + newIdx - oldIdx) % numberOfStates;
             if (toggleCount == 2 && desiredSpeed === 1) {
@@ -762,12 +767,12 @@ export class SpaClient {
     }
 
     compute_checksum(length: Uint8Array, bytes: Uint8Array) {
-        var checksum = crc.crc8(Buffer.from(this.concat(length, bytes)), 0x02);
+        const checksum = crc.crc8(Buffer.from(this.concat(length, bytes)), 0x02);
         return checksum ^ 0x02;
     }
     
     concat(a: Uint8Array, b: Uint8Array) {
-        var c = new Uint8Array(a.length + b.length);
+        const c = new Uint8Array(a.length + b.length);
         c.set(a);
         c.set(b, a.length);
         return c;
@@ -776,7 +781,7 @@ export class SpaClient {
     // Temperatures which are out of certain bounds will be rejected by the spa.
     // We don't do bounds-checking ourselves.
     setTargetTemperature(temp: number) {
-        var sendTemp;
+        let sendTemp;
         if (this.tempRangeIsHigh) {
             this.targetTempModeHigh = this.convertExternalTemperatureToSpa(temp);
             sendTemp = this.targetTempModeHigh;
@@ -785,6 +790,20 @@ export class SpaClient {
             sendTemp = this.targetTempModeLow;
         }
         this.sendMessageToSpa("SetTargetTempRequest", SetTargetTempRequest, new Uint8Array([sendTemp]));
+    }
+
+    checkAndSetTimeOfDay() {
+        const date = new Date();
+        const hr = date.getHours();
+        const min = date.getMinutes();
+        if (Math.abs((hr*60+min) - (this.hour * 60 + this.minute)) > 10) {
+            // Spa's time seems to be different to my time. We trust that the computer we are
+            // running this code on is more likely to have the correct time than the Spa.
+            // So we change the Spa's time.
+            if (this.autoSetSpaClock) {
+                this.sendMessageToSpa("SetSpaTimeOfDay", SetTimeOfDayRequest, new Uint8Array([hr, min]));
+            }
+        }
     }
 
     send_config_request() {
@@ -841,7 +860,7 @@ export class SpaClient {
     // See https://github.com/ccutrer/balboa_worldwide_app/wiki#lock-request
     // 1 = lock settings, 2 = lock panel, 3 = unlock settings, 4 = unlock panel
     send_lock_settings(entirePanel: boolean, lock: boolean) {
-        let value = (entirePanel ? 1 : 0) + (lock ? 1 : 3);
+        const value = (entirePanel ? 1 : 0) + (lock ? 1 : 3);
         this.sendMessageToSpa("Lock", LockPanelRequest, new Uint8Array([value]));   
     }
 
@@ -877,7 +896,7 @@ export class SpaClient {
         }
         pumpDesc += ']';
 
-        var s = "Temp: " + this.internalTemperatureToString(this.currentTemp) 
+        const s = "Temp: " + this.internalTemperatureToString(this.currentTemp) 
         + ", Target Temp(H): " + this.internalTemperatureToString(this.targetTempModeHigh) 
         + ", Target Temp(L): " + this.internalTemperatureToString(this.targetTempModeLow) 
         + ", Time: " + this.timeToString(this.hour, this.minute)
@@ -916,10 +935,10 @@ export class SpaClient {
               length, checksum, this.prettify(chunk));
             return false;
         }
-        var contents = chunk.slice(5, length);
-        var msgType = chunk.slice(2,5);
-        var stateChanged : boolean;
-        var avoidHighFreqDevMessage : boolean = true;
+        const contents = chunk.slice(5, length);
+        const msgType = chunk.slice(2,5);
+        let stateChanged : boolean;
+        let avoidHighFreqDevMessage : boolean = true;
         if (this.equal(msgType,StateReply)) {
             stateChanged = this.readStateFromBytes(contents);
             avoidHighFreqDevMessage = stateChanged;
@@ -943,7 +962,7 @@ export class SpaClient {
         } else {
             stateChanged = false;
             let recognised = false;
-            for (var id = 0; id<4; id++) {
+            for (let id = 0; id<4; id++) {
                 if (this.equal(msgType, ControlPanelRequest[id][1])) {
                     stateChanged = this.interpretControlPanelReply(id+1, contents);
                     recognised = true;
@@ -1006,21 +1025,21 @@ export class SpaClient {
         // Byte 8 = 0x00 if A/B Temps if OFF else Temperature (scaled by Temperature Scale)
 
         // Byte 9 = Temperature Scale, Clock Mode, Filter Mode
-        var variousFlags = bytes[9];
+        const variousFlags = bytes[9];
         this.temp_CorF = (((variousFlags & 1) === 0) ? FAHRENHEIT : CELSIUS);
         this.time_12or24 = (((variousFlags & 2) === 0) ? "12 Hr" : "24 Hr");
         // Filtering mode we just put in the log. It has 4 states (off, cycle1, cycle2, cycle 1 and 2)
         this.filtering = (variousFlags & 0x0c) >> 2; // values of 0,1,2,3
         this.lockTheSettings = (variousFlags & 0x10) != 0;
         this.lockTheEntirePanel = (variousFlags & 0x20) != 0;
-        var moreFlags = bytes[10];
+        const moreFlags = bytes[10];
         // It seems some spas have 3 states for this, idle, heating, heat-waiting.
         // We merge the latter two into just "heating" - there are two bits here though.
         this.isHeatingNow = ((moreFlags & 48) !== 0);
         this.tempRangeIsHigh = (((moreFlags & 4) === 0) ? false : true);
         // moreFlags & 8 is normally =8, but when we put the spa into "hold" it switches to 0,
         // and bytes[22] is set to 64.
-        var pump_status1234 = bytes[11];
+        const pump_status1234 = bytes[11];
         // We have a correct determination of the number of pumps automatically.
         this.pumpsCurrentSpeed[0] = this.internalSetPumpSpeed(this.pumpsSpeedRange[0], 
             (pump_status1234 & (1+2)));
@@ -1031,7 +1050,7 @@ export class SpaClient {
         this.pumpsCurrentSpeed[3] = this.internalSetPumpSpeed(this.pumpsSpeedRange[3], 
             (pump_status1234 & (64+128)) >> 6);
         // pumps 5,6 are untested by me.
-        var pump_status56 = bytes[12];
+        const pump_status56 = bytes[12];
         this.pumpsCurrentSpeed[4] = this.internalSetPumpSpeed(this.pumpsSpeedRange[4], 
             (pump_status56 & (1+2)));
         this.pumpsCurrentSpeed[5] = this.internalSetPumpSpeed(this.pumpsSpeedRange[5], 
@@ -1044,7 +1063,7 @@ export class SpaClient {
         
         // Believe the following mister/blower/aux lines are correct, but no way to test on my spa
 
-        // Oon/off for the mister device.
+        // On/off for the mister device.
         if (this.misterIsOn != undefined) {
             this.misterIsOn = (bytes[15] & 0x01) != 0;
         }
@@ -1074,7 +1093,7 @@ export class SpaClient {
         this.lastStateBytes = new Uint8Array(bytes);
         // Return true if any values have changed
         if (oldBytes.length != this.lastStateBytes.length) return true;
-        for (var i = 0; i < oldBytes.length; i++) {
+        for (let i = 0; i < oldBytes.length; i++) {
             // Bytes 3,4 are the time
             if (i != 3 && i != 4) {
                 if (oldBytes[i] !== this.lastStateBytes[i]) {
@@ -1106,9 +1125,9 @@ export class SpaClient {
         }
         // 2 bits per pump. Pumps 5 and 6 are apparently P6xxxxP5 in the second byte
         // Line up all the bites in a row
-        var pumpFlags1to6 = bytes[0] + 256 * (bytes[1] & 0x03) + 16 * (bytes[1] & 0xc0);
-        var countPumps = 0;
-        for (var idx = 0; idx < 6; idx++) {
+        let pumpFlags1to6 = bytes[0] + 256 * (bytes[1] & 0x03) + 16 * (bytes[1] & 0xc0);
+        let countPumps = 0;
+        for (let idx = 0; idx < 6; idx++) {
             // 0 = no such pump, 1 = off/high pump, 2 = off/low/high pump
             this.pumpsSpeedRange[idx] = pumpFlags1to6 & 0x03;
             if (this.pumpsSpeedRange[idx] === 3) {
@@ -1122,20 +1141,20 @@ export class SpaClient {
             pumpFlags1to6 >>= 2;
         }
         this.log.info("Discovered", countPumps, "pumps with speeds", this.pumpsSpeedRange);
-        var lights = [(bytes[2] & 0x03) != 0,(bytes[2] & 0xc0) != 0];
+        const lights = [(bytes[2] & 0x03) != 0,(bytes[2] & 0xc0) != 0];
         // Store 'undefined' if the light doesn't exist. Else store 'false' which will
         // soon be over-ridden with the correct light on/off state.
         this.lightIsOn[0] = lights[0] ? false : undefined;
         this.lightIsOn[1] = lights[1] ? false : undefined;
-        var countLights = (lights[0] ? 1 : 0) + (lights[1] ? 1 : 0);
+        const countLights = (lights[0] ? 1 : 0) + (lights[1] ? 1 : 0);
 
-        var circ_pump = (bytes[3] & 0x80) != 0;
+        const circ_pump = (bytes[3] & 0x80) != 0;
         // 0 if it doesn't exist, else number of speeds
         this.blowerSpeedRange = (bytes[3] & 0x03);
         this.blowerCurrentSpeed = this.blowerSpeedRange > 0 ? 0 : undefined;
         this.misterIsOn = (bytes[4] & 0x30) != 0 ? false : undefined;
 
-        var aux = [(bytes[4] & 0x01) != 0,(bytes[4] & 0x02) != 0];
+        const aux = [(bytes[4] & 0x01) != 0,(bytes[4] & 0x02) != 0];
         this.auxIsOn[0] = aux[0] ? false : undefined;
         this.auxIsOn[1] = aux[1] ? false : undefined;
 
@@ -1180,26 +1199,26 @@ export class SpaClient {
     interpretControlPanelReply(id: number, contents: Uint8Array) {
         this.log.info("Control Panel reply " + id + ":"+ this.prettify(contents));
         if (id == 1) {
-            let filter1start = this.timeToString(contents[0], contents[1]);
-            let filter1duration = this.timeToString(contents[2], contents[3]);
-            let filter2on = (contents[4] & 0x80) != 0;
-            let filter2start = this.timeToString(contents[4]&0x7f, contents[5]);
-            let filter2duration = this.timeToString(contents[6], contents[7]);
+            const filter1start = this.timeToString(contents[0], contents[1]);
+            const filter1duration = this.timeToString(contents[2], contents[3]);
+            const filter2on = (contents[4] & 0x80) != 0;
+            const filter2start = this.timeToString(contents[4]&0x7f, contents[5]);
+            const filter2duration = this.timeToString(contents[6], contents[7]);
             this.log.info("First filter time from",filter1start,"for",filter1duration);
             this.log.info("Second filter time", (filter2on ? 'on' : 'off'), 
             "from",filter2start,"for",filter2duration);
         } else if (id == 2) {
             // bytes 0-3 tell us about the version of software running, which we format
             // in the same way as on the spa's screen.
-            let softwareID = "M" + contents[0] +"_"+contents[1]+" V"+contents[2]+"." + contents[3];
+            const softwareID = "M" + contents[0] +"_"+contents[1]+" V"+contents[2]+"." + contents[3];
             // Convert bytes 4-11 into ascii
             let motherboard: string = "";
             contents.slice(4,12).forEach((byte: number) => {
                 motherboard += String.fromCharCode(byte);
             });
             // No idea what these really mean, but they are shown on the spa screen
-            let currentSetup = contents[12];
-            let configurationSignature = Buffer.from(contents.slice(13,17)).toString('hex').toUpperCase();
+            const currentSetup = contents[12];
+            const configurationSignature = Buffer.from(contents.slice(13,17)).toString('hex').toUpperCase();
             // This is most of the information that shows up in the Spa display
             // when you go to the info screen.
             this.log.info("System Model", motherboard);
@@ -1218,11 +1237,11 @@ export class SpaClient {
      *  homekit state change
      */ 
     readFaults(bytes: Uint8Array) {
-        var daysAgo = bytes[3];
-        var hour = bytes[4];
-        var minute = bytes[5];
+        const daysAgo = bytes[3];
+        const hour = bytes[4];
+        const minute = bytes[5];
 
-        var code = bytes[2];
+        const code = bytes[2];
         // This is just the most recent fault.  We could query for others too.
         // (I believe by replacing 0xff in the request with a number), but for our
         // purposes the most recent only is sufficient 
@@ -1285,7 +1304,7 @@ export class SpaClient {
 
     equal(one: Uint8Array, two: Uint8Array) {
         if (one.length != two.length) return false;
-        for (var i = 0; i < one.length; i++) {
+        for (let i = 0; i < one.length; i++) {
             if (one[i] !== two[i]) {
                 return false;
             }

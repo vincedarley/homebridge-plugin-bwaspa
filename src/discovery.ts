@@ -7,14 +7,14 @@ import type { Logger } from 'homebridge';
  * @param foundSpaCallback call with the ip address of any Spa found on the network
  */
 export function discoverSpas(log: Logger, foundSpaCallback: (ip: string) => void) {
-    var discoveryFunction = () => {
+    const discoveryFunction = () => {
         // creating a client socket
         const client = udp.createSocket({ type: 'udp4', reuseAddr: true });
 
-        let host = '255.255.255.255';
+        const host = '255.255.255.255';
         // Balboa Wifi module listens on this port.
-        let port = 30303;
-        let timeout = 10000;
+        const port = 30303;
+        const timeout = 10000;
 
         client.on('message', (msg: any, info: any) => {
             log.debug('UDP Data received from server :', msg.toString());
@@ -53,7 +53,7 @@ export function discoverSpas(log: Logger, foundSpaCallback: (ip: string) => void
     };
 
     // Try every 20 seconds to discover the Spa, waiting 10 seconds each time for a response.
-    let broadcastIntervalId = setInterval(discoveryFunction, 20 * 1000);
+    const broadcastIntervalId = setInterval(discoveryFunction, 20 * 1000);
     // But start immediately.
     log.info("Searching for spa on the local network - will re-broadcast every 20 seconds until success.");
     discoveryFunction();

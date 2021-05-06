@@ -192,7 +192,7 @@ export class BlowerAccessory {
    * rapid speed settings to just a single set of the spa to avoid confusion.
    */
   private scheduleSetSpeed(speed: number) {
-    let newSpeed = speed;
+    const newSpeed = speed;
     if (this.scheduleId) {
       clearTimeout(this.scheduleId);
       this.scheduleId = undefined;
