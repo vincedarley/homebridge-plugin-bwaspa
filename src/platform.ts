@@ -172,6 +172,7 @@ export class SpaHomebridgePlatform implements DynamicPlatformPlugin {
       for (let pump = 1; pump <=6; pump++) {
         if (this.spa!.getPumpSpeedRange(pump) != 0) this.makeDevice({name: 'Spa Pump '+pump, deviceType: 'Pump '+pump});
       }
+      if (this.spa!.getPumpSpeedRange(0) != 0) this.makeDevice({name: 'Spa Circulation Pump', deviceType: 'Circulation Pump'});
       this.makeDevice({name: 'Spa Temperature Sensor', deviceType: 'Temperature Sensor'});
       this.makeDevice({name: 'Spa Thermostat', deviceType: 'Thermostat'});
       this.makeDevice({name: 'Spa Flow', deviceType: 'Water Flow Problem Sensor'});
@@ -235,6 +236,10 @@ export class SpaHomebridgePlatform implements DynamicPlatformPlugin {
   makeAccessory(accessory: PlatformAccessory) {
     const deviceType = accessory.context.device.deviceType;
     switch (deviceType) {
+      case "Circulation Pump": {
+        this.deviceObjects.push(new PumpAccessory(this, accessory, 0));
+        break;
+      }
       case "Pump 1": {
         this.deviceObjects.push(new PumpAccessory(this, accessory, 1));
         break;

@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2.1.4 (10.05.2021)
+- Addition of circulation pump, for those spas which have one. This accessory is read-only.
+- Logging of temperature history for the last 24 hours, once per day. Inspect the homebridge log
+  if you wish to analyse this data and perhaps use some of it for automation purposes.
+
 ## 2.1.3 (06.05.2021)
 - Update of plugin dependencies
 - Auto-adjust the Spa's clock if it is meaningfully different to the time known by this plugin

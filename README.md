@@ -16,7 +16,7 @@ This plugin will connect to Spas/Hot-tubs via their Balboa wifi module, and expo
 
 The plugin does a good job of ensuring the state of all controls remains in sync whether you manipulate the controls through Home, through Siri, through physical controls on the spa, or through the Balboa spa app, and takes account of situations (e.g. during filtering) where some pumps cannot be turned off.
 
-The default behaviour is for the plugin to discover your Spa automatically on your network, query it for all supported controls and make them all available to Homekit automatically.  You can modify much of that behaviour by configuring the plugin with Homebridge ConfigUI.  And of course you can rename or delete accessories in Home to serve your purposes.
+The default behaviour is for the plugin to discover your Spa automatically on your network, query it for all supported controls and make them all available to Homekit automatically.  You can modify much of that behaviour by configuring the plugin with Homebridge ConfigUI.  And of course you can rename or delete accessories in Home to serve your purposes. Finally the plugin will automatically correct the time of day of your spa, useful when daylight savings kicks in.
 
 <p align="left">
   <a href="https://github.com/vincedarley/homebridge-plugin-bwaspa"><img src="https://raw.githubusercontent.com/vincedarley/homebridge-plugin-bwaspa/master/graphics/home.png" height="400"></a>
@@ -53,7 +53,7 @@ of accessories and devices that Homekit provides...
 
 It supports pumps that are single speed (off or high) and 2-speed (off or low or high). The pump control sliders in Home then step accordingly (0-100% or 0-50%-100%).  Since Homekit doesn't have a notion of a multi-speed jet/pump, they are all treated as "fans" by Home.
 
-You can control two lights and up to six pumps, a mister, a blower, 2 aux devices and the overall heating state of the spa.
+You can control two lights and up to six pumps, a mister, a blower, 2 aux devices and the overall heating state of the spa. You can also view the state of the circulation pump.
 
 The "Thermostat" device type exposes control of the spa's target temperature and high (="Heat" in Home app) vs low (="Cool" in Home app), heating mode.  The low mode is generally used as a low-energy vacation mode. The target temperature is separate for the two modes and the valid ranges are also different.  If the flow sensor indicates water flow has failed, then the thermostat is "off".  You cannot turn it off yourself - it is not a valid state for the spa itself.
 
@@ -95,7 +95,7 @@ In this case your homebridge log should end up containing lines like these, whic
 [Spa] Successfully connected to Spa at 192.168.1.151 on port 4257
 [Spa] Discovered 3 pumps with speeds [ 2, 2, 1, 0, 0, 0 ]
 [Spa] Discovered 1 light
-[Spa] Discovered other components: circ_pump true , blower 0 , mister undefined , aux [ false, false ]
+[Spa] Discovered other components: circulation-pump true , blower 0 , mister undefined , aux [ false, false ]
 [Spa] Autocreating accessories...
 [Spa] Pump 1 has 2 speeds.
 [Spa] Pump 2 has 2 speeds.

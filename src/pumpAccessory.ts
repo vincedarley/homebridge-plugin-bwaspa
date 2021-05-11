@@ -21,10 +21,13 @@ export class PumpAccessory {
   // Always 1-3
   numSpeedSettings : number;
 
+  // Always either "Pump N", or "Circulation Pump"
+  name : string;
+
   constructor(
     private readonly platform: SpaHomebridgePlatform,
     private readonly accessory: PlatformAccessory,
-    private readonly pumpNumber : number // 1-6 as defined by Balboa
+    private readonly pumpNumber : number // 1-6 as defined by Balboa, 0 for circulation pump
   ) {
 
     // set accessory information
@@ -42,6 +45,7 @@ export class PumpAccessory {
     this.service.setCharacteristic(this.platform.Characteristic.Name, accessory.context.device.name);
     // until it is set automatically
     this.numSpeedSettings = 0;
+    this.name = (pumpNumber == 0 ? "Circulation Pump" : "Pump " + pumpNumber);
 
     // Important note: Home/Siri call both the "on" and the "setRotationSpeed" together when the pump
     // is turned from off to on. I've observed that using Siri the speed is set first, then 'on', and
@@ -69,7 +73,7 @@ export class PumpAccessory {
    * being called and that will discover the correct new value. 
    */
   setOn(value: CharacteristicValue, callback: CharacteristicSetCallback) {
-    this.platform.log.debug('Set Pump',this.pumpNumber,'->', value? 'On': 'Off', this.platform.status());
+    this.platform.log.debug('Set', this.name, '->', value? 'On': 'Off', this.platform.status());
     if (!this.platform.isCurrentlyConnected()) {
       callback(this.platform.connectionProblem);
       return;
@@ -101,7 +105,7 @@ export class PumpAccessory {
       callback(this.platform.connectionProblem);
     } else {
       const isOn = this.getSpeed() != 0;
-      this.platform.log.debug('Get Pump',this.pumpNumber,'<-',isOn?'On':'Off', this.platform.status());
+      this.platform.log.debug('Get', this.name, '<-',isOn?'On':'Off', this.platform.status());
       
       callback(null, isOn);
     }
@@ -123,7 +127,7 @@ export class PumpAccessory {
     const speed = Math.round((value as number)*this.numSpeedSettings/100.0);
     // Store this immediately.
     this.lastNonZeroSpeed = speed;
-    this.platform.log.debug('Set Pump',this.pumpNumber,'Speed ->', value, 'which is', 
+    this.platform.log.debug('Set', this.name,'Speed ->', value, 'which is', 
       SpaClient.getSpeedAsString(this.numSpeedSettings, speed), this.platform.status());
 
     this.scheduleSetSpeed(speed);
@@ -143,7 +147,7 @@ export class PumpAccessory {
       // As above we convert the speed of 0-n to a value of 0-100, irrespective
       // of the number of speeds the pump has
       const value = (100.0*speed)/this.numSpeedSettings;
-      this.platform.log.debug('Get Pump',this.pumpNumber,'Speed <-', value, 'which is', 
+      this.platform.log.debug('Get', this.name, 'Speed <-', value, 'which is', 
         SpaClient.getSpeedAsString(this.numSpeedSettings, speed), this.platform.status());
       callback(null, value);
     }
@@ -152,11 +156,11 @@ export class PumpAccessory {
   spaConfigurationKnown() {
     if (this.platform.spa!.getPumpSpeedRange(this.pumpNumber) === 0) {
       // This pump doesn't exist.
-      this.platform.log.warn("Nonexistent pump", this.pumpNumber, "accessory declared.");
+      this.platform.log.warn("Nonexistent", this.name, "accessory declared.");
       return;
     }
     this.numSpeedSettings = this.platform.spa!.getPumpSpeedRange(this.pumpNumber);
-    this.platform.log.info("Pump", this.pumpNumber, "has", this.numSpeedSettings, "speeds.");
+    this.platform.log.info(this.name, "has", this.numSpeedSettings, "speeds.");
     // Tell Home about the minimum step size to use (e.g. 50% means values of 0, 50%, 100% are ok)
     this.service.getCharacteristic(this.platform.Characteristic.RotationSpeed)
       .setProps({minStep: (100.0/this.numSpeedSettings)});
@@ -165,7 +169,7 @@ export class PumpAccessory {
   // If Spa state has changed, for example using manual controls on the spa, then we must update Homekit.
   updateCharacteristics() {
     if (!this.platform.isCurrentlyConnected()) {
-      this.platform.log.debug('Pump',this.pumpNumber,'updating',this.platform.status());
+      this.platform.log.debug(this.name,'updating',this.platform.status());
       this.service.getCharacteristic(this.platform.Characteristic.On).updateValue(this.platform.connectionProblem);
       this.service.getCharacteristic(this.platform.Characteristic.RotationSpeed).updateValue(this.platform.connectionProblem);
       return;
@@ -174,7 +178,7 @@ export class PumpAccessory {
     const isOn = speed != 0;
     const speedValue = (100.0*speed)/this.numSpeedSettings;
     
-    this.platform.log.debug('Pump',this.pumpNumber,'updating to',isOn ? 'On' : 'Off','and',speed,'which is', 
+    this.platform.log.debug(this.name,'updating to',isOn ? 'On' : 'Off','and',speed,'which is', 
       SpaClient.getSpeedAsString(this.numSpeedSettings, speed));
     this.service.getCharacteristic(this.platform.Characteristic.On).updateValue(isOn);
     this.service.getCharacteristic(this.platform.Characteristic.RotationSpeed).updateValue(speedValue);
@@ -207,7 +211,7 @@ export class PumpAccessory {
   }
 
   private setSpeed(speed: number) {
-    this.platform.log.debug('Pump',this.pumpNumber,'actually setting speed to',speed,'which is', 
+    this.platform.log.debug(this.name,'actually setting speed to',speed,'which is', 
       SpaClient.getSpeedAsString(this.numSpeedSettings, speed), this.platform.status());
     this.platform.spa!.setPumpSpeed(this.pumpNumber, speed);
     if (speed != 0) {

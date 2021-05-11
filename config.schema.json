@@ -179,6 +179,12 @@
                   "enum": [
                     "Aux 2"
                   ]
+                },
+                {
+                  "title": "Circulation Pump",
+                  "enum": [
+                    "Circulation Pump"
+                  ]
                 }
               ]
             }

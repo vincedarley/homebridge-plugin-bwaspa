@@ -86,6 +86,7 @@ export class SpaClient {
     priming: boolean;
     time_12or24: string;
     isHeatingNow: boolean;
+    hasCirculationPump: boolean;
     circulationPumpIsOn: boolean;
     filtering: number;
     lockTheSettings: boolean;
@@ -111,6 +112,8 @@ export class SpaClient {
 
     lastStateBytes = new Uint8Array();
     lastFaultBytes = new Uint8Array();
+
+    temperatureHistory : (number|undefined)[] = new Array();
 
     constructor(public readonly log: Logger, public readonly host: string, 
       public readonly spaConfigurationKnownCallback: () => void, 
@@ -141,6 +144,7 @@ export class SpaClient {
         this.priming = false;
         this.time_12or24 = "12 Hr";
         this.isHeatingNow = false;
+        this.hasCirculationPump = false;
         this.circulationPumpIsOn = false;
         this.filtering = 0;
         this.lockTheSettings = false;
@@ -152,6 +156,10 @@ export class SpaClient {
         this.liveSinceDate = new Date();
         // Our communications channel with the spa
         this.socket = this.get_socket(host);
+        // Record temperature history - every 30 minutes
+        setInterval(() => {
+            this.recordTemperatureHistory();
+        }, 30 * 60 * 1000);
     }
 
     get_socket(host: string) {
@@ -404,6 +412,15 @@ export class SpaClient {
         return this.isCurrentlyConnectedToSpa;
     }
     
+    // Called every half hour
+    recordTemperatureHistory() {
+        this.temperatureHistory.push(this.getCurrentTemp());
+        if (this.temperatureHistory.length == 48) {
+            this.log.info("Temperature for last day (half hour intervals):", this.temperatureHistory.toString());
+            this.temperatureHistory = new Array();
+        }
+    }
+
     /**
      * Message starts and ends with 0x7e. Needs a checksum.
      * @param purpose purely for logging clarity
@@ -615,7 +632,11 @@ export class SpaClient {
     }
 
     getPumpSpeedRange(index: number) {
-        return this.pumpsSpeedRange[index-1];
+        if (index == 0) {
+            return (this.hasCirculationPump ? 1 : 0);
+        } else {
+            return this.pumpsSpeedRange[index-1];
+        }
     }
 
     static getSpeedAsString(range: number, speed: number) {
@@ -631,6 +652,14 @@ export class SpaClient {
     }
 
     getPumpSpeed(index: number) {
+        if (index == 0) {
+            if (this.hasCirculationPump) {
+                return this.circulationPumpIsOn ? 1 : 0;
+            } else {
+                this.log.error("Trying to get speed of circulation pump which doesn't exist");
+                return 0;
+            }
+        }
         // Pumps are numbered 1,2,3,... by Balboa
         index--;
         if (this.pumpsSpeedRange[index] == 0) {
@@ -688,6 +717,9 @@ export class SpaClient {
      * @param desiredSpeed 0...pumpsSpeedRange[index] depending on speed range of the pump
      */
     setPumpSpeed(index: number, desiredSpeed: number) {
+        // Pump 0 is the circulation pump, whose state cannot be set
+        if (index == 0) return;
+
         const pumpName = 'Pump' + index;
         // Pumps are numbered 1,2,3,... by Balboa
         index--;
@@ -907,7 +939,7 @@ export class SpaClient {
         + ", Heating: " + this.isHeatingNow 
         + ", Temp Range: " + (this.tempRangeIsHigh ? "High" : "Low")
         + ", Pumps: " + pumpDesc
-        + ", Circ Pump: " + this.circulationPumpIsOn
+        + (this.hasCirculationPump ? ", Circ Pump: " + (this.circulationPumpIsOn ? "On" : "Off") : "")
         + ", Filtering: " + FILTERSTATES[this.filtering]
         + ", Lights: [" + this.lightIsOn + "]"
         + (this.blowerCurrentSpeed != undefined ? ", Blower: " + this.blowerCurrentSpeed : "")
@@ -1148,7 +1180,7 @@ export class SpaClient {
         this.lightIsOn[1] = lights[1] ? false : undefined;
         const countLights = (lights[0] ? 1 : 0) + (lights[1] ? 1 : 0);
 
-        const circ_pump = (bytes[3] & 0x80) != 0;
+        this.hasCirculationPump = (bytes[3] & 0x80) != 0;
         // 0 if it doesn't exist, else number of speeds
         this.blowerSpeedRange = (bytes[3] & 0x03);
         this.blowerCurrentSpeed = this.blowerSpeedRange > 0 ? 0 : undefined;
@@ -1159,7 +1191,7 @@ export class SpaClient {
         this.auxIsOn[1] = aux[1] ? false : undefined;
 
         this.log.info("Discovered",countLights,"light"+(countLights!=1?"s":""));
-        this.log.info("Discovered other components: circ_pump",circ_pump,
+        this.log.info("Discovered other components: circulation-pump",this.hasCirculationPump,
             ", blower", this.blowerSpeedRange,", mister",this.misterIsOn,", aux",aux);
         this.accurateConfigReadFromSpa = true;
         this.spaConfigurationKnownCallback();
