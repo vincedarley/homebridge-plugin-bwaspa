@@ -50,6 +50,7 @@ export class LockAccessory {
    */
   setLockedOn(value: CharacteristicValue, callback: CharacteristicSetCallback) {
     if (!this.platform.isCurrentlyConnected()) {
+      this.platform.recordAction(this.setLockedOn.bind(this, value));
       callback(this.platform.connectionProblem);
       return;
     }

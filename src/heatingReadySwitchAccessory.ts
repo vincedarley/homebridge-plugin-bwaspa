@@ -44,6 +44,7 @@ export class HeatingReadySwitchAccessory {
    */
   setOn(value: CharacteristicValue, callback: CharacteristicSetCallback) {
     if (!this.platform.isCurrentlyConnected()) {
+      this.platform.recordAction(this.setOn.bind(this, value));
       callback(this.platform.connectionProblem);
       return;
     }

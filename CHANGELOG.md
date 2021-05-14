@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2.2.0 (14.05.2021)
+- Given unreliability of Balboa-wifi module, keep track of some settings made while we are
+  temporarily disconnected, and apply them when the connection is re-established
+
+## 2.1.5 (10.05.2021)
+- Small fix to prevent Home thinking the circulation pump has been turned off when it has not
+
 ## 2.1.4 (10.05.2021)
 - Addition of circulation pump, for those spas which have one. This accessory is read-only.
 - Logging of temperature history for the last 24 hours, once per day. Inspect the homebridge log

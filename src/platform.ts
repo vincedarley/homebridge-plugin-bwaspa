@@ -83,7 +83,7 @@ export class SpaHomebridgePlatform implements DynamicPlatformPlugin {
     }
     // Create and load up our primary client which connects with the spa
     this.spa = new SpaClient(this.log, ipAddress, this.spaConfigurationKnown.bind(this),
-      this.updateStateOfAccessories.bind(this), devMode);
+      this.updateStateOfAccessories.bind(this), this.executeAllRecordedActions.bind(this), devMode);
   }
 
   /**
@@ -159,6 +159,22 @@ export class SpaHomebridgePlatform implements DynamicPlatformPlugin {
 
   isCurrentlyConnected() {
     return this.spa ? this.spa.hasGoodSpaConnection() : false;
+  }
+
+  recordedActions : CallableFunction[] = [];
+  
+  recordAction(func: CallableFunction) {
+    this.recordedActions.push(func);
+  }
+
+  executeAllRecordedActions() {
+    const loggingCallback = (foo: any) => {
+      this.log.info('Callback from replayed action:', foo);
+    };
+    while (this.isCurrentlyConnected() && this.recordedActions.length > 0) {
+      this.log.info('Replaying an action');
+      this.recordedActions.shift()!(loggingCallback);
+    }
   }
 
   /**

@@ -117,7 +117,8 @@ export class SpaClient {
 
     constructor(public readonly log: Logger, public readonly host: string, 
       public readonly spaConfigurationKnownCallback: () => void, 
-      public readonly changesCallback: () => void, devMode?: boolean) {
+      public readonly changesCallback: () => void, 
+      public readonly reconnectedCallback: () => void, devMode?: boolean) {
         this.accurateConfigReadFromSpa = false;
         this.isCurrentlyConnectedToSpa = false;
         this.devMode = (devMode ? devMode : false);
@@ -257,6 +258,10 @@ export class SpaClient {
                 this.checkWeHaveReceivedStateUpdate();
             }
         }, 15 * 60 * 1000)
+        
+        // Call to ensure we catch up on anything that happened while we
+        // were disconnected.
+        this.reconnectedCallback();
     }
 
     lastIncompleteChunk: (Uint8Array|undefined) = undefined;
@@ -718,7 +723,15 @@ export class SpaClient {
      */
     setPumpSpeed(index: number, desiredSpeed: number) {
         // Pump 0 is the circulation pump, whose state cannot be set
-        if (index == 0) return;
+        if (index == 0) {
+            if (desiredSpeed == 0) {
+                // Anytime we turn a pump off, ensure that all remembered state information
+                // is forgotten, so the next information from the Spa will tell us what is
+                // actually going on, and we'll update Home if necessary.
+                this.resetRecentState();
+            }
+            return;
+        }
 
         const pumpName = 'Pump' + index;
         // Pumps are numbered 1,2,3,... by Balboa

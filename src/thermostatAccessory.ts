@@ -165,6 +165,7 @@ export class ThermostatAccessory {
 
   setTargetHeatingState(value: CharacteristicValue, callback: CharacteristicSetCallback) {
     if (!this.platform.isCurrentlyConnected()) {
+      this.platform.recordAction(this.setTargetHeatingState.bind(this, value));
       callback(this.platform.connectionProblem);
       return;
     }
@@ -195,8 +196,12 @@ export class ThermostatAccessory {
     this.setTargetTempMinMax();
     // We need to change the target temperature (which the Spa adjust automatically when switching
     // from High to Low), else it will take a while for HomeKit to pick that up automatically.
-    this.service.getCharacteristic(this.platform.Characteristic.TargetTemperature)
-          .updateValue(this.platform.spa!.getTargetTemp());
+    if (this.platform.spa!.getTargetTemp() != undefined) {
+      this.service.getCharacteristic(this.platform.Characteristic.TargetTemperature)
+      .updateValue(this.platform.spa!.getTargetTemp());
+    } else {
+      this.platform.log.debug("Couldn't set target temperature, since it is currently undefined");
+    }
     callback(null);
   }
 
@@ -213,6 +218,7 @@ export class ThermostatAccessory {
 
   setTargetTemperature(value: CharacteristicValue, callback: CharacteristicSetCallback) {
     if (!this.platform.isCurrentlyConnected()) {
+      this.platform.recordAction(this.setTargetTemperature.bind(this, value));
       callback(this.platform.connectionProblem);
       return;
     }
