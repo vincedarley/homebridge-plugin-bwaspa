@@ -152,8 +152,9 @@ If the water flow sensor discovers a fault (which it checks for every ten minute
 
 There's a fair amount of information on the internet of how the Balboa Wifi module is pretty unreliable.  In particular prior to the '-06' release of the '50350' module, it would regularly disconnect and then be unable to reconnect (without rebooting the power supply to the module).  With my own spa, the module is adequately reliable but even then does disconnect for a few minutes to an hour once every day or two, sometimes as often as a few times a day.  But between the module and this plugin's reconnect capability, a reconnection does always ultimately happen.  If your Spa's module is less reliable, I would suggest a first step is to check which module version you have.
 
-Whilst the spa is disconnected, obviously all Homekit controls will fail. However the plugin is clever enough to store the
-major ones (adjusting thermostat, hold, lock status) and will re-apply them once the connection is re-established.
+Whilst the spa is disconnected, obviously all Homekit controls will fail. However this plugin is clever enough to store the
+major ones (adjusting thermostat, hold, lock status) and will re-apply them once the connection is re-established. This means
+that any timed automations you create, for example, should still mostly work.
 
 ## Improvements
 

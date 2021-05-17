@@ -164,16 +164,18 @@ export class SpaHomebridgePlatform implements DynamicPlatformPlugin {
   recordedActions : CallableFunction[] = [];
   
   recordAction(func: CallableFunction) {
+    this.log.info('Recording action for later:', func);
     this.recordedActions.push(func);
   }
 
   executeAllRecordedActions() {
     const loggingCallback = (foo: any) => {
-      this.log.info('Callback from replayed action:', foo);
+      this.log.info('Replayed action called back with:', foo);
     };
     while (this.isCurrentlyConnected() && this.recordedActions.length > 0) {
-      this.log.info('Replaying an action');
-      this.recordedActions.shift()!(loggingCallback);
+      const func = this.recordedActions.shift()!;
+      this.log.info('Replaying an action:', func);
+      func(loggingCallback);
     }
   }
 

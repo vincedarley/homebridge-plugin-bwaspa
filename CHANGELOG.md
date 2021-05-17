@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2.2.1 (17.05.2021)
+- Better logging of the recording/playback of settings changes when spa is disconnected and then
+  re-connected.
+
 ## 2.2.0 (14.05.2021)
 - Given unreliability of Balboa-wifi module, keep track of some settings made while we are
   temporarily disconnected, and apply them when the connection is re-established
