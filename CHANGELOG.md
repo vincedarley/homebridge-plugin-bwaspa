@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2.2.2 (30.05.2021)
+- Merge branch resolving security issue in a dependency (ws)
+- Better logging
+
 ## 2.2.1 (17.05.2021)
 - Better logging of the recording/playback of settings changes when spa is disconnected and then
   re-connected.

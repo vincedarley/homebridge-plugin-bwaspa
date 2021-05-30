@@ -942,6 +942,7 @@ export class SpaClient {
         pumpDesc += ']';
 
         const s = "Temp: " + this.internalTemperatureToString(this.currentTemp) 
+        + ", Temp Range: " + (this.tempRangeIsHigh ? "High" : "Low")
         + ", Target Temp(H): " + this.internalTemperatureToString(this.targetTempModeHigh) 
         + ", Target Temp(L): " + this.internalTemperatureToString(this.targetTempModeLow) 
         + ", Time: " + this.timeToString(this.hour, this.minute)
@@ -950,7 +951,6 @@ export class SpaClient {
         + ", Temp Scale: " + this.temp_CorF
         + ", Time Scale: " + this.time_12or24  
         + ", Heating: " + this.isHeatingNow 
-        + ", Temp Range: " + (this.tempRangeIsHigh ? "High" : "Low")
         + ", Pumps: " + pumpDesc
         + (this.hasCirculationPump ? ", Circ Pump: " + (this.circulationPumpIsOn ? "On" : "Off") : "")
         + ", Filtering: " + FILTERSTATES[this.filtering]

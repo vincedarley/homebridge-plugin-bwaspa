@@ -231,7 +231,7 @@ export class ThermostatAccessory {
         // with an error in the callback.
         this.service.getCharacteristic(this.platform.Characteristic.TargetTemperature)
           .updateValue(temp);
-        callback(new Error("Temperature out of bounds [26.5,40.0]"));
+        callback(new Error("Temperature " + (value as number) + " out of bounds [26.5,40.0]; using " + temp));
         return;
       }
     } else {
@@ -242,7 +242,7 @@ export class ThermostatAccessory {
         // with an error in the callback.
         this.service.getCharacteristic(this.platform.Characteristic.TargetTemperature)
           .updateValue(temp);
-        callback(new Error("Temperature out of bounds [10.0,36.0]"));
+        callback(new Error("Temperature " + (value as number) + " out of bounds [10.0,36.0]; using " + temp));
         return;
       }
     }
