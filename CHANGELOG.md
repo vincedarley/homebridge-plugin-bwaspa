@@ -2,6 +2,9 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2.2.3 (14.06.2021)
+- Merge branch resolving security issue in a dependency (normalize-url)
+
 ## 2.2.2 (30.05.2021)
 - Merge branch resolving security issue in a dependency (ws)
 - Better logging
