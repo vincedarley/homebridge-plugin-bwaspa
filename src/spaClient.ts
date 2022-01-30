@@ -43,6 +43,9 @@ const ControlPanelRequest : Uint8Array[][] = [
     [new Uint8Array([0x08,0x00,0x00]), new Uint8Array([0x0a,0xbf,0x26])]
 ];
 
+// Perhaps something to do with ChromaZone
+const KnownUnknownReply = new Uint8Array([0xff,0xaf,0x32]);
+
 export class SpaClient {
     socket?: net.Socket;
     // undefined means the light doesn't exist on the spa
@@ -1003,6 +1006,9 @@ export class SpaClient {
             // Nothing to do here
             this.log.info("Set preferences reply (" + this.prettify(msgType) 
             + "):"+ this.prettify(contents));
+            stateChanged = false;
+        } else if (this.equal(msgType, KnownUnknownReply)) {
+            // Nothing to do here
             stateChanged = false;
         } else {
             stateChanged = false;

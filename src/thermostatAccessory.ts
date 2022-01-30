@@ -184,6 +184,7 @@ export class ThermostatAccessory {
     } else if (this.platform.spa!.getFlowState() != FLOW_GOOD) {
       // Trying to set it to cool or heat. But has flow problems. 
       // Can only be in the "off" state
+      this.platform.log.debug("Water flow is low or has failed. Heating off.");
       callback(new Error("Water flow is low or has failed. Heating off"));
       return;
     }

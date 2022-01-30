@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2.2.4 (30.01.2022)
+- Minor improvement to logging
+- Improved documentation, covering automation
+
 ## 2.2.3 (14.06.2021)
 - Merge branch resolving security issue in a dependency (normalize-url)
 
