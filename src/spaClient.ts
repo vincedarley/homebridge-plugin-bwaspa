@@ -374,10 +374,12 @@ export class SpaClient {
         } else {
             this.log.error('No spa state update received for some time.  Last state was', 
                 this.stateToString());
-            // What we should do is send a message to the Spa so it restarts sending
-            // us state updates.
-
-            // TODO
+            
+            // TODO - it would be nice if there was a softer way of getting the spa
+            // to start sending the status updates again then a full disconnect, reconnect.
+            // For example, perhaps there is a simple message we send which will trigger that
+            
+            this.socket?.emit("error", Error("no spa update"));
         }
     }
 

@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2.2.6 (07.03.2022)
+- Improved mechanism to force spa to restart sending status messages.
+
+## 2.2.5 (04.03.2022)
+- If the spa stops sending status messages, proactively try to connect
+
 ## 2.2.4 (30.01.2022)
 - Minor improvement to logging
 - Improved documentation, covering automation
