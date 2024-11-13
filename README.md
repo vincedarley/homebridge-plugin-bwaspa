@@ -25,7 +25,7 @@ The default behaviour is for the plugin to discover your Spa automatically on yo
   <a href="https://github.com/vincedarley/homebridge-plugin-bwaspa"><img src="https://raw.githubusercontent.com/vincedarley/homebridge-plugin-bwaspa/master/graphics/lights.png" height="400"></a>
 </p>
 
-Please note if your spa is controlled by Balboa's "Control My Spa" app, hardware and cloud-service, then this plugin is not currently compatible. It works with spas that use Balboa wifi receiver module and the Balboa Worldwide App (BWA app).
+Please note if your spa is controlled by Balboa's "Control My Spa" app, hardware and cloud-service, then this plugin is not currently compatible. It works with spas that use Balboa wifi receiver module and the Balboa Worldwide App (BWA app).  Also usage of this [project](https://github.com/NorthernMan54/esp32_balboa_spa) to create your own WiFi module is supported.
 
 # Getting started
 

@@ -79,7 +79,8 @@ export class TemperatureAccessory {
     const temperature = this.platform.spa!.getCurrentTemp();
     const val = (temperature == undefined ? null : this.platform.spa!.convertTempToC(temperature!)!);
     this.platform.log.debug('Temperature updating to',val);
-    this.service.getCharacteristic(this.platform.Characteristic.CurrentTemperature).updateValue(val);
+    if (val)
+      this.service.getCharacteristic(this.platform.Characteristic.CurrentTemperature).updateValue(val);
   }
 
 }
