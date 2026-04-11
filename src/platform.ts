@@ -340,11 +340,20 @@ export class SpaHomebridgePlatform implements DynamicPlatformPlugin {
       } catch (error) {
         this.log.warn('Could not register matter accessory', device.name, 'because:', error);
         this.matterAccessories.delete(uuid);
+        this.removeMatterDeviceObjectsForUuid(uuid);
       }
     } catch (error) {
       this.log.error('Matter accessory setup failed for', device?.name ?? 'unknown device', 'of type', device?.deviceType ?? 'unknown', error);
       this.matterAccessories.delete(uuid);
+      this.removeMatterDeviceObjectsForUuid(uuid);
     }
+  }
+
+  private removeMatterDeviceObjectsForUuid(uuid: string) {
+    this.matterDeviceObjects = this.matterDeviceObjects.filter((deviceObject: any) => {
+      const maybeAccessory = deviceObject?.accessory;
+      return maybeAccessory?.UUID !== uuid;
+    });
   }
 
   private isMatterEnabledDeviceType(deviceType: string) {
