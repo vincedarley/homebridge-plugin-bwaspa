@@ -47,6 +47,28 @@ Install everything:
 
 Restart homebridge so it reloads the new plugin.  Click through to the Balboa Spa plugin settings
 
+## Maintainer beta release
+
+For plugin maintainers, use this one command to release a new beta build to npm:
+
+```bash
+npm run release:beta
+```
+
+You may optionally pass a commit message used when local changes need to be auto-committed before version bumping:
+
+```bash
+npm run release:beta -- "fix: matter conformance"
+```
+
+What the script does:
+1. Verifies npm authentication.
+2. Auto-commits pending git changes (if any).
+3. Runs `npm run lint` and `npm run build`.
+4. Runs `npm version prerelease --preid=beta`.
+5. Runs `npm publish --tag beta`.
+6. Pushes branch commits and tags to `origin`.
+
 <p align="center">
   <a href="https://github.com/vincedarley/homebridge-plugin-bwaspa"><img src="https://raw.githubusercontent.com/vincedarley/homebridge-plugin-bwaspa/master/graphics/plugin.png" height="154"></a>
 </p>

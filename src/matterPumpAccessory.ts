@@ -31,9 +31,9 @@ export class MatterPumpAccessory {
     }
     if (!this.accessory.clusters.levelControl) {
       this.accessory.clusters.levelControl = {
-        currentLevel: 0,
-        minLevel: 0,
-        maxLevel: 255,
+        currentLevel: 1,
+        minLevel: 1,
+        maxLevel: 254,
       };
     }
 
@@ -44,7 +44,7 @@ export class MatterPumpAccessory {
       },
       levelControl: {
         moveToLevelWithOnOff: async (request: any) => {
-          const level = Math.max(0, Math.min(255, request?.level ?? 0));
+          const level = Math.max(1, Math.min(254, request?.level ?? 1));
           const percent = this.levelToSetpointPercent(level);
           await this.setSpeedPercent(percent);
         },
@@ -141,34 +141,30 @@ export class MatterPumpAccessory {
 
   private toLevelValue(speed: number) {
     if (this.numSpeedSettings <= 0) {
-      return speed === 0 ? 0 : 255;
+      return speed === 0 ? 1 : 254;
     }
     if (speed === 0) {
-      return 0;
+      return 1;
     }
     const percent = (100.0 * speed) / this.numSpeedSettings;
     return this.setpointPercentToLevel(percent);
   }
 
   private levelToSetpointPercent(level: number) {
-    if (level <= 0) {
+    if (level <= 1) {
       return 0;
     }
-    if (level <= 200) {
-      return level / 2.0;
-    }
-    return 100;
+    return ((level - 1) * 100.0) / 253.0;
   }
 
   private setpointPercentToLevel(percent: number) {
     if (percent <= 0) {
-      return 0;
+      return 1;
     }
     if (percent >= 100) {
-      return 255;
+      return 254;
     }
 
-    // For 0 < percent < 100, use the 1..200 region where level = setpoint * 2.
-    return Math.max(1, Math.min(200, Math.round(percent * 2.0)));
+    return Math.max(1, Math.min(254, Math.round(1 + ((percent / 100.0) * 253.0))));
   }
 }

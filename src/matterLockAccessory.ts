@@ -18,6 +18,7 @@ export class MatterLockAccessory {
       this.accessory.clusters.doorLock = {
         lockState: this.matter.types.DoorLock.LockState.Unlocked,
         lockType: this.matter.types.DoorLock.LockType.Other,
+        operatingMode: (this.matter.types.DoorLock?.OperatingMode?.Normal ?? 0),
         actuatorEnabled: true,
       };
     }

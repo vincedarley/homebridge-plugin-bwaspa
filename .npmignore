@@ -98,7 +98,6 @@ web_modules/
 
 # Nuxt.js build / generate output
 .nuxt
-dist
 
 # Gatsby files
 .cache/
@@ -130,3 +129,8 @@ dist
 .yarn/unplugged
 .yarn/build-state.yml
 .pnp.*
+
+# Test configs and local auth artifacts
+test/
+**/.uix-secrets
+**/auth.json

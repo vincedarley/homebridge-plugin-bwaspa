@@ -303,6 +303,7 @@ export class SpaHomebridgePlatform implements DynamicPlatformPlugin {
     }
 
     const uuid = matter.uuid.generate(device.deviceType);
+    const serialNumber = uuid.replace(/-/g, '').slice(0, 32);
     if (this.matterAccessories.has(uuid)) {
       return;
     }
@@ -311,7 +312,7 @@ export class SpaHomebridgePlatform implements DynamicPlatformPlugin {
     const accessory = {
       UUID: uuid,
       displayName: device.name,
-      serialNumber: uuid,
+      serialNumber,
       manufacturer: 'Balboa',
       model: this.name,
       firmwareRevision: VERSION,
@@ -409,9 +410,9 @@ export class SpaHomebridgePlatform implements DynamicPlatformPlugin {
           onOff: false,
         },
         levelControl: {
-          currentLevel: 0,
-          minLevel: 0,
-          maxLevel: 255,
+          currentLevel: 1,
+          minLevel: 1,
+          maxLevel: 254,
         },
       };
     }
@@ -421,9 +422,9 @@ export class SpaHomebridgePlatform implements DynamicPlatformPlugin {
           onOff: false,
         },
         levelControl: {
-          currentLevel: 0,
-          minLevel: 0,
-          maxLevel: 255,
+          currentLevel: 1,
+          minLevel: 1,
+          maxLevel: 254,
         },
       };
     }
@@ -439,6 +440,7 @@ export class SpaHomebridgePlatform implements DynamicPlatformPlugin {
         doorLock: {
           lockState: matter.types.DoorLock.LockState.Unlocked,
           lockType: matter.types.DoorLock.LockType.Other,
+          operatingMode: (matter.types.DoorLock?.OperatingMode?.Normal ?? 0),
           actuatorEnabled: true,
         },
       };
