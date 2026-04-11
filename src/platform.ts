@@ -193,7 +193,19 @@ export class SpaHomebridgePlatform implements DynamicPlatformPlugin {
     });
     this.matterDeviceObjects.forEach(deviceObject => {
       Promise.resolve(deviceObject.updateCharacteristics())
-        .catch((error: unknown) => this.log.warn('Could not push matter state update:', error));
+        .catch((error: unknown) => {
+          this.log.warn('Could not push matter state update:', error);
+
+          const message = `${(error as any)?.message ?? error}`.toLowerCase();
+          if (message.includes('not found or not registered')) {
+            const uuid = (deviceObject as any)?.accessory?.UUID;
+            if (uuid) {
+              this.log.warn('Matter accessory appears unregistered; suppressing further updates for UUID', uuid);
+              this.matterAccessories.delete(uuid);
+              this.removeMatterDeviceObjectsForUuid(uuid);
+            }
+          }
+        });
     });
   }
 
