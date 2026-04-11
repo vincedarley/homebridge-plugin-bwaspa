@@ -12,11 +12,20 @@
 
 </span>
 
-This plugin will connect to Spas/Hot-tubs via their Balboa wifi module, and expose a set of controls (pumps, lights, etc) and the spa temperature, and temperature control thermostat, in HomeKit.  It also exposes a "Leak Sensor" which acts as a sensor for whether the heater water flow in the spa is all good.  You can set that up in Home to send you a notification if anything goes wrong.
+This plugin connects to Balboa spa and hot-tub wifi modules and exposes spa controls such as pumps, lights, blower, thermostat, temperature, locks, hold mode, and water-flow status to Homebridge.
 
-The plugin does a good job of ensuring the state of all controls remains in sync whether you manipulate the controls through Home, through Siri, through physical controls on the spa, or through the Balboa spa app, and takes account of situations (e.g. during filtering) where some pumps cannot be turned off.
+Version 3.0.0-beta.1 adds Matter accessory support alongside the existing HomeKit exposure path. Because of that, this release now requires Homebridge 2.0.0 beta.85 or later, running on Node 22 or Node 24.
 
-The default behaviour is for the plugin to discover your Spa automatically on your network, query it for all supported controls and make them all available to Homekit automatically.  You can modify much of that behaviour by configuring the plugin with Homebridge ConfigUI.  And of course you can rename or delete accessories in Home to serve your purposes. Finally the plugin will automatically correct the time of day of your spa, useful when daylight savings kicks in.
+The plugin keeps control state in sync whether you manipulate the spa through Home, Siri, Matter controllers, physical controls on the spa, or the Balboa spa app, and takes account of situations such as filter cycles where some pumps cannot be turned off.
+
+The default behaviour is to discover your spa automatically on the network, query it for supported controls, and create accessories automatically. You can override much of that behaviour through Homebridge Config UI. The plugin can also automatically correct the spa clock when daylight savings or other clock drift occurs.
+
+## Version 3.0.0-beta.1
+
+- Plugin version updated to 3.0.0-beta.1.
+- Minimum runtime is now Homebridge 2.0.0-beta.85 with Node 22 or Node 24.
+- Added Matter accessory infrastructure and initial Matter mappings for pumps, blower, lights, switches, thermostat, temperature sensor, locks, and water flow status.
+- Pump and blower Matter Level Control handling now follows the Matter Pump setpoint mapping semantics.
 
 <p align="left">
   <a href="https://github.com/vincedarley/homebridge-plugin-bwaspa"><img src="https://raw.githubusercontent.com/vincedarley/homebridge-plugin-bwaspa/master/graphics/home.png" height="400"></a>
@@ -28,7 +37,7 @@ The default behaviour is for the plugin to discover your Spa automatically on yo
 # Getting started
 
 Install everything:
-1. Follow the step-by-step instructions on the [Homebridge Wiki](https://github.com/homebridge/homebridge/wiki) to install Homebridge.
+1. Install Homebridge 2.0.0-beta.85 or later and run it on Node 22 or Node 24.
 2. Follow the step-by-step instructions on the [Homebridge Config UI X](https://github.com/oznu/homebridge-config-ui-x/wiki) to install Homebridge Config UI X.
 3. Install homebridge-balboa-spa using: `npm install -g homebridge-balboa-spa` or search for `Balboa Spa` in Config UI X.
 
@@ -48,25 +57,24 @@ With a typical setup, there is nothing more you need to do (if you wish you can 
 
 # More details on supported accessories
 
-This section details how this plugin translates the Spa's controls and settings into the world
-of accessories and devices that Homekit provides...
+This section details how this plugin translates spa controls and settings into Homebridge accessories and Matter device mappings.
 
-It supports pumps that are single speed (off or high) and 2-speed (off or low or high). The pump control sliders in Home then step accordingly (0-100% or 0-50%-100%).  Since Homekit doesn't have a notion of a multi-speed jet/pump, they are all treated as "fans" by Home.
+It supports pumps that are single speed (off or high) and 2-speed (off, low, high). In the Home app they are represented using the existing HomeKit fan-style control model. In Matter they are mapped as Pump devices with On/Off and Level Control semantics.
 
 You can control two lights and up to six pumps, a mister, a blower, 2 aux devices and the overall heating state of the spa. You can also view the state of the circulation pump.
 
-The "Thermostat" device type exposes control of the spa's target temperature and high (="Heat" in Home app) vs low (="Cool" in Home app), heating mode.  The low mode is generally used as a low-energy vacation mode. The target temperature is separate for the two modes and the valid ranges are also different.  If the flow sensor indicates water flow has failed, then the thermostat is "off".  You cannot turn it off yourself - it is not a valid state for the spa itself.
+The "Thermostat" device type exposes control of the spa's target temperature and high (="Heat" in Home app) vs low (="Cool" in Home app), heating mode. The low mode is generally used as a low-energy vacation mode. The target temperature is separate for the two modes and the valid ranges are also different. If the flow sensor indicates water flow has failed, then the thermostat is "off". You cannot turn it off yourself because that is not a valid state for the spa itself.
 
-The Spa's current temperature is visible both in the Thermostat device and in the read-only Temperature Sensor. Up to you if you want/need both devices.
+The spa's current temperature is visible both in the Thermostat device and in the read-only Temperature Sensor. Up to you whether you want both devices exposed.
 
-The flow sensor has 3 states: normal (all good), failed (which triggers a "leak" alarm - and you should be able to configure Home to send you a notification when this happens), or low water flow which triggers a status fault with the sensor.  This is useful to alert you if filters need cleaning (when they are dirty the flow slows/fails, heating is turned off, and the spa cools down).  The Balboa mobile app doesn't alert you to any problems with water flow, so this capability is very helpful. 
+The flow sensor has 3 states: normal, failed, or low water flow. In the Home app this is exposed using the leak-sensor style alerting model. In Matter the current implementation maps it to a boolean leak/water-flow problem indication. This is useful for detecting dirty filters because reduced flow disables heating and allows the spa to cool down.
 
 There is a "Hold" switch to activate the Spa's hold mode (temporarily turn off all pumps, including the circulation pump, so that you can safely change filters, etc).
 
 There are two "Locks" - to lock the spa settings (while still allowing control over pumps, lights, etc) and to lock the Spa completely (preventing use of any panel controls until unlocked). These
 are the same locking/unlocking as Balboa provides in the Spa control panel.
 
-Finally there are other devices on some spas: a "blower" (typically with 3-speeds), a "mister" and two auxiliary devices (aux1 and aux2).  They are all supported by this plugin, but not yet fully tested (please test them and report back on success or any problems).
+Finally there are other devices on some spas: a "blower" (typically with 3-speeds), a "mister" and two auxiliary devices (aux1 and aux2). They are supported by the plugin, and in 3.0.0-beta.1 they also have Matter mapping paths where implemented.
 
 ## Siri
 
@@ -146,13 +154,13 @@ However, if you wish to, or need to, make some manual adjustments, you can provi
 
 Lights are simply on/off.  Balboa provide no current capability to control the colour.  So this limitation cannot be rectified, unless Balboa enhance their product.
 
-If the water flow sensor discovers a fault (which it checks for every ten minutes), and you then fix the issue (change/clean filters, etc), the spa does not actually notify that the fault has been corrected. However if you either use 'hold' mode or turn the spa off/on (which you should generally do when changing filters) then a hold or priming event will take precedence and through this plugin the fault will no longer be reported to Homekit. If you don't do either of those actions, then the fault will only be reset in Homekit the following day.
+If the water flow sensor discovers a fault (which it checks for every ten minutes), and you then fix the issue (change or clean filters, etc), the spa does not actually notify that the fault has been corrected. However if you either use hold mode or turn the spa off and on again, then a hold or priming event will take precedence and the fault will no longer be reported through the plugin. If you do neither of those actions, then the fault will only be reset on the following day.
 
 ## Reliability
 
 There's a fair amount of information on the internet of how the Balboa Wifi module is pretty unreliable.  In particular prior to the '-06' release of the '50350' module, it would regularly disconnect and then be unable to reconnect (without rebooting the power supply to the module).  With my own spa, the module is adequately reliable but even then does disconnect for a few minutes to an hour once every day or two, sometimes as often as a few times a day.  But between the module and this plugin's reconnect capability, a reconnection does always ultimately happen.  If your Spa's module is less reliable, I would suggest a first step is to check which module version you have.
 
-Whilst the spa is disconnected, obviously all Homekit controls will fail. However this plugin is clever enough to store the
+Whilst the spa is disconnected, obviously all HomeKit and Matter control attempts will fail. However this plugin is clever enough to store the
 major ones (adjusting thermostat, hold, lock status) and will re-apply them once the connection is re-established. This means
 that any timed automations you create, for example, should still mostly work.
 

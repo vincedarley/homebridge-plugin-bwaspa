@@ -1,6 +1,7 @@
 import * as crc from "crc";
 import type { Logger } from 'homebridge';
 import * as net from "net";
+import type { SpaController } from './spaController';
 
 export const FLOW_GOOD = "Good";
 export const FLOW_LOW = "Low";
@@ -43,7 +44,7 @@ const ControlPanelRequest : Uint8Array[][] = [
     [new Uint8Array([0x08,0x00,0x00]), new Uint8Array([0x0a,0xbf,0x26])]
 ];
 
-export class SpaClient {
+export class SpaClient implements SpaController {
     socket?: net.Socket;
     // undefined means the light doesn't exist on the spa
     lightIsOn: (boolean | undefined)[];

@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## 3.0.0-beta.1 (11.04.2026)
+- Major release preparing the plugin for Homebridge 2.0 migration work.
+- Matter support in this release now requires Homebridge 2.0.0-beta.85 or later and a compatible Node.js runtime (Node 22 or 24).
+- Added Matter accessory infrastructure to the platform lifecycle (registration, cache restore, and state update fanout).
+- Added Matter accessory implementations for pumps, blower, lights, switches, lock controls, temperature sensor, thermostat, and water flow sensor.
+- Pump and blower Matter Level Control semantics now use the Pump setpoint mapping model (0 off, 1-200 as level/2 percent, 201-255 as 100 percent).
+- Internal platform routing now maps spa device types to Matter device types and initializes required default cluster state.
+- Removed unused and deprecated dependency baggage and refreshed the TypeScript, lint, and build toolchain for the Homebridge 2 / Node 22+ baseline.
+
+## 2.2.6 (15.11.2022)
+- Merge branch resolving security issue (socket.io-parser)
+
 ## 2.2.3 (14.06.2021)
 - Merge branch resolving security issue in a dependency (normalize-url)
 

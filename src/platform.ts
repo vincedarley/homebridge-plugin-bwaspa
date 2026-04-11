@@ -1,7 +1,7 @@
 import { APIEvent } from 'homebridge';
 import type { API, DynamicPlatformPlugin, Logger, PlatformAccessory, PlatformConfig } from 'homebridge';
 
-import { PLATFORM_NAME, PLUGIN_NAME } from './settings';
+import { PLATFORM_NAME, PLUGIN_NAME, VERSION } from './settings';
 import { PumpAccessory } from './pumpAccessory';
 import { LightsAccessory } from './lightsAccessory';
 import { TemperatureAccessory } from './temperatureAccessory';
@@ -12,7 +12,17 @@ import { LockAccessory } from './lockAccessory';
 import { HeatingReadySwitchAccessory } from './heatingReadySwitchAccessory';
 import { BlowerAccessory } from './blowerAccessory';
 import { OtherAccessory } from './otherAccessory';
+import { MatterPumpAccessory } from './matterPumpAccessory';
+import { MatterLightsAccessory } from './matterLightsAccessory';
+import { MatterSwitchAccessory } from './matterSwitchAccessory';
+import { MatterTemperatureAccessory } from './matterTemperatureAccessory';
+import { MatterFlowAccessory } from './matterFlowAccessory';
+import { MatterLockAccessory } from './matterLockAccessory';
+import { MatterBlowerAccessory } from './matterBlowerAccessory';
+import { MatterThermostatAccessory } from './matterThermostatAccessory';
 import { SpaClient } from './spaClient';
+import { DummySpaClient } from './dummySpaClient';
+import type { SpaController } from './spaController';
 import { discoverSpas } from './discovery';
 
 /**
@@ -21,14 +31,16 @@ import { discoverSpas } from './discovery';
  * parse the user config and discover/register accessories with Homebridge.
  */
 export class SpaHomebridgePlatform implements DynamicPlatformPlugin {
-  public readonly Service = this.api.hap.Service;
-  public readonly Characteristic = this.api.hap.Characteristic;
+  public readonly Service;
+  public readonly Characteristic;
 
   // this is used to track restored cached accessories
   public readonly accessories: PlatformAccessory[] = [];
-  spa : (SpaClient | undefined);
+  public readonly matterAccessories: Map<string, any> = new Map();
+  spa : (SpaController | undefined);
   devices : any[];
   deviceObjects : any[];
+  matterDeviceObjects : any[];
   name : string;
 
   connectionProblem = new Error('Connecting...');
@@ -38,6 +50,9 @@ export class SpaHomebridgePlatform implements DynamicPlatformPlugin {
     public readonly config: PlatformConfig,
     public readonly api: API,
   ) {
+    this.Service = this.api.hap.Service;
+    this.Characteristic = this.api.hap.Characteristic;
+
     if (!config) {
       log.warn('No configuration found for %s', PLUGIN_NAME);
     }
@@ -45,6 +60,7 @@ export class SpaHomebridgePlatform implements DynamicPlatformPlugin {
     this.log.debug('Finished initializing platform:', this.config.name);
     this.devices = config.devices || [];
     this.deviceObjects = new Array();
+    this.matterDeviceObjects = new Array();
     this.spa = undefined;
 
     // If the user has specified the model name, use that.
@@ -60,7 +76,10 @@ export class SpaHomebridgePlatform implements DynamicPlatformPlugin {
       this.discoverDevices();
     });
 
-    if (config.host && config.host.length > 0) {
+    if (this.shouldUseDummySpaClient()) {
+      this.log.warn('Debug dummy spa mode is enabled. Using virtual in-memory spa state.');
+      this.haveAddressOfSpa(config.devMode, 'dummy-spa');
+    } else if (config.host && config.host.length > 0) {
       // The user provided the IP address in the config
       this.haveAddressOfSpa(config.devMode, config.host);
     } else {
@@ -81,9 +100,20 @@ export class SpaHomebridgePlatform implements DynamicPlatformPlugin {
       this.log.error('Already have a spa set up. If you wish to control two or more Spas, please file a bug report.');
       return;
     }
-    // Create and load up our primary client which connects with the spa
-    this.spa = new SpaClient(this.log, ipAddress, this.spaConfigurationKnown.bind(this),
-      this.updateStateOfAccessories.bind(this), this.executeAllRecordedActions.bind(this), devMode);
+
+    const SpaClientCtor = this.shouldUseDummySpaClient() ? DummySpaClient : SpaClient;
+    this.spa = new SpaClientCtor(
+      this.log,
+      ipAddress,
+      this.spaConfigurationKnown.bind(this),
+      this.updateStateOfAccessories.bind(this),
+      this.executeAllRecordedActions.bind(this),
+      devMode,
+    );
+  }
+
+  private shouldUseDummySpaClient() {
+    return Boolean((this.config as any).debugUseDummySpa);
   }
 
   /**
@@ -99,6 +129,12 @@ export class SpaHomebridgePlatform implements DynamicPlatformPlugin {
     this.accessories.push(accessory);
   }
 
+  configureMatterAccessory(accessory: any) {
+    this.log.info('Restoring matter accessory from cache:', accessory.displayName);
+    this.matterAccessories.set(accessory.UUID, accessory);
+    this.makeMatterAccessory(accessory);
+  }
+
   /**
    * Called once we have received a message from the spa containing the
    * accurate configuration of number of pumps (and their speed ranges), 
@@ -112,6 +148,9 @@ export class SpaHomebridgePlatform implements DynamicPlatformPlugin {
     }
     this.log.debug('Spa configuration known - informing each accessory');
     this.deviceObjects.forEach(deviceObject => {
+      deviceObject.spaConfigurationKnown();
+    });
+    this.matterDeviceObjects.forEach(deviceObject => {
       deviceObject.spaConfigurationKnown();
     });
   }
@@ -146,6 +185,10 @@ export class SpaHomebridgePlatform implements DynamicPlatformPlugin {
     // At least theoretically better if we could just do the ones we know have changed.
     this.deviceObjects.forEach(deviceObject => {
       deviceObject.updateCharacteristics();
+    });
+    this.matterDeviceObjects.forEach(deviceObject => {
+      Promise.resolve(deviceObject.updateCharacteristics())
+        .catch((error: unknown) => this.log.warn('Could not push matter state update:', error));
     });
   }
 
@@ -217,6 +260,8 @@ export class SpaHomebridgePlatform implements DynamicPlatformPlugin {
    * must not be registered again to prevent "duplicate UUID" errors.
    */
   private makeDevice(device: any) {
+    void this.makeMatterDevice(device);
+
     // generate a unique id for the accessory this should be generated from
     // something globally unique, but constant, for example, the device serial
     // number or MAC address
@@ -244,6 +289,248 @@ export class SpaHomebridgePlatform implements DynamicPlatformPlugin {
       // it is possible to remove platform accessories at any time using `api.unregisterPlatformAccessories`, eg.:
       // this.api.unregisterPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory]);
       // If we do this, we should also remove them from the deviceObjects array.
+    }
+  }
+
+  private async makeMatterDevice(device: any) {
+    const matter = (this.api as any).matter;
+    if (!matter) {
+      return;
+    }
+
+    if (!this.isMatterEnabledDeviceType(device.deviceType)) {
+      return;
+    }
+
+    const uuid = matter.uuid.generate(device.deviceType);
+    if (this.matterAccessories.has(uuid)) {
+      return;
+    }
+
+    this.log.info('Registering new matter accessory:', device.name, 'of type', device.deviceType);
+    const accessory = {
+      UUID: uuid,
+      displayName: device.name,
+      serialNumber: uuid,
+      manufacturer: 'Balboa',
+      model: this.name,
+      firmwareRevision: VERSION,
+      hardwareRevision: VERSION,
+      deviceType: this.toMatterDeviceType(device.deviceType),
+      context: {
+        device,
+      },
+      clusters: this.defaultMatterClustersFor(device.deviceType, matter),
+    };
+
+    this.matterAccessories.set(uuid, accessory);
+    this.makeMatterAccessory(accessory);
+
+    try {
+      await matter.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory]);
+    } catch (error) {
+      this.log.warn('Could not register matter accessory', device.name, 'because:', error);
+      this.matterAccessories.delete(uuid);
+    }
+  }
+
+  private isMatterEnabledDeviceType(deviceType: string) {
+    return this.isMatterPumpType(deviceType)
+      || this.isMatterBlowerType(deviceType)
+      || this.isMatterLightType(deviceType)
+      || this.isMatterSwitchType(deviceType)
+      || this.isMatterLockType(deviceType)
+      || this.isMatterThermostatType(deviceType)
+      || deviceType === 'Temperature Sensor'
+      || deviceType === 'Water Flow Problem Sensor';
+  }
+
+  private isMatterPumpType(deviceType: string) {
+    return deviceType === 'Circulation Pump' || /^Pump [1-6]$/.test(deviceType);
+  }
+
+  private isMatterBlowerType(deviceType: string) {
+    return deviceType === 'Blower';
+  }
+
+  private isMatterLightType(deviceType: string) {
+    return deviceType === 'Lights 1' || deviceType === 'Lights 2';
+  }
+
+  private isMatterSwitchType(deviceType: string) {
+    return deviceType === 'Hold Switch'
+      || deviceType === 'Spa Heat Mode Ready'
+      || deviceType === 'Mister'
+      || deviceType === 'Aux 1'
+      || deviceType === 'Aux 2';
+  }
+
+  private isMatterLockType(deviceType: string) {
+    return deviceType === 'Spa Settings' || deviceType === 'Spa Panel';
+  }
+
+  private isMatterThermostatType(deviceType: string) {
+    return deviceType === 'Thermostat';
+  }
+
+  private toMatterDeviceType(deviceType: string) {
+    const matter = (this.api as any).matter;
+    if (this.isMatterPumpType(deviceType)) {
+      return matter.deviceTypes.Pump;
+    }
+    if (this.isMatterBlowerType(deviceType)) {
+      return matter.deviceTypes.Fan || matter.deviceTypes.Pump;
+    }
+    if (this.isMatterLightType(deviceType)) {
+      return matter.deviceTypes.OnOffLight;
+    }
+    if (this.isMatterSwitchType(deviceType)) {
+      return matter.deviceTypes.OnOffSwitch;
+    }
+    if (this.isMatterLockType(deviceType)) {
+      return matter.deviceTypes.DoorLock;
+    }
+    if (this.isMatterThermostatType(deviceType)) {
+      return matter.deviceTypes.Thermostat || matter.deviceTypes.TemperatureSensor;
+    }
+    if (deviceType === 'Temperature Sensor') {
+      return matter.deviceTypes.TemperatureSensor;
+    }
+    if (deviceType === 'Water Flow Problem Sensor') {
+      return matter.deviceTypes.LeakSensor;
+    }
+    return matter.deviceTypes.OnOffSwitch;
+  }
+
+  private defaultMatterClustersFor(deviceType: string, matter: any) {
+    if (this.isMatterPumpType(deviceType)) {
+      return {
+        onOff: {
+          onOff: false,
+        },
+        levelControl: {
+          currentLevel: 0,
+          minLevel: 0,
+          maxLevel: 255,
+        },
+      };
+    }
+    if (this.isMatterBlowerType(deviceType)) {
+      return {
+        onOff: {
+          onOff: false,
+        },
+        levelControl: {
+          currentLevel: 0,
+          minLevel: 0,
+          maxLevel: 255,
+        },
+      };
+    }
+    if (this.isMatterLightType(deviceType) || this.isMatterSwitchType(deviceType)) {
+      return {
+        onOff: {
+          onOff: false,
+        },
+      };
+    }
+    if (this.isMatterLockType(deviceType)) {
+      return {
+        doorLock: {
+          lockState: matter.types.DoorLock.LockState.Unlocked,
+          lockType: matter.types.DoorLock.LockType.Other,
+          actuatorEnabled: true,
+        },
+      };
+    }
+    if (this.isMatterThermostatType(deviceType)) {
+      return {
+        thermostat: {
+          localTemperature: 2000,
+          occupiedHeatingSetpoint: 3200,
+          minHeatSetpointLimit: 1000,
+          maxHeatSetpointLimit: 4000,
+          systemMode: (matter.types.Thermostat?.SystemMode?.Heat ?? 4),
+        },
+      };
+    }
+    if (deviceType === 'Temperature Sensor') {
+      return {
+        temperatureMeasurement: {
+          measuredValue: 2000,
+          minMeasuredValue: -5000,
+          maxMeasuredValue: 10000,
+        },
+      };
+    }
+    if (deviceType === 'Water Flow Problem Sensor') {
+      return {
+        booleanState: {
+          stateValue: false,
+        },
+      };
+    }
+    return {};
+  }
+
+  private makeMatterAccessory(accessory: any) {
+    const deviceType = accessory.context?.device?.deviceType;
+    if (!this.isMatterEnabledDeviceType(deviceType)) {
+      return;
+    }
+
+    if (this.isMatterPumpType(deviceType)) {
+      const pumpNumber = (deviceType === 'Circulation Pump') ? 0 : parseInt(deviceType.split(' ')[1], 10);
+      this.matterDeviceObjects.push(new MatterPumpAccessory(this, accessory, pumpNumber));
+      return;
+    }
+    if (this.isMatterBlowerType(deviceType)) {
+      this.matterDeviceObjects.push(new MatterBlowerAccessory(this, accessory));
+      return;
+    }
+    if (this.isMatterLightType(deviceType)) {
+      const lightNumber = parseInt(deviceType.split(' ')[1], 10);
+      this.matterDeviceObjects.push(new MatterLightsAccessory(this, accessory, lightNumber));
+      return;
+    }
+    if (this.isMatterSwitchType(deviceType)) {
+      const kind = this.matterSwitchKindFor(deviceType);
+      if (kind) {
+        this.matterDeviceObjects.push(new MatterSwitchAccessory(this, accessory, kind));
+      }
+      return;
+    }
+    if (this.isMatterLockType(deviceType)) {
+      this.matterDeviceObjects.push(new MatterLockAccessory(this, accessory, deviceType === 'Spa Panel'));
+      return;
+    }
+    if (this.isMatterThermostatType(deviceType)) {
+      this.matterDeviceObjects.push(new MatterThermostatAccessory(this, accessory));
+      return;
+    }
+    if (deviceType === 'Temperature Sensor') {
+      this.matterDeviceObjects.push(new MatterTemperatureAccessory(this, accessory));
+      return;
+    }
+    if (deviceType === 'Water Flow Problem Sensor') {
+      this.matterDeviceObjects.push(new MatterFlowAccessory(this, accessory));
+    }
+  }
+
+  private matterSwitchKindFor(deviceType: string) {
+    switch (deviceType) {
+      case 'Hold Switch':
+        return 'hold';
+      case 'Spa Heat Mode Ready':
+        return 'heatingReady';
+      case 'Mister':
+        return 'mister';
+      case 'Aux 1':
+        return 'aux1';
+      case 'Aux 2':
+        return 'aux2';
+      default:
+        return undefined;
     }
   }
 

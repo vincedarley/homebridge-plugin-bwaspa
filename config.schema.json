@@ -1,7 +1,7 @@
 {
   "pluginAlias": "Balboa-Spa",
   "pluginType": "platform",
-  "headerDisplay": "This plugin works with Balboa-Spa wifi modules. Each pump, lights, etc are exposed HomeKit as separate accessories. In most situations, if you're fine with the defaults, the configuration is automatic. Else you can give your Spa a name below, and modify other settings...",
+  "headerDisplay": "This plugin works with Balboa-Spa wifi modules. Version 3.0.0-beta.1 requires Homebridge 2.0.0-beta.85 or later on Node 22 or 24 because of Matter support. Spa devices such as pumps, lights, thermostat, locks, and sensors can be exposed through Homebridge, with most setups remaining automatic.",
   "singular": true,
   "layout": [
     {
@@ -22,6 +22,7 @@
     },
     {
       "items": [
+        "debugUseDummySpa",
         "host"
       ]
     }
@@ -47,6 +48,12 @@
         "placeholder": "192.168.1.151 (plugin will attempt to discover automatically if blank)",
         "required": false,
         "format": "hostname"
+      },
+      "debugUseDummySpa": {
+        "title": "Debug: Use Dummy Virtual Spa (No Network)",
+        "type": "boolean",
+        "default": false,
+        "required": false
       },
       "devices": {
         "title": "Manually Created Accessories",
