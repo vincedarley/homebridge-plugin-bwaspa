@@ -1,7 +1,7 @@
 {
   "displayName": "Balboa Spa",
   "name": "homebridge-balboa-spa",
-  "version": "3.0.0-beta.1",
+  "version": "3.0.0-beta.2",
   "description": "Homebridge control of a balboa spa.",
   "license": "Apache-2.0",
   "repository": {
