@@ -7,6 +7,8 @@ export class MatterBlowerAccessory {
   private scheduleId: any = undefined;
   private lastOn: boolean | undefined = undefined;
   private lastLevel: number | undefined = undefined;
+  private lastFanMode: number | undefined = undefined;
+  private lastPercentSetting: number | undefined = undefined;
 
   private lastNonZeroSpeed = 1;
 
@@ -41,6 +43,14 @@ export class MatterBlowerAccessory {
         on: async () => this.setOn(true),
         off: async () => this.setOn(false),
       },
+      fanControl: {
+        fanModeChange: async (request: any) => {
+          await this.setFanMode(request?.fanMode);
+        },
+        percentSettingChange: async (request: any) => {
+          await this.setPercentSetting(request?.percentSetting);
+        },
+      },
       levelControl: {
         moveToLevelWithOnOff: async (request: any) => {
           const level = Math.max(1, Math.min(254, request?.level ?? 1));
@@ -73,6 +83,8 @@ export class MatterBlowerAccessory {
 
     const isOn = speed !== 0;
     const speedValue = this.toLevelValue(speed);
+    const fanMode = this.toFanModeValue(speed);
+    const percentSetting = this.toPercentSettingValue(speed);
 
     if (this.lastOn !== isOn) {
       await this.matter.updateAccessoryState(this.accessory.UUID, this.matter.clusterNames.OnOff, { onOff: isOn });
@@ -82,6 +94,16 @@ export class MatterBlowerAccessory {
     if (this.lastLevel !== speedValue) {
       await this.matter.updateAccessoryState(this.accessory.UUID, this.matter.clusterNames.LevelControl, { currentLevel: speedValue });
       this.lastLevel = speedValue;
+    }
+
+    if (this.lastFanMode !== fanMode || this.lastPercentSetting !== percentSetting) {
+      await this.matter.updateAccessoryState(this.accessory.UUID, this.matter.clusterNames.FanControl, {
+        fanMode,
+        percentSetting,
+        percentCurrent: percentSetting,
+      });
+      this.lastFanMode = fanMode;
+      this.lastPercentSetting = percentSetting;
     }
   }
 
@@ -115,6 +137,39 @@ export class MatterBlowerAccessory {
     this.scheduleSetSpeed(speed);
   }
 
+  private async setFanMode(mode: number | undefined) {
+    if (mode === undefined) {
+      return;
+    }
+    if (!this.platform.isCurrentlyConnected()) {
+      throw this.platform.connectionProblem;
+    }
+
+    if (mode === this.getFanModeOff()) {
+      this.scheduleSetSpeed(0);
+      return;
+    }
+
+    if (mode === this.getFanModeLow()) {
+      this.scheduleSetSpeed(this.speedForFanMode('low'));
+      return;
+    }
+
+    if (mode === this.getFanModeMedium()) {
+      this.scheduleSetSpeed(this.speedForFanMode('medium'));
+      return;
+    }
+
+    this.scheduleSetSpeed(this.speedForFanMode('high'));
+  }
+
+  private async setPercentSetting(percentSetting: number | null | undefined) {
+    if (percentSetting === undefined || percentSetting === null) {
+      return;
+    }
+    await this.setSpeedPercent(Math.max(0, Math.min(100, percentSetting)));
+  }
+
   private scheduleSetSpeed(speed: number) {
     const newSpeed = speed;
     if (this.scheduleId) {
@@ -139,6 +194,62 @@ export class MatterBlowerAccessory {
 
   private getSpeed() {
     return this.platform.spa!.getBlowerSpeed();
+  }
+
+  private toFanModeValue(speed: number) {
+    if (speed <= 0) {
+      return this.getFanModeOff();
+    }
+    if (this.numSpeedSettings <= 1) {
+      return this.getFanModeHigh();
+    }
+    if (this.numSpeedSettings === 2) {
+      return speed >= 2 ? this.getFanModeHigh() : this.getFanModeLow();
+    }
+    if (speed >= this.numSpeedSettings) {
+      return this.getFanModeHigh();
+    }
+    if (speed >= 2) {
+      return this.getFanModeMedium();
+    }
+    return this.getFanModeLow();
+  }
+
+  private toPercentSettingValue(speed: number) {
+    if (speed <= 0 || this.numSpeedSettings <= 0) {
+      return 0;
+    }
+    return Math.max(1, Math.min(100, Math.round((100.0 * speed) / this.numSpeedSettings)));
+  }
+
+  private speedForFanMode(mode: 'low' | 'medium' | 'high') {
+    const maxSpeed = this.numSpeedSettings > 0 ? this.numSpeedSettings : this.platform.spa!.getBlowerSpeedRange();
+    if (maxSpeed <= 1) {
+      return mode === 'high' ? 1 : 0;
+    }
+    if (mode === 'high') {
+      return maxSpeed;
+    }
+    if (mode === 'medium') {
+      return Math.max(1, Math.min(maxSpeed, Math.round((maxSpeed + 1) / 2)));
+    }
+    return 1;
+  }
+
+  private getFanModeOff() {
+    return this.matter.types.FanControl?.FanMode?.Off ?? 0;
+  }
+
+  private getFanModeLow() {
+    return this.matter.types.FanControl?.FanMode?.Low ?? 1;
+  }
+
+  private getFanModeMedium() {
+    return this.matter.types.FanControl?.FanMode?.Medium ?? 2;
+  }
+
+  private getFanModeHigh() {
+    return this.matter.types.FanControl?.FanMode?.High ?? 3;
   }
 
   private toLevelValue(speed: number) {
