@@ -66,7 +66,7 @@ export class MatterThermostatAccessory {
         localTemperature,
         occupiedHeatingSetpoint,
         systemMode,
-        runningMode,
+        thermostatRunningMode: runningMode,
       });
       this.lastLocalTemperature = localTemperature;
       this.lastHeatingSetpoint = occupiedHeatingSetpoint;
