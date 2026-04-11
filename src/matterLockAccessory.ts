@@ -3,6 +3,10 @@ import { SpaHomebridgePlatform } from './platform';
 export class MatterLockAccessory {
   private readonly matter: any;
   private lastLocked: boolean | undefined = undefined;
+  private readonly lockStateUnlocked: number;
+  private readonly lockStateLocked: number;
+  private readonly lockTypeOther: number;
+  private readonly operatingModeNormal: number;
 
   constructor(
     private readonly platform: SpaHomebridgePlatform,
@@ -10,15 +14,19 @@ export class MatterLockAccessory {
     private readonly entireSpa: boolean,
   ) {
     this.matter = (this.platform.api as any).matter;
+    this.lockStateUnlocked = this.matter.types.DoorLock?.LockState?.Unlocked ?? 2;
+    this.lockStateLocked = this.matter.types.DoorLock?.LockState?.Locked ?? 1;
+    this.lockTypeOther = this.matter.types.DoorLock?.LockType?.Other ?? 0;
+    this.operatingModeNormal = this.matter.types.DoorLock?.OperatingMode?.Normal ?? 0;
 
     if (!this.accessory.clusters) {
       this.accessory.clusters = {};
     }
     if (!this.accessory.clusters.doorLock) {
       this.accessory.clusters.doorLock = {
-        lockState: this.matter.types.DoorLock.LockState.Unlocked,
-        lockType: this.matter.types.DoorLock.LockType.Other,
-        operatingMode: (this.matter.types.DoorLock?.OperatingMode?.Normal ?? 0),
+        lockState: this.lockStateUnlocked,
+        lockType: this.lockTypeOther,
+        operatingMode: this.operatingModeNormal,
         actuatorEnabled: true,
       };
     }
@@ -43,8 +51,8 @@ export class MatterLockAccessory {
     const isLocked = this.platform.spa!.getIsLocked(this.entireSpa);
     if (this.lastLocked !== isLocked) {
       const lockState = isLocked
-        ? this.matter.types.DoorLock.LockState.Locked
-        : this.matter.types.DoorLock.LockState.Unlocked;
+        ? this.lockStateLocked
+        : this.lockStateUnlocked;
       await this.matter.updateAccessoryState(this.accessory.UUID, this.matter.clusterNames.DoorLock, {
         lockState,
       });

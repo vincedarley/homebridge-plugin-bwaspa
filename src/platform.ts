@@ -132,7 +132,12 @@ export class SpaHomebridgePlatform implements DynamicPlatformPlugin {
   configureMatterAccessory(accessory: any) {
     this.log.info('Restoring matter accessory from cache:', accessory.displayName);
     this.matterAccessories.set(accessory.UUID, accessory);
-    this.makeMatterAccessory(accessory);
+    try {
+      this.makeMatterAccessory(accessory);
+    } catch (error) {
+      this.log.error('Could not restore cached matter accessory', accessory.displayName, 'because:', error);
+      this.matterAccessories.delete(accessory.UUID);
+    }
   }
 
   /**
@@ -260,7 +265,9 @@ export class SpaHomebridgePlatform implements DynamicPlatformPlugin {
    * must not be registered again to prevent "duplicate UUID" errors.
    */
   private makeDevice(device: any) {
-    void this.makeMatterDevice(device);
+    void this.makeMatterDevice(device).catch((error) => {
+      this.log.error('Unhandled Matter setup error for', device?.name ?? 'unknown device', 'of type', device?.deviceType ?? 'unknown', error);
+    });
 
     // generate a unique id for the accessory this should be generated from
     // something globally unique, but constant, for example, the device serial
@@ -308,29 +315,34 @@ export class SpaHomebridgePlatform implements DynamicPlatformPlugin {
       return;
     }
 
-    this.log.info('Registering new matter accessory:', device.name, 'of type', device.deviceType);
-    const accessory = {
-      UUID: uuid,
-      displayName: device.name,
-      serialNumber,
-      manufacturer: 'Balboa',
-      model: this.name,
-      firmwareRevision: VERSION,
-      hardwareRevision: VERSION,
-      deviceType: this.toMatterDeviceType(device.deviceType),
-      context: {
-        device,
-      },
-      clusters: this.defaultMatterClustersFor(device.deviceType, matter),
-    };
-
-    this.matterAccessories.set(uuid, accessory);
-    this.makeMatterAccessory(accessory);
-
     try {
-      await matter.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory]);
+      this.log.info('Registering new matter accessory:', device.name, 'of type', device.deviceType);
+      const accessory = {
+        UUID: uuid,
+        displayName: device.name,
+        serialNumber,
+        manufacturer: 'Balboa',
+        model: this.name,
+        firmwareRevision: VERSION,
+        hardwareRevision: VERSION,
+        deviceType: this.toMatterDeviceType(device.deviceType),
+        context: {
+          device,
+        },
+        clusters: this.defaultMatterClustersFor(device.deviceType, matter),
+      };
+
+      this.matterAccessories.set(uuid, accessory);
+      this.makeMatterAccessory(accessory);
+
+      try {
+        await matter.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory]);
+      } catch (error) {
+        this.log.warn('Could not register matter accessory', device.name, 'because:', error);
+        this.matterAccessories.delete(uuid);
+      }
     } catch (error) {
-      this.log.warn('Could not register matter accessory', device.name, 'because:', error);
+      this.log.error('Matter accessory setup failed for', device?.name ?? 'unknown device', 'of type', device?.deviceType ?? 'unknown', error);
       this.matterAccessories.delete(uuid);
     }
   }
@@ -438,8 +450,8 @@ export class SpaHomebridgePlatform implements DynamicPlatformPlugin {
     if (this.isMatterLockType(deviceType)) {
       return {
         doorLock: {
-          lockState: matter.types.DoorLock.LockState.Unlocked,
-          lockType: matter.types.DoorLock.LockType.Other,
+          lockState: (matter.types.DoorLock?.LockState?.Unlocked ?? 2),
+          lockType: (matter.types.DoorLock?.LockType?.Other ?? 0),
           operatingMode: (matter.types.DoorLock?.OperatingMode?.Normal ?? 0),
           actuatorEnabled: true,
         },
