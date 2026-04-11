@@ -11,8 +11,15 @@ All notable changes to this project will be documented in this file.
 - Internal platform routing now maps spa device types to Matter device types and initializes required default cluster state.
 - Removed unused and deprecated dependency baggage and refreshed the TypeScript, lint, and build toolchain for the Homebridge 2 / Node 22+ baseline.
 
-## 2.2.6 (15.11.2022)
-- Merge branch resolving security issue (socket.io-parser)
+## 2.2.6 (07.03.2022)
+- Improved mechanism to force spa to restart sending status messages.
+
+## 2.2.5 (04.03.2022)
+- If the spa stops sending status messages, proactively try to connect
+
+## 2.2.4 (30.01.2022)
+- Minor improvement to logging
+- Improved documentation, covering automation
 
 ## 2.2.3 (14.06.2021)
 - Merge branch resolving security issue in a dependency (normalize-url)

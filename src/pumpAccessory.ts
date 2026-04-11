@@ -1,5 +1,5 @@
 import { CharacteristicEventTypes } from 'homebridge';
-import type { Service, PlatformAccessory, CharacteristicValue, CharacteristicSetCallback, CharacteristicGetCallback} from 'homebridge';
+import type { Service, PlatformAccessory, CharacteristicValue, CharacteristicSetCallback, CharacteristicGetCallback } from 'homebridge';
 
 import { SpaHomebridgePlatform } from './platform';
 import { VERSION } from './settings';
@@ -19,15 +19,15 @@ export class PumpAccessory {
   lastNonZeroSpeed = 1;
 
   // Always 1-3
-  numSpeedSettings : number;
+  numSpeedSettings: number;
 
   // Always either "Pump N", or "Circulation Pump"
-  name : string;
+  name: string;
 
   constructor(
     private readonly platform: SpaHomebridgePlatform,
     private readonly accessory: PlatformAccessory,
-    private readonly pumpNumber : number // 1-6 as defined by Balboa, 0 for circulation pump
+    private readonly pumpNumber: number // 1-6 as defined by Balboa, 0 for circulation pump
   ) {
 
     // set accessory information
@@ -73,7 +73,7 @@ export class PumpAccessory {
    * being called and that will discover the correct new value. 
    */
   setOn(value: CharacteristicValue, callback: CharacteristicSetCallback) {
-    this.platform.log.debug('Set', this.name, '->', value? 'On': 'Off', this.platform.status());
+    this.platform.log.debug('Set', this.name, '->', value ? 'On' : 'Off', this.platform.status());
     if (!this.platform.isCurrentlyConnected()) {
       callback(this.platform.connectionProblem);
       return;
@@ -83,7 +83,7 @@ export class PumpAccessory {
     } else {
       this.scheduleSetSpeed(0);
     }
-    
+
     callback(null);
   }
 
@@ -105,8 +105,8 @@ export class PumpAccessory {
       callback(this.platform.connectionProblem);
     } else {
       const isOn = this.getSpeed() != 0;
-      this.platform.log.debug('Get', this.name, '<-',isOn?'On':'Off', this.platform.status());
-      
+      this.platform.log.debug('Get', this.name, '<-', isOn ? 'On' : 'Off', this.platform.status());
+
       callback(null, isOn);
     }
   }
@@ -124,10 +124,10 @@ export class PumpAccessory {
       return;
     }
     // value is 0-100, and we want to convert that, to 0-1, 0-2, 0-3 as appropriate.
-    const speed = Math.round((value as number)*this.numSpeedSettings/100.0);
+    const speed = Math.round((value as number) * this.numSpeedSettings / 100.0);
     // Store this immediately.
     this.lastNonZeroSpeed = speed;
-    this.platform.log.debug('Set', this.name,'Speed ->', value, 'which is', 
+    this.platform.log.debug('Set', this.name, 'Speed ->', value, 'which is',
       SpaClient.getSpeedAsString(this.numSpeedSettings, speed), this.platform.status());
 
     this.scheduleSetSpeed(speed);
@@ -146,8 +146,8 @@ export class PumpAccessory {
       const speed = this.getSpeed();
       // As above we convert the speed of 0-n to a value of 0-100, irrespective
       // of the number of speeds the pump has
-      const value = (100.0*speed)/this.numSpeedSettings;
-      this.platform.log.debug('Get', this.name, 'Speed <-', value, 'which is', 
+      const value = (100.0 * speed) / this.numSpeedSettings;
+      this.platform.log.debug('Get', this.name, 'Speed <-', value, 'which is',
         SpaClient.getSpeedAsString(this.numSpeedSettings, speed), this.platform.status());
       callback(null, value);
     }
@@ -163,25 +163,26 @@ export class PumpAccessory {
     this.platform.log.info(this.name, "has", this.numSpeedSettings, "speeds.");
     // Tell Home about the minimum step size to use (e.g. 50% means values of 0, 50%, 100% are ok)
     this.service.getCharacteristic(this.platform.Characteristic.RotationSpeed)
-      .setProps({minStep: (100.0/this.numSpeedSettings)});
+      .setProps({ minStep: (100.0 / this.numSpeedSettings) });
   }
 
   // If Spa state has changed, for example using manual controls on the spa, then we must update Homekit.
   updateCharacteristics() {
     if (!this.platform.isCurrentlyConnected()) {
-      this.platform.log.debug(this.name,'updating',this.platform.status());
+      this.platform.log.debug(this.name, 'updating', this.platform.status());
       this.service.getCharacteristic(this.platform.Characteristic.On).updateValue(this.platform.connectionProblem);
       this.service.getCharacteristic(this.platform.Characteristic.RotationSpeed).updateValue(this.platform.connectionProblem);
       return;
     }
     const speed = this.getSpeed();
     const isOn = speed != 0;
-    const speedValue = (100.0*speed)/this.numSpeedSettings;
-    
-    this.platform.log.debug(this.name,'updating to',isOn ? 'On' : 'Off','and',speed,'which is', 
-      SpaClient.getSpeedAsString(this.numSpeedSettings, speed));
-    this.service.getCharacteristic(this.platform.Characteristic.On).updateValue(isOn);
-    this.service.getCharacteristic(this.platform.Characteristic.RotationSpeed).updateValue(speedValue);
+    const speedValue = (100.0 * speed) / this.numSpeedSettings;
+    if (this.numSpeedSettings) {
+      this.platform.log.debug(this.name, 'updating to', isOn ? 'On' : 'Off', 'and', speed, 'which is',
+        SpaClient.getSpeedAsString(this.numSpeedSettings, speed));
+      this.service.getCharacteristic(this.platform.Characteristic.On).updateValue(isOn);
+      this.service.getCharacteristic(this.platform.Characteristic.RotationSpeed).updateValue(speedValue);
+    }
   }
 
   private getSpeed() {
@@ -189,7 +190,7 @@ export class PumpAccessory {
     return this.platform.spa!.getPumpSpeed(this.pumpNumber);
   }
 
-  private scheduleId : any = undefined;
+  private scheduleId: any = undefined;
 
   /** 
    * When the pump is turned on, we receive both an on setting (which triggers setting
@@ -211,7 +212,7 @@ export class PumpAccessory {
   }
 
   private setSpeed(speed: number) {
-    this.platform.log.debug(this.name,'actually setting speed to',speed,'which is', 
+    this.platform.log.debug(this.name, 'actually setting speed to', speed, 'which is',
       SpaClient.getSpeedAsString(this.numSpeedSettings, speed), this.platform.status());
     this.platform.spa!.setPumpSpeed(this.pumpNumber, speed);
     if (speed != 0) {

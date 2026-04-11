@@ -44,6 +44,9 @@ const ControlPanelRequest : Uint8Array[][] = [
     [new Uint8Array([0x08,0x00,0x00]), new Uint8Array([0x0a,0xbf,0x26])]
 ];
 
+// Perhaps something to do with ChromaZone
+const KnownUnknownReply = new Uint8Array([0xff,0xaf,0x32]);
+
 export class SpaClient implements SpaController {
     socket?: net.Socket;
     // undefined means the light doesn't exist on the spa
@@ -372,10 +375,12 @@ export class SpaClient implements SpaController {
         } else {
             this.log.error('No spa state update received for some time.  Last state was', 
                 this.stateToString());
-            // What we should do is send a message to the Spa so it restarts sending
-            // us state updates.
-
-            // TODO
+            
+            // TODO - it would be nice if there was a softer way of getting the spa
+            // to start sending the status updates again then a full disconnect, reconnect.
+            // For example, perhaps there is a simple message we send which will trigger that
+            
+            this.socket?.emit("error", Error("no spa update"));
         }
     }
 
@@ -1004,6 +1009,9 @@ export class SpaClient implements SpaController {
             // Nothing to do here
             this.log.info("Set preferences reply (" + this.prettify(msgType) 
             + "):"+ this.prettify(contents));
+            stateChanged = false;
+        } else if (this.equal(msgType, KnownUnknownReply)) {
+            // Nothing to do here
             stateChanged = false;
         } else {
             stateChanged = false;

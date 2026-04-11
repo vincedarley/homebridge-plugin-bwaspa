@@ -119,3 +119,7 @@ dist
 .yarn/build-state.yml
 .pnp.*
 .DS_Store
+/test/hbConfig/accessories
+/test/hbConfig/backups
+/test/hbConfig/persist
+test/hbConfig/.uix-dashboard.json

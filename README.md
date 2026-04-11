@@ -1,7 +1,7 @@
 
 <p align="center">
 
-<img src="https://github.com/homebridge/branding/raw/master/logos/homebridge-wordmark-logo-vertical.png" width="150">
+<img src="https://raw.githubusercontent.com/homebridge/branding/latest/logos/homebridge-color-round-stylized.png" width="150">
 
 </p>
 
@@ -33,6 +33,10 @@ The default behaviour is to discover your spa automatically on the network, quer
   <a href="https://github.com/vincedarley/homebridge-plugin-bwaspa"><img src="https://raw.githubusercontent.com/vincedarley/homebridge-plugin-bwaspa/master/graphics/pump.png" height="400"></a>
   <a href="https://github.com/vincedarley/homebridge-plugin-bwaspa"><img src="https://raw.githubusercontent.com/vincedarley/homebridge-plugin-bwaspa/master/graphics/lights.png" height="400"></a>
 </p>
+
+Please note if your spa is controlled by Balboa's "Control My Spa" app, hardware and cloud-service, then this plugin is not currently compatible. It works with spas that use Balboa wifi receiver module and the Balboa Worldwide App (BWA app).  Also usage of this [project](https://github.com/NorthernMan54/esp32_balboa_spa) to create your own WiFi module is supported.
+
+Note (2025): this hasn't been updated for some years because it simply works well. No meaningful bugs have been reported.  Once Homebridge 2.0 is released my intention is to update the plugin where needed, and likely also work to add Matter support via Homebridge 2.0's matter capabilities.
 
 # Getting started
 
@@ -149,6 +153,18 @@ However, if you wish to, or need to, make some manual adjustments, you can provi
             "platform": "Balboa-Spa"
         }
 ```
+
+## Automation and notifications
+
+You can use the Home and Shortcuts apps to create automations, as you might with any homekit 
+device. For example I've created an automation which runs when I turn off my alarm in the morning and notifies me if the spa is hot enough. I also use time-based automations to adjust the thermostat during the night to make good use of cheaper electricity.
+
+<p align="left">
+  <a href="https://github.com/vincedarley/homebridge-plugin-bwaspa"><img src="https://raw.githubusercontent.com/vincedarley/homebridge-plugin-bwaspa/master/graphics/spa-automation1.png" height="400"></a>
+  <a href="https://github.com/vincedarley/homebridge-plugin-bwaspa"><img src="https://raw.githubusercontent.com/vincedarley/homebridge-plugin-bwaspa/master/graphics/spa-automation2.png" height="400"></a>
+</p>
+
+Beyond the water-flow/leak-sensor notification which is an integral part of homekit, any other notifications you require need to be created through automations like the above.
 
 ## Limitations?
 
