@@ -29,6 +29,12 @@ export class MatterBlowerAccessory {
         maxLevel: 254,
       };
     }
+    if (!this.accessory.clusters.fanControl) {
+      this.accessory.clusters.fanControl = {
+        fanMode: (this.matter.types.FanControl?.FanMode?.Off ?? 0),
+        fanModeSequence: (this.matter.types.FanControl?.FanModeSequence?.OffLowMedHigh ?? 5),
+      };
+    }
 
     this.accessory.handlers = {
       onOff: {

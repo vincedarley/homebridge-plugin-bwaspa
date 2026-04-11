@@ -21,9 +21,12 @@ export class MatterThermostatAccessory {
       this.accessory.clusters.thermostat = {
         localTemperature: 2000,
         occupiedHeatingSetpoint: 3200,
+        absMinHeatSetpointLimit: 700,
+        absMaxHeatSetpointLimit: 4000,
         minHeatSetpointLimit: 1000,
         maxHeatSetpointLimit: 4000,
         systemMode: this.getSystemModeHeat(),
+        controlSequenceOfOperation: this.getControlSequenceHeatingOnly(),
       };
     }
 
@@ -93,7 +96,7 @@ export class MatterThermostatAccessory {
     if (targetC === undefined) {
       return undefined;
     }
-    return Math.round(targetC * 100);
+    return Math.max(1000, Math.min(4000, Math.round(targetC * 100)));
   }
 
   private getCurrentSystemMode() {
@@ -135,6 +138,9 @@ export class MatterThermostatAccessory {
     }
 
     let tempC = setpoint / 100.0;
+    if (tempC > 40.0) {
+      tempC = 40.0;
+    }
     if (this.platform.spa!.getTempRangeIsHigh()) {
       if (tempC < 26.5) {
         tempC = 26.5;
@@ -170,5 +176,9 @@ export class MatterThermostatAccessory {
 
   private getRunningModeHeat() {
     return this.matter.types.Thermostat?.RunningMode?.Heat ?? 4;
+  }
+
+  private getControlSequenceHeatingOnly() {
+    return this.matter.types.Thermostat?.ControlSequenceOfOperation?.HeatingOnly ?? 4;
   }
 }

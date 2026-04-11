@@ -438,6 +438,10 @@ export class SpaHomebridgePlatform implements DynamicPlatformPlugin {
           minLevel: 1,
           maxLevel: 254,
         },
+        fanControl: {
+          fanMode: (matter.types.FanControl?.FanMode?.Off ?? 0),
+          fanModeSequence: (matter.types.FanControl?.FanModeSequence?.OffLowMedHigh ?? 5),
+        },
       };
     }
     if (this.isMatterLightType(deviceType) || this.isMatterSwitchType(deviceType)) {
@@ -462,9 +466,12 @@ export class SpaHomebridgePlatform implements DynamicPlatformPlugin {
         thermostat: {
           localTemperature: 2000,
           occupiedHeatingSetpoint: 3200,
+          absMinHeatSetpointLimit: 700,
+          absMaxHeatSetpointLimit: 4000,
           minHeatSetpointLimit: 1000,
           maxHeatSetpointLimit: 4000,
           systemMode: (matter.types.Thermostat?.SystemMode?.Heat ?? 4),
+          controlSequenceOfOperation: (matter.types.Thermostat?.ControlSequenceOfOperation?.HeatingOnly ?? 4),
         },
       };
     }
