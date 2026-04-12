@@ -14,7 +14,7 @@
 
 This plugin connects to Balboa spa and hot-tub wifi modules and exposes spa controls such as pumps, lights, blower, thermostat, temperature, locks, hold mode, and water-flow status to Homebridge.
 
-Version 3.0.0-beta.1 adds Matter accessory support alongside the existing HomeKit exposure path. Because of that, this release now requires Homebridge 2.0.0 beta.85 or later, running on Node 22 or Node 24.
+Version 3.0.0-beta.1 adds Matter accessory support alongside the existing HomeKit exposure path. Because of that, this release now requires Homebridge 2.0.0 beta.85 or later, running on Node 22 or Node 24.  Note that Matter support is currently a work in progress - it may not work correctly, or at all, depending on your Matter setup and the rate I debug and fix issues in this plugin.
 
 The plugin keeps control state in sync whether you manipulate the spa through Home, Siri, Matter controllers, physical controls on the spa, or the Balboa spa app, and takes account of situations such as filter cycles where some pumps cannot be turned off.
 
@@ -36,7 +36,7 @@ The default behaviour is to discover your spa automatically on the network, quer
 
 Please note if your spa is controlled by Balboa's "Control My Spa" app, hardware and cloud-service, then this plugin is not currently compatible. It works with spas that use Balboa wifi receiver module and the Balboa Worldwide App (BWA app).  Also usage of this [project](https://github.com/NorthernMan54/esp32_balboa_spa) to create your own WiFi module is supported.
 
-Note (2025): this hasn't been updated for some years because it simply works well. No meaningful bugs have been reported.  Once Homebridge 2.0 is released my intention is to update the plugin where needed, and likely also work to add Matter support via Homebridge 2.0's matter capabilities.
+Note (2025): this hasn't been updated for some years because it simply works well. No meaningful bugs have been reported.  The only meaningful recent changes are to add Matter support via Homebridge 2.0's matter capabilities.
 
 # Getting started
 
@@ -46,28 +46,6 @@ Install everything:
 3. Install homebridge-balboa-spa using: `npm install -g homebridge-balboa-spa` or search for `Balboa Spa` in Config UI X.
 
 Restart homebridge so it reloads the new plugin.  Click through to the Balboa Spa plugin settings
-
-## Maintainer beta release
-
-For plugin maintainers, use this one command to release a new beta build to npm:
-
-```bash
-npm run release:beta
-```
-
-You may optionally pass a commit message used when local changes need to be auto-committed before version bumping:
-
-```bash
-npm run release:beta -- "fix: matter conformance"
-```
-
-What the script does:
-1. Verifies npm authentication.
-2. Auto-commits pending git changes (if any).
-3. Runs `npm run lint` and `npm run build`.
-4. Runs `npm version prerelease --preid=beta`.
-5. Runs `npm publish --tag beta`.
-6. Pushes branch commits and tags to `origin`.
 
 <p align="center">
   <a href="https://github.com/vincedarley/homebridge-plugin-bwaspa"><img src="https://raw.githubusercontent.com/vincedarley/homebridge-plugin-bwaspa/master/graphics/plugin.png" height="154"></a>
@@ -80,12 +58,11 @@ With a typical setup, there is nothing more you need to do (if you wish you can 
 </p>
 
 
-
 # More details on supported accessories
 
 This section details how this plugin translates spa controls and settings into Homebridge accessories and Matter device mappings.
 
-It supports pumps that are single speed (off or high) and 2-speed (off, low, high). In the Home app they are represented using the existing HomeKit fan-style control model. In Matter they are mapped as Pump devices with On/Off and Level Control semantics.
+It supports pumps that are single speed (off or high) and 2-speed (off, low, high). In the Home app they are represented using the existing HomeKit fan-style control model. In Matter they are mapped as Pump devices with On/Off and Level Control semantics (which may not yet work well or at all).
 
 You can control two lights and up to six pumps, a mister, a blower, 2 aux devices and the overall heating state of the spa. You can also view the state of the circulation pump.
 
@@ -93,14 +70,14 @@ The "Thermostat" device type exposes control of the spa's target temperature and
 
 The spa's current temperature is visible both in the Thermostat device and in the read-only Temperature Sensor. Up to you whether you want both devices exposed.
 
-The flow sensor has 3 states: normal, failed, or low water flow. In the Home app this is exposed using the leak-sensor style alerting model. In Matter the current implementation maps it to a boolean leak/water-flow problem indication. This is useful for detecting dirty filters because reduced flow disables heating and allows the spa to cool down.
+The flow sensor has 3 states: normal, failed, or low water flow. In the Home app this is exposed using the leak-sensor style alerting model. In Matter the current implementation maps it to a boolean leak/water-flow problem indication. This is useful for detecting dirty filters because reduced flow disables heating and results in the spa to cooling down.
 
 There is a "Hold" switch to activate the Spa's hold mode (temporarily turn off all pumps, including the circulation pump, so that you can safely change filters, etc).
 
 There are two "Locks" - to lock the spa settings (while still allowing control over pumps, lights, etc) and to lock the Spa completely (preventing use of any panel controls until unlocked). These
 are the same locking/unlocking as Balboa provides in the Spa control panel.
 
-Finally there are other devices on some spas: a "blower" (typically with 3-speeds), a "mister" and two auxiliary devices (aux1 and aux2). They are supported by the plugin, and in 3.0.0-beta.1 they also have Matter mapping paths where implemented.
+Finally there are other devices on some spas: a "blower" (typically with 3-speeds), a "mister" and two auxiliary devices (aux1 and aux2).
 
 ## Siri
 
@@ -196,11 +173,10 @@ If the water flow sensor discovers a fault (which it checks for every ten minute
 
 ## Reliability
 
-There's a fair amount of information on the internet of how the Balboa Wifi module is pretty unreliable.  In particular prior to the '-06' release of the '50350' module, it would regularly disconnect and then be unable to reconnect (without rebooting the power supply to the module).  With my own spa, the module is adequately reliable but even then does disconnect for a few minutes to an hour once every day or two, sometimes as often as a few times a day.  But between the module and this plugin's reconnect capability, a reconnection does always ultimately happen.  If your Spa's module is less reliable, I would suggest a first step is to check which module version you have.
+There's a fair amount of information on the internet of how the Balboa Wifi module is pretty unreliable.  In particular prior to the '-06' release of the '50350' module, it would regularly disconnect and then be unable to reconnect (without rebooting the power supply to the module).  With my own spa, the module is adequately reliable but even then does disconnect for a few minutes to an hour once every day or two, sometimes as often as a few times a day.  But between the module and this plugin's reconnect capability, a reconnection does always ultimately happen.  If your Spa's module is less reliable, I would suggest a first step is to check which module version you have.  I have found the Wifi module is more reliable with some wifi frequency bands than with others.
 
-Whilst the spa is disconnected, obviously all HomeKit and Matter control attempts will fail. However this plugin is clever enough to store the
-major ones (adjusting thermostat, hold, lock status) and will re-apply them once the connection is re-established. This means
-that any timed automations you create, for example, should still mostly work.
+Whilst the spa is disconnected, obviously all HomeKit and Matter control attempts will fail. However this plugin is clever enough to store the major ones (adjusting thermostat, hold, lock status) and will re-apply them once the connection is re-established. 
+This means that any timed automations you create, for example, should still mostly work.
 
 ## Improvements
 
