@@ -37,6 +37,8 @@ export class DummySpaClient implements SpaController {
 
   private flowState = FLOW_GOOD;
 
+  private removePumps = true;
+
   constructor(
     private readonly log: Logger,
     public readonly host: string,
@@ -79,6 +81,9 @@ export class DummySpaClient implements SpaController {
   }
 
   getPumpSpeedRange(index: number) {
+    if (this.removePumps) {
+      return 0;
+    }
     if (index === 0) {
       return 1;
     }
@@ -109,6 +114,9 @@ export class DummySpaClient implements SpaController {
   }
 
   getBlowerSpeedRange() {
+    if (this.removePumps) {
+      return 0;
+    }
     return this.blowerSpeedRange;
   }
 
