@@ -1,22 +1,21 @@
 import { CharacteristicEventTypes } from 'homebridge';
 import type { Service, PlatformAccessory, CharacteristicValue, CharacteristicSetCallback, CharacteristicGetCallback} from 'homebridge';
 
-import { SpaHomebridgePlatform } from './platform';
-import { VERSION } from './settings';
+import { SpaHomebridgePlatform } from '../platform';
+import { VERSION } from '../settings';
 
 /**
- * LightsAccessory
+ * OtherAccessory
  * 
- * Control Spa lights - on or off. Balboa provides no colour controls (even though the
- * lights do typically cycle through various colours automatically).
+ * Control mister, aux1, aux2 (if they exist on your spa)
  */
-export class LightsAccessory {
+export class OtherAccessory {
   private service: Service;
 
   constructor(
     private readonly platform: SpaHomebridgePlatform,
     private readonly accessory: PlatformAccessory,
-    private readonly lightNumber : number
+    private readonly type : number // 0 = mister, 1 = aux1, 2 = aux2
   ) {
 
     // set accessory information
@@ -25,16 +24,16 @@ export class LightsAccessory {
       .setCharacteristic(this.platform.Characteristic.Model, this.platform.name)
       .setCharacteristic(this.platform.Characteristic.SerialNumber, VERSION);
 
-    // get the LightBulb service if it exists, otherwise create a new LightBulb service
+    // get the Switch service if it exists, otherwise create a new Switch service
     // you can create multiple services for each accessory
-    this.service = this.accessory.getService(this.platform.Service.Lightbulb) ?? this.accessory.addService(this.platform.Service.Lightbulb);
+    this.service = this.accessory.getService(this.platform.Service.Switch) ?? this.accessory.addService(this.platform.Service.Switch);
 
     // set the service name, this is what is displayed as the default name on the Home app
     // in this example we are using the name we stored in the `accessory.context` in the `discoverDevices` method.
     this.service.setCharacteristic(this.platform.Characteristic.Name, accessory.context.device.name);
 
     // each service must implement at-minimum the "required characteristics" for the given service type
-    // see https://developers.homebridge.io/#/service/Lightbulb
+    // see https://developers.homebridge.io/#/service/Switch
 
     // register handlers for the On/Off Characteristic
     this.service.getCharacteristic(this.platform.Characteristic.On)
@@ -51,17 +50,29 @@ export class LightsAccessory {
       callback(this.platform.connectionProblem);
       return;
     }
-    // Turn the light on or off
-    this.platform.spa!.setLightState(this.lightNumber, value as boolean);
-    this.platform.log.debug('Set Lights', this.lightNumber, 'On ->', value);
+    // Turn the item on or off
+    if (this.type === 0) {
+      this.platform.spa!.setMisterState(value as boolean);
+      this.platform.log.debug('Set Mister On ->', value);
+    } else {
+      this.platform.spa!.setAuxState(this.type, value as boolean);
+      this.platform.log.debug('Set Aux', this.type, 'On ->', value);
+    }
 
     callback(null);
   }
 
   spaConfigurationKnown() {
-    if (this.platform.spa!.getIsLightOn(this.lightNumber) == undefined) {
-      // This light doesn't exist.
-      this.platform.log.warn("Nonexistent light", this.lightNumber, "accessory declared.");
+    if (this.type === 0) {
+      if (this.platform.spa!.getIsMisterOn() == undefined) {
+        // The mister doesn't exist.
+        this.platform.log.warn("Nonexistent mister accessory declared.");
+      }
+    } else {
+      if (this.platform.spa!.getIsAuxOn(this.type) == undefined) {
+        // This aux device doesn't exist.
+        this.platform.log.warn("Nonexistent aux", this.type, "accessory declared.");
+      }
     }
   }
 
@@ -71,10 +82,18 @@ export class LightsAccessory {
       this.service.getCharacteristic(this.platform.Characteristic.On).updateValue(this.platform.connectionProblem);
       return;
     }
-    const isOn = this.platform.spa!.getIsLightOn(this.lightNumber);
-    if (isOn != undefined) {
-      this.platform.log.debug('Light',this.lightNumber,'updating to',isOn ? 'On' : 'Off');
-      this.service.getCharacteristic(this.platform.Characteristic.On).updateValue(isOn);
+    if (this.type === 0) {
+      const isOn = this.platform.spa!.getIsMisterOn();
+      if (isOn != undefined) {
+        this.platform.log.debug('Mister updating to',isOn ? 'On' : 'Off');
+        this.service.getCharacteristic(this.platform.Characteristic.On).updateValue(isOn);
+      }
+    } else {
+      const isOn = this.platform.spa!.getIsAuxOn(this.type);
+      if (isOn != undefined) {
+        this.platform.log.debug('Aux',this.type,'updating to',isOn ? 'On' : 'Off');
+        this.service.getCharacteristic(this.platform.Characteristic.On).updateValue(isOn);
+      }
     }
   }
   
@@ -95,9 +114,14 @@ export class LightsAccessory {
     if (!this.platform.isCurrentlyConnected()) {
       callback(this.platform.connectionProblem);
     } else {
-      // Read whether the light is on or off
-      const isOn = this.platform.spa!.getIsLightOn(this.lightNumber);
-      this.platform.log.debug('Get Lights', this.lightNumber, 'On <-', isOn, this.platform.status());
+      let isOn : boolean | undefined;
+      if (this.type === 0) {
+        isOn = this.platform.spa!.getIsMisterOn();
+        this.platform.log.debug('Get Mister On <-', isOn, this.platform.status());
+      } else {
+        isOn = this.platform.spa!.getIsAuxOn(this.type);
+        this.platform.log.debug('Get Aux', this.type, 'On <-', isOn, this.platform.status());
+      }
       callback(null, isOn);
     }
   }

@@ -1,21 +1,21 @@
 import { CharacteristicEventTypes } from 'homebridge';
 import type { Service, PlatformAccessory, CharacteristicValue, CharacteristicSetCallback, CharacteristicGetCallback} from 'homebridge';
 
-import { SpaHomebridgePlatform } from './platform';
-import { VERSION } from './settings';
+import { SpaHomebridgePlatform } from '../platform';
+import { VERSION } from '../settings';
 
 /**
- * OtherAccessory
+ * HoldSwitchAccessory
  * 
- * Control mister, aux1, aux2 (if they exist on your spa)
+ * Turn 'hold' mode on or off. Used when cleaning filters, etc, to temporarily turn all
+ * pumps (including circulation pump) off.
  */
-export class OtherAccessory {
+export class HoldSwitchAccessory {
   private service: Service;
 
   constructor(
     private readonly platform: SpaHomebridgePlatform,
-    private readonly accessory: PlatformAccessory,
-    private readonly type : number // 0 = mister, 1 = aux1, 2 = aux2
+    private readonly accessory: PlatformAccessory
   ) {
 
     // set accessory information
@@ -24,8 +24,6 @@ export class OtherAccessory {
       .setCharacteristic(this.platform.Characteristic.Model, this.platform.name)
       .setCharacteristic(this.platform.Characteristic.SerialNumber, VERSION);
 
-    // get the Switch service if it exists, otherwise create a new Switch service
-    // you can create multiple services for each accessory
     this.service = this.accessory.getService(this.platform.Service.Switch) ?? this.accessory.addService(this.platform.Service.Switch);
 
     // set the service name, this is what is displayed as the default name on the Home app
@@ -47,33 +45,19 @@ export class OtherAccessory {
    */
   setOn(value: CharacteristicValue, callback: CharacteristicSetCallback) {
     if (!this.platform.isCurrentlyConnected()) {
+      this.platform.recordAction(this.setOn.bind(this, value));
       callback(this.platform.connectionProblem);
       return;
     }
-    // Turn the item on or off
-    if (this.type === 0) {
-      this.platform.spa!.setMisterState(value as boolean);
-      this.platform.log.debug('Set Mister On ->', value);
-    } else {
-      this.platform.spa!.setAuxState(this.type, value as boolean);
-      this.platform.log.debug('Set Aux', this.type, 'On ->', value);
-    }
+    // Turn the switch on or off
+    this.platform.spa!.setIsHold(value as boolean);
+    this.platform.log.debug('Set Hold On ->', value);
 
     callback(null);
   }
 
   spaConfigurationKnown() {
-    if (this.type === 0) {
-      if (this.platform.spa!.getIsMisterOn() == undefined) {
-        // The mister doesn't exist.
-        this.platform.log.warn("Nonexistent mister accessory declared.");
-      }
-    } else {
-      if (this.platform.spa!.getIsAuxOn(this.type) == undefined) {
-        // This aux device doesn't exist.
-        this.platform.log.warn("Nonexistent aux", this.type, "accessory declared.");
-      }
-    }
+    // nothing to do
   }
 
   // If Spa state has changed, for example using manual controls on the spa, then we must update Homekit.
@@ -82,19 +66,9 @@ export class OtherAccessory {
       this.service.getCharacteristic(this.platform.Characteristic.On).updateValue(this.platform.connectionProblem);
       return;
     }
-    if (this.type === 0) {
-      const isOn = this.platform.spa!.getIsMisterOn();
-      if (isOn != undefined) {
-        this.platform.log.debug('Mister updating to',isOn ? 'On' : 'Off');
-        this.service.getCharacteristic(this.platform.Characteristic.On).updateValue(isOn);
-      }
-    } else {
-      const isOn = this.platform.spa!.getIsAuxOn(this.type);
-      if (isOn != undefined) {
-        this.platform.log.debug('Aux',this.type,'updating to',isOn ? 'On' : 'Off');
-        this.service.getCharacteristic(this.platform.Characteristic.On).updateValue(isOn);
-      }
-    }
+    const isOnHold = this.platform.spa!.getIsHold();
+    this.platform.log.debug('Hold updating to',isOnHold ? 'On' : 'Off');
+    this.service.getCharacteristic(this.platform.Characteristic.On).updateValue(isOnHold);
   }
   
   /**
@@ -114,15 +88,9 @@ export class OtherAccessory {
     if (!this.platform.isCurrentlyConnected()) {
       callback(this.platform.connectionProblem);
     } else {
-      let isOn : boolean | undefined;
-      if (this.type === 0) {
-        isOn = this.platform.spa!.getIsMisterOn();
-        this.platform.log.debug('Get Mister On <-', isOn, this.platform.status());
-      } else {
-        isOn = this.platform.spa!.getIsAuxOn(this.type);
-        this.platform.log.debug('Get Aux', this.type, 'On <-', isOn, this.platform.status());
-      }
-      callback(null, isOn);
+      const isOnHold = this.platform.spa!.getIsHold();
+      this.platform.log.debug('Get Hold On <-', isOnHold, this.platform.status());
+      callback(null, isOnHold);
     }
   }
 

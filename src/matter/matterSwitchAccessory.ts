@@ -1,4 +1,4 @@
-import { SpaHomebridgePlatform } from './platform';
+import { SpaHomebridgePlatform } from '../platform';
 
 type SwitchKind = 'hold' | 'heatingReady' | 'mister' | 'aux1' | 'aux2';
 

@@ -1,8 +1,8 @@
 import { CharacteristicEventTypes } from 'homebridge';
 import type { Service, PlatformAccessory, CharacteristicValue, CharacteristicSetCallback, CharacteristicGetCallback} from 'homebridge';
 
-import { SpaHomebridgePlatform } from './platform';
-import { VERSION } from './settings';
+import { SpaHomebridgePlatform } from '../platform';
+import { VERSION } from '../settings';
 
 /**
  * LockAccessory

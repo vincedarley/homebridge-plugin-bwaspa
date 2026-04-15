@@ -1,4 +1,4 @@
-import { SpaHomebridgePlatform } from './platform';
+import { SpaHomebridgePlatform } from '../platform';
 
 export class MatterLightsAccessory {
   private readonly matter: any;

@@ -1,9 +1,9 @@
 import { CharacteristicEventTypes } from 'homebridge';
 import type { Service, PlatformAccessory, CharacteristicValue, CharacteristicSetCallback, CharacteristicGetCallback} from 'homebridge';
 
-import { SpaHomebridgePlatform } from './platform';
-import { VERSION } from './settings';
-import { FLOW_FAILED, FLOW_GOOD } from './spaClient';
+import { SpaHomebridgePlatform } from '../platform';
+import { VERSION } from '../settings';
+import { FLOW_FAILED, FLOW_GOOD } from '../spaClient';
 
 /**
  * A thermostat temperature control for the Spa.

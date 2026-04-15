@@ -1,5 +1,5 @@
-import { SpaClient } from './spaClient';
-import { SpaHomebridgePlatform } from './platform';
+import { SpaClient } from '../spaClient';
+import { SpaHomebridgePlatform } from '../platform';
 
 export class MatterPumpAccessory {
   private readonly matter: any;

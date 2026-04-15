@@ -1,5 +1,5 @@
-import { FLOW_FAILED, FLOW_GOOD } from './spaClient';
-import { SpaHomebridgePlatform } from './platform';
+import { FLOW_FAILED, FLOW_GOOD } from '../spaClient';
+import { SpaHomebridgePlatform } from '../platform';
 
 export class MatterThermostatAccessory {
   private readonly matter: any;

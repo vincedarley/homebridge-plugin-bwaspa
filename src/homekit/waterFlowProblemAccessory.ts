@@ -1,9 +1,9 @@
 import { CharacteristicEventTypes } from 'homebridge';
 import type { Service, PlatformAccessory, CharacteristicGetCallback} from 'homebridge';
 
-import { SpaHomebridgePlatform } from './platform';
-import { VERSION } from './settings';
-import { FLOW_FAILED, FLOW_LOW } from './spaClient';
+import { SpaHomebridgePlatform } from '../platform';
+import { VERSION } from '../settings';
+import { FLOW_FAILED, FLOW_LOW } from '../spaClient';
 
 /**
  * WaterFlowProblemAccessory

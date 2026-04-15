@@ -1,8 +1,8 @@
 import { CharacteristicEventTypes } from 'homebridge';
 import type { Service, PlatformAccessory, CharacteristicGetCallback} from 'homebridge';
 
-import { SpaHomebridgePlatform } from './platform';
-import { VERSION } from './settings';
+import { SpaHomebridgePlatform } from '../platform';
+import { VERSION } from '../settings';
 
 /**
  * A read-only temperature sensor for the Spa.

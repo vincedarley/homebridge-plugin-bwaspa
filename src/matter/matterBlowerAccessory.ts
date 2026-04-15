@@ -1,5 +1,5 @@
-import { SpaClient } from './spaClient';
-import { SpaHomebridgePlatform } from './platform';
+import { SpaClient } from '../spaClient';
+import { SpaHomebridgePlatform } from '../platform';
 
 export class MatterBlowerAccessory {
   private readonly matter: any;

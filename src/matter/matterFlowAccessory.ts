@@ -1,5 +1,5 @@
-import { FLOW_FAILED, FLOW_LOW } from './spaClient';
-import { SpaHomebridgePlatform } from './platform';
+import { FLOW_FAILED, FLOW_LOW } from '../spaClient';
+import { SpaHomebridgePlatform } from '../platform';
 
 type FlowSensorMode = 'failed' | 'low';
 
