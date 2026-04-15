@@ -55,7 +55,7 @@ With a typical setup, there is nothing more you need to do (if you wish you can 
 
 This section details how this plugin translates spa controls and settings into Homebridge accessories and Matter device mappings.
 
-It supports pumps that are single speed (off or high) and 2-speed (off, low, high). In the Home app they are represented using the existing HomeKit fan-style control model. In Matter they are mapped as Pump devices with On/Off and Level Control semantics (which may not yet work well or at all).
+It supports pumps that are single speed (off or high) and 2-speed (off, low, high). In both HomeKit and Matter they are represented using Fans (pumps do not exist in HomeKit and seem poorly supported in Matter). Their settings are exposed as discrete valid states only: off/high for 1-speed pumps, and off/low/high for 2-speed pumps.
 
 You can control two lights and up to six pumps, a mister, a blower, 2 aux devices and the overall heating state of the spa. You can also view the state of the circulation pump.
 
@@ -76,7 +76,7 @@ Finally there are other devices on some spas: a "blower" (typically with 3-speed
 
 - Minimum runtime is now Homebridge 2.0.0-beta.85 with Node 22 or Node 24.
 - Added Matter accessory infrastructure and initial Matter mappings for pumps, blower, lights, switches, thermostat, temperature sensor, locks, and water flow status.
-- Pump and blower Matter Level Control handling now follows the Matter Pump setpoint mapping semantics.
+- Pump and blower Matter control now uses FanControl semantics.
 
 ## Siri
 

@@ -6,7 +6,6 @@ export class MatterBlowerAccessory {
   private numSpeedSettings = 0;
   private scheduleId: any = undefined;
   private lastOn: boolean | undefined = undefined;
-  private lastLevel: number | undefined = undefined;
   private lastFanMode: number | undefined = undefined;
   private lastPercentSetting: number | undefined = undefined;
 
@@ -23,13 +22,6 @@ export class MatterBlowerAccessory {
     }
     if (!this.accessory.clusters.onOff) {
       this.accessory.clusters.onOff = { onOff: false };
-    }
-    if (!this.accessory.clusters.levelControl) {
-      this.accessory.clusters.levelControl = {
-        currentLevel: 1,
-        minLevel: 1,
-        maxLevel: 254,
-      };
     }
     if (!this.accessory.clusters.fanControl) {
       this.accessory.clusters.fanControl = {
@@ -49,13 +41,6 @@ export class MatterBlowerAccessory {
         },
         percentSettingChange: async (request: any) => {
           await this.setPercentSetting(request?.percentSetting);
-        },
-      },
-      levelControl: {
-        moveToLevelWithOnOff: async (request: any) => {
-          const level = Math.max(1, Math.min(254, request?.level ?? 1));
-          const percent = this.levelToSetpointPercent(level);
-          await this.setSpeedPercent(percent);
         },
       },
     };
@@ -82,18 +67,12 @@ export class MatterBlowerAccessory {
     }
 
     const isOn = speed !== 0;
-    const speedValue = this.toLevelValue(speed);
     const fanMode = this.toFanModeValue(speed);
     const percentSetting = this.toPercentSettingValue(speed);
 
     if (this.lastOn !== isOn) {
       await this.matter.updateAccessoryState(this.accessory.UUID, this.matter.clusterNames.OnOff, { onOff: isOn });
       this.lastOn = isOn;
-    }
-
-    if (this.lastLevel !== speedValue) {
-      await this.matter.updateAccessoryState(this.accessory.UUID, this.matter.clusterNames.LevelControl, { currentLevel: speedValue });
-      this.lastLevel = speedValue;
     }
 
     if (this.lastFanMode !== fanMode || this.lastPercentSetting !== percentSetting) {
@@ -250,34 +229,5 @@ export class MatterBlowerAccessory {
 
   private getFanModeHigh() {
     return this.matter.types.FanControl?.FanMode?.High ?? 3;
-  }
-
-  private toLevelValue(speed: number) {
-    if (this.numSpeedSettings <= 0) {
-      return speed === 0 ? 1 : 254;
-    }
-    if (speed === 0) {
-      return 1;
-    }
-    const percent = (100.0 * speed) / this.numSpeedSettings;
-    return this.setpointPercentToLevel(percent);
-  }
-
-  private levelToSetpointPercent(level: number) {
-    if (level <= 1) {
-      return 0;
-    }
-    return ((level - 1) * 100.0) / 253.0;
-  }
-
-  private setpointPercentToLevel(percent: number) {
-    if (percent <= 0) {
-      return 1;
-    }
-    if (percent >= 100) {
-      return 254;
-    }
-
-    return Math.max(1, Math.min(254, Math.round(1 + ((percent / 100.0) * 253.0))));
   }
 }

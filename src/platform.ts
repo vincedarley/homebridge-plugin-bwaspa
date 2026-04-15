@@ -433,7 +433,7 @@ export class SpaHomebridgePlatform implements DynamicPlatformPlugin {
   private toMatterDeviceType(deviceType: string) {
     const matter = (this.api as any).matter;
     if (this.isMatterPumpType(deviceType)) {
-      return matter.deviceTypes.Pump;
+      return matter.deviceTypes.Fan;
     }
     if (this.isMatterBlowerType(deviceType)) {
       return matter.deviceTypes.Fan || matter.deviceTypes.Pump;
@@ -468,10 +468,9 @@ export class SpaHomebridgePlatform implements DynamicPlatformPlugin {
         onOff: {
           onOff: false,
         },
-        levelControl: {
-          currentLevel: 1,
-          minLevel: 1,
-          maxLevel: 254,
+        fanControl: {
+          fanMode: (matter.types.FanControl?.FanMode?.Off ?? 0),
+          fanModeSequence: (matter.types.FanControl?.FanModeSequence?.OffLowHigh ?? 4),
         },
       };
     }
@@ -479,11 +478,6 @@ export class SpaHomebridgePlatform implements DynamicPlatformPlugin {
       return {
         onOff: {
           onOff: false,
-        },
-        levelControl: {
-          currentLevel: 1,
-          minLevel: 1,
-          maxLevel: 254,
         },
         fanControl: {
           fanMode: (matter.types.FanControl?.FanMode?.Off ?? 0),

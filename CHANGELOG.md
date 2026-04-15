@@ -2,6 +2,9 @@
 
 All notable changes to this project will be documented in this file.
 
+## 3.0.0-beta.11 (15.04.2026)
+- Move from using a matter Pump to a Fan.  The Pumps seem poorly supported at present.
+
 ## 3.0.0-beta.1 (11.04.2026)
 - Major release preparing the plugin for Homebridge 2.0 migration work.
 - Matter support in this release now requires Homebridge 2.0.0-beta.85 or later and a compatible Node.js runtime (Node 22 or 24).
