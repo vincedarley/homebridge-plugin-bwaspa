@@ -4,6 +4,9 @@ import type { SpaController } from './spaController';
 
 const CELSIUS = 'Celsius';
 
+/* This can be used for testing purposes. It creates a simplistic virtual
+spa.  In particular this means you can test everything between the SpaController and Matter or HomeKit
+without messing with your real Spa (or even without a Spa at all). */
 export class DummySpaClient implements SpaController {
   accurateConfigReadFromSpa = true;
 

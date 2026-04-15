@@ -1,13 +1,16 @@
-import { FLOW_FAILED } from './spaClient';
+import { FLOW_FAILED, FLOW_LOW } from './spaClient';
 import { SpaHomebridgePlatform } from './platform';
+
+type FlowSensorMode = 'failed' | 'low';
 
 export class MatterFlowAccessory {
   private readonly matter: any;
-  private lastLeakDetected: boolean | undefined = undefined;
+  private lastState: boolean | undefined = undefined;
 
   constructor(
     private readonly platform: SpaHomebridgePlatform,
     private readonly accessory: any,
+    private readonly mode: FlowSensorMode,
   ) {
     this.matter = (this.platform.api as any).matter;
 
@@ -30,13 +33,15 @@ export class MatterFlowAccessory {
       return;
     }
     const flowState = this.platform.spa!.getFlowState();
-    const leakDetected = flowState === FLOW_FAILED;
+    const stateValue = this.mode === 'failed'
+      ? flowState === FLOW_FAILED
+      : flowState === FLOW_LOW;
 
-    if (this.lastLeakDetected !== leakDetected) {
+    if (this.lastState !== stateValue) {
       await this.matter.updateAccessoryState(this.accessory.UUID, this.matter.clusterNames.BooleanState, {
-        stateValue: leakDetected,
+        stateValue,
       });
-      this.lastLeakDetected = leakDetected;
+      this.lastState = stateValue;
     }
   }
 }

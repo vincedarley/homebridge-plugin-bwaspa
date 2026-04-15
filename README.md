@@ -16,16 +16,9 @@ This plugin connects to Balboa spa and hot-tub wifi modules and exposes spa cont
 
 Version 3.0.0-beta.1 adds Matter accessory support alongside the existing HomeKit exposure path. Because of that, this release now requires Homebridge 2.0.0 beta.85 or later, running on Node 22 or Node 24.  Note that Matter support is currently a work in progress - it may not work correctly, or at all, depending on your Matter setup and the rate I debug and fix issues in this plugin.
 
-The plugin keeps control state in sync whether you manipulate the spa through Home, Siri, Matter controllers, physical controls on the spa, or the Balboa spa app, and takes account of situations such as filter cycles where some pumps cannot be turned off.
+The plugin keeps control state in sync whether you manipulate the spa through Home, Siri, Matter controllers, physical controls on the spa, and takes account of situations such as filter cycles where some pumps cannot be turned off.  The Balboa Wifi module on your Spa only allows 1 connection at a time. This means you cannot use this plugin and also use the BWA Smartphone app. 
 
 The default behaviour is to discover your spa automatically on the network, query it for supported controls, and create accessories automatically. You can override much of that behaviour through Homebridge Config UI. The plugin can also automatically correct the spa clock when daylight savings or other clock drift occurs.
-
-## Version 3.0.0-beta.1
-
-- Plugin version updated to 3.0.0-beta.1.
-- Minimum runtime is now Homebridge 2.0.0-beta.85 with Node 22 or Node 24.
-- Added Matter accessory infrastructure and initial Matter mappings for pumps, blower, lights, switches, thermostat, temperature sensor, locks, and water flow status.
-- Pump and blower Matter Level Control handling now follows the Matter Pump setpoint mapping semantics.
 
 <p align="left">
   <a href="https://github.com/vincedarley/homebridge-plugin-bwaspa"><img src="https://raw.githubusercontent.com/vincedarley/homebridge-plugin-bwaspa/master/graphics/home.png" height="400"></a>
@@ -34,9 +27,9 @@ The default behaviour is to discover your spa automatically on the network, quer
   <a href="https://github.com/vincedarley/homebridge-plugin-bwaspa"><img src="https://raw.githubusercontent.com/vincedarley/homebridge-plugin-bwaspa/master/graphics/lights.png" height="400"></a>
 </p>
 
-Please note if your spa is controlled by Balboa's "Control My Spa" app, hardware and cloud-service, then this plugin is not currently compatible. It works with spas that use Balboa wifi receiver module and the Balboa Worldwide App (BWA app).  Also usage of this [project](https://github.com/NorthernMan54/esp32_balboa_spa) to create your own WiFi module is supported.
+Please note if your spa is controlled by Balboa's "Control My Spa" app, hardware and cloud-service, then this plugin is not compatible, and likely never will be. It works with spas that use Balboa wifi receiver module and the Balboa Worldwide App (BWA app).  Also usage of this [project](https://github.com/NorthernMan54/esp32_balboa_spa) to create your own WiFi module is supported.
 
-Note (2025): this hasn't been updated for some years because it simply works well. No meaningful bugs have been reported.  The only meaningful recent changes are to add Matter support via Homebridge 2.0's matter capabilities.
+Note (2025): this plugin hasn't been updated for some years because it simply works well. No meaningful bugs have been reported.  The only meaningful recent changes are to add Matter support via Homebridge 2.0's matter capabilities.
 
 # Getting started
 
@@ -70,14 +63,20 @@ The "Thermostat" device type exposes control of the spa's target temperature and
 
 The spa's current temperature is visible both in the Thermostat device and in the read-only Temperature Sensor. Up to you whether you want both devices exposed.
 
-The flow sensor has 3 states: normal, failed, or low water flow. In the Home app this is exposed using the leak-sensor style alerting model. In Matter the current implementation maps it to a boolean leak/water-flow problem indication. This is useful for detecting dirty filters because reduced flow disables heating and results in the spa to cooling down.
+The flow sensor has 3 states: normal, failed, or low water flow. In the Home app this is exposed using the leak-sensor style alerting model. In Matter this is exposed as two boolean sensors: a LeakSensor alarm endpoint for failed flow, and a separate generic OnOffSensor warning endpoint for low flow. This is useful for detecting dirty filters because reduced flow disables heating and results in the spa to cooling down.
 
 There is a "Hold" switch to activate the Spa's hold mode (temporarily turn off all pumps, including the circulation pump, so that you can safely change filters, etc).
 
-There are two "Locks" - to lock the spa settings (while still allowing control over pumps, lights, etc) and to lock the Spa completely (preventing use of any panel controls until unlocked). These
+There are two "Locks" - one to lock the spa settings (while still allowing control over pumps, lights, etc) and second to lock the Spa completely (preventing use of any panel controls until unlocked). These
 are the same locking/unlocking as Balboa provides in the Spa control panel.
 
 Finally there are other devices on some spas: a "blower" (typically with 3-speeds), a "mister" and two auxiliary devices (aux1 and aux2).
+
+## Version 3.0.0-beta.1 and Matter
+
+- Minimum runtime is now Homebridge 2.0.0-beta.85 with Node 22 or Node 24.
+- Added Matter accessory infrastructure and initial Matter mappings for pumps, blower, lights, switches, thermostat, temperature sensor, locks, and water flow status.
+- Pump and blower Matter Level Control handling now follows the Matter Pump setpoint mapping semantics.
 
 ## Siri
 

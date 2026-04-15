@@ -254,6 +254,7 @@ export class SpaHomebridgePlatform implements DynamicPlatformPlugin {
       this.makeDevice({name: 'Spa Temperature Sensor', deviceType: 'Temperature Sensor'});
       this.makeDevice({name: 'Spa Thermostat', deviceType: 'Thermostat'});
       this.makeDevice({name: 'Spa Flow', deviceType: 'Water Flow Problem Sensor'});
+      this.makeDevice({name: 'Spa Flow Low', deviceType: 'Water Flow Low Sensor'});
       this.makeDevice({name: 'Hold Spa', deviceType: 'Hold Switch'});
       this.makeDevice({name: 'Spa Settings', deviceType: 'Spa Settings'});
       this.makeDevice({name: 'Spa Panel', deviceType: 'Spa Panel'});
@@ -280,6 +281,11 @@ export class SpaHomebridgePlatform implements DynamicPlatformPlugin {
     void this.makeMatterDevice(device).catch((error) => {
       this.log.error('Unhandled Matter setup error for', device?.name ?? 'unknown device', 'of type', device?.deviceType ?? 'unknown', error);
     });
+
+    // This is a Matter-only warning endpoint.
+    if (device.deviceType === 'Water Flow Low Sensor') {
+      return;
+    }
 
     // generate a unique id for the accessory this should be generated from
     // something globally unique, but constant, for example, the device serial
@@ -376,7 +382,8 @@ export class SpaHomebridgePlatform implements DynamicPlatformPlugin {
       || this.isMatterLockType(deviceType)
       || this.isMatterThermostatType(deviceType)
       || deviceType === 'Temperature Sensor'
-      || deviceType === 'Water Flow Problem Sensor';
+      || deviceType === 'Water Flow Problem Sensor'
+      || deviceType === 'Water Flow Low Sensor';
   }
 
   private isMatterPumpType(deviceType: string) {
@@ -432,6 +439,9 @@ export class SpaHomebridgePlatform implements DynamicPlatformPlugin {
     }
     if (deviceType === 'Water Flow Problem Sensor') {
       return matter.deviceTypes.LeakSensor;
+    }
+    if (deviceType === 'Water Flow Low Sensor') {
+      return matter.deviceTypes.OnOffSensor;
     }
     return matter.deviceTypes.OnOffSwitch;
   }
@@ -505,7 +515,7 @@ export class SpaHomebridgePlatform implements DynamicPlatformPlugin {
         },
       };
     }
-    if (deviceType === 'Water Flow Problem Sensor') {
+    if (deviceType === 'Water Flow Problem Sensor' || deviceType === 'Water Flow Low Sensor') {
       return {
         booleanState: {
           stateValue: false,
@@ -555,7 +565,11 @@ export class SpaHomebridgePlatform implements DynamicPlatformPlugin {
       return;
     }
     if (deviceType === 'Water Flow Problem Sensor') {
-      this.matterDeviceObjects.push(new MatterFlowAccessory(this, accessory));
+      this.matterDeviceObjects.push(new MatterFlowAccessory(this, accessory, 'failed'));
+      return;
+    }
+    if (deviceType === 'Water Flow Low Sensor') {
+      this.matterDeviceObjects.push(new MatterFlowAccessory(this, accessory, 'low'));
     }
   }
 
