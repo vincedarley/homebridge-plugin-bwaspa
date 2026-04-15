@@ -185,7 +185,7 @@ export class SpaHomebridgePlatform implements DynamicPlatformPlugin {
   }
 
   private reallyUpdateStateOfAccessories() {
-    this.log.debug("State of something changed - tell HomeKit about it.");
+    this.log.debug('State of something changed - tell HomeKit about it.');
     // For the moment, we simply loop through every device updating homekit.
     // At least theoretically better if we could just do the ones we know have changed.
     this.deviceObjects.forEach(deviceObject => {
@@ -211,9 +211,9 @@ export class SpaHomebridgePlatform implements DynamicPlatformPlugin {
 
   status() {
     if (this.isCurrentlyConnected()) {
-      return "(connected)";
+      return '(connected)';
     } else {
-      return "(not currently connected)";
+      return '(not currently connected)';
     }
   }
 
@@ -245,12 +245,20 @@ export class SpaHomebridgePlatform implements DynamicPlatformPlugin {
   discoverDevices() {
     if (this.config.autoCreateAccessories && this.spa && this.spa.accurateConfigReadFromSpa) {
       this.log.info('Autocreating accessories...');
-      if (this.spa!.getIsLightOn(1) != undefined) this.makeDevice({name: 'Spa Lights 1', deviceType: 'Lights 1'});
-      if (this.spa!.getIsLightOn(2) != undefined) this.makeDevice({name: 'Spa Lights 2', deviceType: 'Lights 2'});
-      for (let pump = 1; pump <=6; pump++) {
-        if (this.spa!.getPumpSpeedRange(pump) != 0) this.makeDevice({name: 'Spa Pump '+pump, deviceType: 'Pump '+pump});
+      if (this.spa!.getIsLightOn(1) != undefined) {
+        this.makeDevice({name: 'Spa Lights 1', deviceType: 'Lights 1'});
       }
-      if (this.spa!.getPumpSpeedRange(0) != 0) this.makeDevice({name: 'Spa Circulation Pump', deviceType: 'Circulation Pump'});
+      if (this.spa!.getIsLightOn(2) != undefined) {
+        this.makeDevice({name: 'Spa Lights 2', deviceType: 'Lights 2'});
+      }
+      for (let pump = 1; pump <=6; pump++) {
+        if (this.spa!.getPumpSpeedRange(pump) != 0) {
+          this.makeDevice({name: 'Spa Pump '+pump, deviceType: 'Pump '+pump});
+        }
+      }
+      if (this.spa!.getPumpSpeedRange(0) != 0) {
+        this.makeDevice({name: 'Spa Circulation Pump', deviceType: 'Circulation Pump'});
+      }
       this.makeDevice({name: 'Spa Temperature Sensor', deviceType: 'Temperature Sensor'});
       this.makeDevice({name: 'Spa Thermostat', deviceType: 'Thermostat'});
       this.makeDevice({name: 'Spa Flow', deviceType: 'Water Flow Problem Sensor'});
@@ -259,14 +267,22 @@ export class SpaHomebridgePlatform implements DynamicPlatformPlugin {
       this.makeDevice({name: 'Spa Settings', deviceType: 'Spa Settings'});
       this.makeDevice({name: 'Spa Panel', deviceType: 'Spa Panel'});
       this.makeDevice({name: 'Spa Heat Mode Ready', deviceType: 'Spa Heat Mode Ready'});
-      if (this.spa!.getBlowerSpeedRange() != 0) this.makeDevice({name: 'Spa Blower', deviceType: 'Blower'});
-      if (this.spa!.getIsMisterOn() != undefined) this.makeDevice({name: 'Spa Mister', deviceType: 'Mister'});
-      if (this.spa!.getIsAuxOn(1) != undefined) this.makeDevice({name: 'Spa Aux 1', deviceType: 'Aux 1'});
-      if (this.spa!.getIsAuxOn(2) != undefined) this.makeDevice({name: 'Spa Aux 2', deviceType: 'Aux 2'});
+      if (this.spa!.getBlowerSpeedRange() != 0) {
+        this.makeDevice({name: 'Spa Blower', deviceType: 'Blower'});
+      }
+      if (this.spa!.getIsMisterOn() != undefined) {
+        this.makeDevice({name: 'Spa Mister', deviceType: 'Mister'});
+      }
+      if (this.spa!.getIsAuxOn(1) != undefined) {
+        this.makeDevice({name: 'Spa Aux 1', deviceType: 'Aux 1'});
+      }
+      if (this.spa!.getIsAuxOn(2) != undefined) {
+        this.makeDevice({name: 'Spa Aux 2', deviceType: 'Aux 2'});
+      }
     }
     for (const device of this.devices) {
       if (!device.deviceType) {
-        this.log.warn('Device Type Missing')
+        this.log.warn('Device Type Missing');
       } else {
         this.makeDevice(device);
       }
@@ -597,83 +613,83 @@ export class SpaHomebridgePlatform implements DynamicPlatformPlugin {
   makeAccessory(accessory: PlatformAccessory) {
     const deviceType = accessory.context.device.deviceType;
     switch (deviceType) {
-      case "Circulation Pump": {
+      case 'Circulation Pump': {
         this.deviceObjects.push(new PumpAccessory(this, accessory, 0));
         break;
       }
-      case "Pump 1": {
+      case 'Pump 1': {
         this.deviceObjects.push(new PumpAccessory(this, accessory, 1));
         break;
       }
-      case "Pump 2": {
+      case 'Pump 2': {
         this.deviceObjects.push(new PumpAccessory(this, accessory, 2));
         break;
       }
-      case "Pump 3": {
+      case 'Pump 3': {
         this.deviceObjects.push(new PumpAccessory(this, accessory, 3));
         break;
       }
-      case "Pump 4": {
+      case 'Pump 4': {
         this.deviceObjects.push(new PumpAccessory(this, accessory, 4));
         break;
       }
-      case "Pump 5": {
+      case 'Pump 5': {
         this.deviceObjects.push(new PumpAccessory(this, accessory, 5));
         break;
       }
-      case "Pump 6": {
+      case 'Pump 6': {
         this.deviceObjects.push(new PumpAccessory(this, accessory, 6));
         break;
       }
-      case "Lights 1": {
+      case 'Lights 1': {
         this.deviceObjects.push(new LightsAccessory(this, accessory, 1));
         break;
       }
-      case "Lights 2": {
+      case 'Lights 2': {
         this.deviceObjects.push(new LightsAccessory(this, accessory, 2));
         break;
       }
-      case "Temperature Sensor": {
+      case 'Temperature Sensor': {
         this.deviceObjects.push(new TemperatureAccessory(this, accessory));
         break;
       }
-      case "Thermostat": {
+      case 'Thermostat': {
         this.deviceObjects.push(new ThermostatAccessory(this, accessory));
         break;
       }
-      case "Water Flow Problem Sensor": {
+      case 'Water Flow Problem Sensor': {
         this.deviceObjects.push(new WaterFlowProblemAccessory(this, accessory));
         break;
       }
-      case "Hold Switch": {
+      case 'Hold Switch': {
         this.deviceObjects.push(new HoldSwitchAccessory(this, accessory));
         break;
       }
-      case "Spa Settings": {
+      case 'Spa Settings': {
         this.deviceObjects.push(new LockAccessory(this, accessory, false));
         break;
       }
-      case "Spa Panel": {
+      case 'Spa Panel': {
         this.deviceObjects.push(new LockAccessory(this, accessory, true));
         break;
       }
-      case "Spa Heat Mode Ready": {
+      case 'Spa Heat Mode Ready': {
         this.deviceObjects.push(new HeatingReadySwitchAccessory(this, accessory));
         break;
       }
-      case "Blower": {
+      case 'Blower': {
         this.deviceObjects.push(new BlowerAccessory(this, accessory));
         break;
       }
-      case "Mister": {
+      case 'Mister': {
         this.deviceObjects.push(new OtherAccessory(this, accessory, 0));
         break;
       }
-      case "Aux 1": {
+      case 'Aux 1': {
         this.deviceObjects.push(new OtherAccessory(this, accessory, 1));
         break;
       }
-      case "Aux 2": {
+      case 'Aux 2': {
         this.deviceObjects.push(new OtherAccessory(this, accessory, 2));
         break;
       }
