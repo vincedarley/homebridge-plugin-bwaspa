@@ -41,54 +41,29 @@ export class MatterThermostatAccessory extends BaseMatterSpaAccessory {
     const matterDeviceType = thermostatType.with(thermostatRequirement.with('Heating', 'Occupancy'));
     const constructedFeatures = (matterDeviceType as any)?.behaviors?.thermostat?.features;
     const createdFeatureSnapshot = JSON.stringify(constructedFeatures ?? {});
-    platform.log.info('[Matter Thermostat] constructed behavior features', JSON.stringify(constructedFeatures ?? {}));
-
-    // Defensive: trap any mutation of autoMode from false to true to capture stack trace
-    if (constructedFeatures && typeof constructedFeatures === 'object') {
-      const originalAutoMode = constructedFeatures.autoMode;
-      Object.defineProperty(constructedFeatures, 'autoMode', {
-        get() {
-          return originalAutoMode;
-        },
-        set(value) {
-          if (originalAutoMode === false && value === true) {
-            const stack = new Error('DEFENSIVE CHECK: autoMode changed from false to true').stack;
-            platform.log.error('[Matter Thermostat] MUTATION DETECTED: autoMode enabled when we requested heating-only!');
-            platform.log.error('[Matter Thermostat] Stack trace at mutation point:', stack);
-            throw new Error('Homebridge illegally enabled autoMode on heating-only thermostat. Created with autoMode:false, now being set to true.');
-          }
-          throw new Error(`Attempt to set autoMode to ${value} (was ${originalAutoMode}). Features should be immutable after construction.`);
-        },
-        configurable: true,
-        enumerable: true,
-      });
+    platform.log.warn('[Matter Thermostat] CREATED with features:', createdFeatureSnapshot);
+    
+    // Log the structure Homebridge will read
+    const behaviorsStructure = (matterDeviceType as any)?.behaviors;
+    if (behaviorsStructure) {
+      const thermostatBehavior = Object.values(behaviorsStructure).find((b: any) => 
+        b?.cluster?.id === 0x201 || b?.cluster?.name === 'Thermostat' || b?.id === 'Thermostat',
+      );
+      platform.log.warn('[Matter Thermostat] Thermostat behavior in deviceType.behaviors:', 
+        JSON.stringify({
+          found: !!thermostatBehavior,
+          hasCluster: !!(thermostatBehavior as any)?.cluster,
+          hasSupportedFeatures: !!(thermostatBehavior as any)?.cluster?.supportedFeatures,
+          supportedFeatures: (thermostatBehavior as any)?.cluster?.supportedFeatures,
+        }));
+    } else {
+      platform.log.error('[Matter Thermostat] deviceType.behaviors is undefined!');
     }
-
-    // Defensive: wrap deviceType in Proxy to detect if Homebridge reads/replaces behaviors
-    const deviceTypeProxy = new Proxy(matterDeviceType, {
-      get(target, prop) {
-        if (prop === 'behaviors') {
-          platform.log.info('[Matter Thermostat] Homebridge accessed deviceType.behaviors');
-          const behaviors = (target as any)[prop];
-          if (behaviors && typeof behaviors === 'object') {
-            return new Proxy(behaviors, {
-              get(behaviorsTarget, behaviorProp) {
-                if (behaviorProp === 'thermostat') {
-                  platform.log.info('[Matter Thermostat] Homebridge accessed deviceType.behaviors.thermostat');
-                }
-                return (behaviorsTarget as any)[behaviorProp];
-              },
-            });
-          }
-          return behaviors;
-        }
-        return (target as any)[prop];
-      },
-    });
+    
     super(
       platform,
       device,
-      deviceTypeProxy,
+      matterDeviceType,
       {
         thermostat: {
           localTemperature: 2000,
