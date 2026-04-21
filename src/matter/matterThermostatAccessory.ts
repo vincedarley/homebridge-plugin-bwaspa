@@ -68,7 +68,8 @@ export class MatterThermostatAccessory extends BaseMatterSpaAccessory {
         },
       },
     );
-
+    this.platform.log.info('[Matter Thermostat] constructed behavior features', JSON.stringify(constructedFeatures ?? {}));
+    
     this.systemModeOff = systemModeOff;
     this.systemModeHeat = systemModeHeat;
     this.controlSequenceHeatingOnly = controlSequenceHeatingOnly;
