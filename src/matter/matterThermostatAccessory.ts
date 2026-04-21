@@ -108,13 +108,23 @@ export class MatterThermostatAccessory extends BaseMatterSpaAccessory {
       };
 
       this.platform.log.info('[Matter Thermostat] update payload', this.UUID, JSON.stringify(payload));
+      try {
+        const beforeState = await this.readState('thermostat');
+        this.platform.log.info('[Matter Thermostat] current thermostat state before update', this.UUID, JSON.stringify(beforeState ?? {}));
+      } catch (stateReadError) {
+        this.platform.log.error('[Matter Thermostat] could not read thermostat state before update for', this.UUID, stateReadError);
+      }
 
       try {
         await this.updateState('thermostat', payload);
       } catch (error) {
-        const currentState = await this.readState('thermostat');
         this.platform.log.error('[Matter Thermostat] update failed for', this.UUID, 'payload:', JSON.stringify(payload));
-        this.platform.log.error('[Matter Thermostat] current thermostat state', this.UUID, JSON.stringify(currentState ?? {}));
+        try {
+          const currentState = await this.readState('thermostat');
+          this.platform.log.error('[Matter Thermostat] current thermostat state after failed update', this.UUID, JSON.stringify(currentState ?? {}));
+        } catch (stateReadError) {
+          this.platform.log.error('[Matter Thermostat] could not read thermostat state after failed update for', this.UUID, stateReadError);
+        }
         throw error;
       }
 
