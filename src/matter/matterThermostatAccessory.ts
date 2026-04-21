@@ -26,10 +26,17 @@ export class MatterThermostatAccessory extends BaseMatterSpaAccessory {
     }
 
     const thermostatType = matter.deviceTypes.Thermostat;
-    const thermostatServer = thermostatType?.requirements?.ThermostatServer;
-    const matterDeviceType = (typeof thermostatType?.with === 'function' && typeof thermostatServer?.with === 'function')
-      ? thermostatType.with(thermostatServer.with('Heating', 'Occupancy'))
-      : (thermostatType || matter.deviceTypes.TemperatureSensor);
+    if (typeof thermostatType?.with !== 'function') {
+      throw new Error('Matter Thermostat device type does not support .with().');
+    }
+
+    const thermostatRequirement = thermostatType?.requirements?.Thermostat
+      ?? thermostatType?.requirements?.ThermostatServer;
+    if (typeof thermostatRequirement?.with !== 'function') {
+      throw new Error('Matter Thermostat requirement does not support .with(Heating, Occupancy).');
+    }
+
+    const matterDeviceType = thermostatType.with(thermostatRequirement.with('Heating', 'Occupancy'));
     super(
       platform,
       device,
