@@ -3,6 +3,10 @@ import { BaseMatterSpaAccessory } from './baseMatterSpaAccessory';
 import type { SpaHomebridgePlatform } from '../platform';
 
 export class MatterThermostatAccessory extends BaseMatterSpaAccessory {
+  private readonly systemModeOff: number;
+  private readonly systemModeHeat: number;
+  private readonly controlSequenceHeatingOnly: number;
+
   private lastLocalTemperature: number | undefined = undefined;
   private lastOccupiedHeatingSetpoint: number | undefined = undefined;
   private lastUnoccupiedHeatingSetpoint: number | undefined = undefined;
@@ -14,6 +18,13 @@ export class MatterThermostatAccessory extends BaseMatterSpaAccessory {
     device: { name: string; deviceType: string },
   ) {
     const matter = (platform.api as any).matter;
+    const systemModeOff = matter.types.Thermostat?.SystemMode?.Off;
+    const systemModeHeat = matter.types.Thermostat?.SystemMode?.Heat;
+    const controlSequenceHeatingOnly = matter.types.Thermostat?.ControlSequenceOfOperation?.HeatingOnly;
+    if (systemModeOff === undefined || systemModeHeat === undefined || controlSequenceHeatingOnly === undefined) {
+      throw new Error('Matter Thermostat enums are unavailable: Off/Heat/SystemSequence HeatingOnly are required.');
+    }
+
     const thermostatType = matter.deviceTypes.Thermostat;
     const thermostatServer = thermostatType?.requirements?.ThermostatServer;
     const matterDeviceType = (typeof thermostatType?.with === 'function' && typeof thermostatServer?.with === 'function')
@@ -33,8 +44,8 @@ export class MatterThermostatAccessory extends BaseMatterSpaAccessory {
           absMaxHeatSetpointLimit: 4000,
           minHeatSetpointLimit: 1000,
           maxHeatSetpointLimit: 4000,
-          systemMode: (matter.types.Thermostat?.SystemMode?.Heat ?? 4),
-          controlSequenceOfOperation: (matter.types.Thermostat?.ControlSequenceOfOperation?.HeatingOnly ?? 4),
+          systemMode: systemModeHeat,
+          controlSequenceOfOperation: controlSequenceHeatingOnly,
         },
       },
       {
@@ -48,6 +59,10 @@ export class MatterThermostatAccessory extends BaseMatterSpaAccessory {
         },
       },
     );
+
+    this.systemModeOff = systemModeOff;
+    this.systemModeHeat = systemModeHeat;
+    this.controlSequenceHeatingOnly = controlSequenceHeatingOnly;
   }
 
   spaConfigurationKnown() {
@@ -62,7 +77,9 @@ export class MatterThermostatAccessory extends BaseMatterSpaAccessory {
     const localTemperature = this.getLocalTemperature();
     const occupiedHeatingSetpoint = this.getOccupiedHeatingSetpoint();
     const unoccupiedHeatingSetpoint = this.getUnoccupiedHeatingSetpoint();
-    if (localTemperature === undefined || occupiedHeatingSetpoint === undefined || unoccupiedHeatingSetpoint === undefined) {
+    if (localTemperature === undefined
+      || occupiedHeatingSetpoint === undefined
+      || unoccupiedHeatingSetpoint === undefined) {
       return;
     }
     const externallyMeasuredOccupancy = this.getExternallyMeasuredOccupancy();
@@ -79,6 +96,7 @@ export class MatterThermostatAccessory extends BaseMatterSpaAccessory {
         occupiedHeatingSetpoint,
         unoccupiedHeatingSetpoint,
         externallyMeasuredOccupancy,
+        controlSequenceOfOperation: this.getControlSequenceHeatingOnly(),
         systemMode,
       });
       this.lastLocalTemperature = localTemperature;
@@ -148,7 +166,7 @@ export class MatterThermostatAccessory extends BaseMatterSpaAccessory {
     const flowState = this.platform.spa!.getFlowState();
     if (mode === this.getSystemModeOff()) {
       if (flowState === FLOW_GOOD) {
-        throw new Error("Spa doesn't allow turning heating off while flow is good. Reverting.");
+        throw new Error('Spa doesn\'t allow turning heating off while flow is good. Reverting.');
       }
       return;
     }
@@ -194,14 +212,14 @@ export class MatterThermostatAccessory extends BaseMatterSpaAccessory {
   }
 
   private getSystemModeOff() {
-    return (this.platform.api as any).matter.types.Thermostat?.SystemMode?.Off ?? 0;
+    return this.systemModeOff;
   }
 
   private getSystemModeHeat() {
-    return (this.platform.api as any).matter.types.Thermostat?.SystemMode?.Heat ?? 4;
+    return this.systemModeHeat;
   }
 
   private getControlSequenceHeatingOnly() {
-    return (this.platform.api as any).matter.types.Thermostat?.ControlSequenceOfOperation?.HeatingOnly ?? 4;
+    return this.controlSequenceHeatingOnly;
   }
 }
