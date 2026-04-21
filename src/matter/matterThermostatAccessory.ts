@@ -1,8 +1,8 @@
 import { FLOW_FAILED, FLOW_GOOD } from '../spaClient';
-import { SpaHomebridgePlatform } from '../platform';
+import { BaseMatterSpaAccessory } from './baseMatterSpaAccessory';
+import type { SpaHomebridgePlatform } from '../platform';
 
-export class MatterThermostatAccessory {
-  private readonly matter: any;
+export class MatterThermostatAccessory extends BaseMatterSpaAccessory {
   private lastLocalTemperature: number | undefined = undefined;
   private lastOccupiedHeatingSetpoint: number | undefined = undefined;
   private lastUnoccupiedHeatingSetpoint: number | undefined = undefined;
@@ -10,39 +10,44 @@ export class MatterThermostatAccessory {
   private lastSystemMode: number | undefined = undefined;
 
   constructor(
-    private readonly platform: SpaHomebridgePlatform,
-    private readonly accessory: any,
+    platform: SpaHomebridgePlatform,
+    device: { name: string; deviceType: string },
   ) {
-    this.matter = (this.platform.api as any).matter;
-
-    if (!this.accessory.clusters) {
-      this.accessory.clusters = {};
-    }
-    if (!this.accessory.clusters.thermostat) {
-      this.accessory.clusters.thermostat = {
-        localTemperature: 2000,
-        occupiedHeatingSetpoint: 3200,
-        unoccupiedHeatingSetpoint: 3000,
-        externallyMeasuredOccupancy: true,
-        absMinHeatSetpointLimit: 700,
-        absMaxHeatSetpointLimit: 4000,
-        minHeatSetpointLimit: 1000,
-        maxHeatSetpointLimit: 4000,
-        systemMode: this.getSystemModeHeat(),
-        controlSequenceOfOperation: this.getControlSequenceHeatingOnly(),
-      };
-    }
-
-    this.accessory.handlers = {
-      thermostat: {
-        setOccupiedHeatingSetpoint: async (request: any) => {
-          await this.setTargetTemperatureFromSetpoint(request?.occupiedHeatingSetpoint);
-        },
-        setSystemMode: async (request: any) => {
-          await this.setSystemMode(request?.systemMode);
+    const matter = (platform.api as any).matter;
+    const thermostatType = matter.deviceTypes.Thermostat;
+    const thermostatServer = thermostatType?.requirements?.ThermostatServer;
+    const matterDeviceType = (typeof thermostatType?.with === 'function' && typeof thermostatServer?.with === 'function')
+      ? thermostatType.with(thermostatServer.with('Heating', 'Occupancy'))
+      : (thermostatType || matter.deviceTypes.TemperatureSensor);
+    super(
+      platform,
+      device,
+      matterDeviceType,
+      {
+        thermostat: {
+          localTemperature: 2000,
+          occupiedHeatingSetpoint: 3200,
+          unoccupiedHeatingSetpoint: 3000,
+          externallyMeasuredOccupancy: true,
+          absMinHeatSetpointLimit: 700,
+          absMaxHeatSetpointLimit: 4000,
+          minHeatSetpointLimit: 1000,
+          maxHeatSetpointLimit: 4000,
+          systemMode: (matter.types.Thermostat?.SystemMode?.Heat ?? 4),
+          controlSequenceOfOperation: (matter.types.Thermostat?.ControlSequenceOfOperation?.HeatingOnly ?? 4),
         },
       },
-    };
+      {
+        thermostat: {
+          occupiedHeatingSetpointChange: async (request: any) => {
+            await this.setTargetTemperatureFromSetpoint(request?.occupiedHeatingSetpoint);
+          },
+          systemModeChange: async (request: any) => {
+            await this.setSystemMode(request?.systemMode);
+          },
+        },
+      },
+    );
   }
 
   spaConfigurationKnown() {
@@ -69,7 +74,7 @@ export class MatterThermostatAccessory {
       || this.lastUnoccupiedHeatingSetpoint !== unoccupiedHeatingSetpoint
       || this.lastExternallyMeasuredOccupancy !== externallyMeasuredOccupancy
       || this.lastSystemMode !== systemMode) {
-      await this.matter.updateAccessoryState(this.accessory.UUID, this.matter.clusterNames.Thermostat, {
+      await this.updateState('thermostat', {
         localTemperature,
         occupiedHeatingSetpoint,
         unoccupiedHeatingSetpoint,
@@ -189,14 +194,14 @@ export class MatterThermostatAccessory {
   }
 
   private getSystemModeOff() {
-    return this.matter.types.Thermostat?.SystemMode?.Off ?? 0;
+    return (this.platform.api as any).matter.types.Thermostat?.SystemMode?.Off ?? 0;
   }
 
   private getSystemModeHeat() {
-    return this.matter.types.Thermostat?.SystemMode?.Heat ?? 4;
+    return (this.platform.api as any).matter.types.Thermostat?.SystemMode?.Heat ?? 4;
   }
 
   private getControlSequenceHeatingOnly() {
-    return this.matter.types.Thermostat?.ControlSequenceOfOperation?.HeatingOnly ?? 4;
+    return (this.platform.api as any).matter.types.Thermostat?.ControlSequenceOfOperation?.HeatingOnly ?? 4;
   }
 }

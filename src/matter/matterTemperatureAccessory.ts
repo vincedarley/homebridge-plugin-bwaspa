@@ -1,25 +1,26 @@
-import { SpaHomebridgePlatform } from '../platform';
+import { BaseMatterSpaAccessory } from './baseMatterSpaAccessory';
+import type { SpaHomebridgePlatform } from '../platform';
 
-export class MatterTemperatureAccessory {
-  private readonly matter: any;
+export class MatterTemperatureAccessory extends BaseMatterSpaAccessory {
   private lastMeasuredValue: number | null = null;
 
   constructor(
-    private readonly platform: SpaHomebridgePlatform,
-    private readonly accessory: any,
+    platform: SpaHomebridgePlatform,
+    device: { name: string; deviceType: string },
   ) {
-    this.matter = (this.platform.api as any).matter;
-
-    if (!this.accessory.clusters) {
-      this.accessory.clusters = {};
-    }
-    if (!this.accessory.clusters.temperatureMeasurement) {
-      this.accessory.clusters.temperatureMeasurement = {
-        measuredValue: 2000,
-        minMeasuredValue: -5000,
-        maxMeasuredValue: 10000,
-      };
-    }
+    const matter = (platform.api as any).matter;
+    super(
+      platform,
+      device,
+      matter.deviceTypes.TemperatureSensor,
+      {
+        temperatureMeasurement: {
+          measuredValue: 2000,
+          minMeasuredValue: -5000,
+          maxMeasuredValue: 10000,
+        },
+      },
+    );
   }
 
   spaConfigurationKnown() {
@@ -42,9 +43,7 @@ export class MatterTemperatureAccessory {
     const measuredValue = Math.round(valC * 100);
 
     if (this.lastMeasuredValue !== measuredValue) {
-      await this.matter.updateAccessoryState(this.accessory.UUID, this.matter.clusterNames.TemperatureMeasurement, {
-        measuredValue,
-      });
+      await this.updateState('temperatureMeasurement', { measuredValue });
       this.lastMeasuredValue = measuredValue;
     }
   }

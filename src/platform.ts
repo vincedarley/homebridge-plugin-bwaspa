@@ -1,7 +1,7 @@
 import { APIEvent } from 'homebridge';
 import type { API, DynamicPlatformPlugin, Logger, PlatformAccessory, PlatformConfig } from 'homebridge';
 
-import { PLATFORM_NAME, PLUGIN_NAME, VERSION } from './settings';
+import { PLATFORM_NAME, PLUGIN_NAME } from './settings';
 import { PumpAccessory } from './homekit/pumpAccessory';
 import { LightsAccessory } from './homekit/lightsAccessory';
 import { TemperatureAccessory } from './homekit/temperatureAccessory';
@@ -132,12 +132,7 @@ export class SpaHomebridgePlatform implements DynamicPlatformPlugin {
   configureMatterAccessory(accessory: any) {
     this.log.info('Restoring matter accessory from cache:', accessory.displayName);
     this.matterAccessories.set(accessory.UUID, accessory);
-    try {
-      this.makeMatterAccessory(accessory);
-    } catch (error) {
-      this.log.error('Could not restore cached matter accessory', accessory.displayName, 'because:', error);
-      this.matterAccessories.delete(accessory.UUID);
-    }
+    // Controllers are created in makeMatterDevice when discoverDevices runs.
   }
 
   /**
@@ -198,7 +193,7 @@ export class SpaHomebridgePlatform implements DynamicPlatformPlugin {
 
           const message = `${(error as any)?.message ?? error}`.toLowerCase();
           if (message.includes('not found or not registered')) {
-            const uuid = (deviceObject as any)?.accessory?.UUID;
+            const uuid = (deviceObject as any)?.UUID;
             if (uuid) {
               this.log.warn('Matter accessory appears unregistered; suppressing further updates for UUID', uuid);
               this.matterAccessories.delete(uuid);
@@ -345,49 +340,33 @@ export class SpaHomebridgePlatform implements DynamicPlatformPlugin {
     }
 
     const uuid = matter.uuid.generate(device.deviceType);
-    const serialNumber = uuid.replace(/-/g, '').slice(0, 32);
-    if (this.matterAccessories.has(uuid)) {
+    // Guard: prevent double-registration if discoverDevices is called more than once.
+    if (this.matterDeviceObjects.some((d: any) => d.UUID === uuid)) {
       return;
     }
 
-    try {
+    const controller = this.createMatterController(device);
+    if (!controller) {
+      return;
+    }
+
+    if (!this.matterAccessories.has(uuid)) {
       this.log.info('Registering new matter accessory:', device.name, 'of type', device.deviceType);
-      const accessory = {
-        UUID: uuid,
-        displayName: device.name,
-        serialNumber,
-        manufacturer: 'Balboa',
-        model: this.name,
-        firmwareRevision: VERSION,
-        hardwareRevision: VERSION,
-        deviceType: this.toMatterDeviceType(device.deviceType),
-        context: {
-          device,
-        },
-        clusters: this.defaultMatterClustersFor(device.deviceType, matter),
-      };
+    }
 
-      this.matterAccessories.set(uuid, accessory);
-
-      try {
-        await matter.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory]);
-        this.makeMatterAccessory(accessory);
-      } catch (error) {
-        this.log.warn('Could not register matter accessory', device.name, 'because:', error);
-        this.matterAccessories.delete(uuid);
-        this.removeMatterDeviceObjectsForUuid(uuid);
-      }
+    try {
+      await matter.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [controller]);
+      this.matterAccessories.set(uuid, controller);
+      this.matterDeviceObjects.push(controller);
     } catch (error) {
-      this.log.error('Matter accessory setup failed for', device?.name ?? 'unknown device', 'of type', device?.deviceType ?? 'unknown', error);
+      this.log.warn('Could not register matter accessory', device.name, 'because:', error);
       this.matterAccessories.delete(uuid);
-      this.removeMatterDeviceObjectsForUuid(uuid);
     }
   }
 
   private removeMatterDeviceObjectsForUuid(uuid: string) {
     this.matterDeviceObjects = this.matterDeviceObjects.filter((deviceObject: any) => {
-      const maybeAccessory = deviceObject?.accessory;
-      return maybeAccessory?.UUID !== uuid;
+      return deviceObject?.UUID !== uuid;
     });
   }
 
@@ -432,187 +411,33 @@ export class SpaHomebridgePlatform implements DynamicPlatformPlugin {
     return deviceType === 'Thermostat';
   }
 
-  private toMatterThermostatDeviceType(matter: any) {
-    const thermostatType = matter.deviceTypes.Thermostat;
-    const thermostatServer = thermostatType?.requirements?.ThermostatServer;
-    if (typeof thermostatType?.with === 'function' && typeof thermostatServer?.with === 'function') {
-      return thermostatType.with(thermostatServer.with('Heating', 'Occupancy'));
-    }
-    return thermostatType;
-  }
-
-  private toMatterDeviceType(deviceType: string) {
-    const matter = (this.api as any).matter;
+  private createMatterController(device: { name: string; deviceType: string }): any {
+    const deviceType = device.deviceType;
     if (this.isMatterPumpType(deviceType)) {
-      return matter.deviceTypes.Fan;
+      return new MatterPumpAccessory(this, device);
     }
     if (this.isMatterBlowerType(deviceType)) {
-      return matter.deviceTypes.Fan || matter.deviceTypes.Pump;
+      return new MatterBlowerAccessory(this, device);
     }
     if (this.isMatterLightType(deviceType)) {
-      return matter.deviceTypes.OnOffLight;
+      return new MatterLightsAccessory(this, device);
     }
     if (this.isMatterSwitchType(deviceType)) {
-      return matter.deviceTypes.OnOffLight;
+      return new MatterSwitchAccessory(this, device);
     }
     if (this.isMatterLockType(deviceType)) {
-      return matter.deviceTypes.DoorLock;
+      return new MatterLockAccessory(this, device);
     }
     if (this.isMatterThermostatType(deviceType)) {
-      return this.toMatterThermostatDeviceType(matter) || matter.deviceTypes.TemperatureSensor;
+      return new MatterThermostatAccessory(this, device);
     }
     if (deviceType === 'Temperature Sensor') {
-      return matter.deviceTypes.TemperatureSensor;
-    }
-    if (deviceType === 'Water Flow Problem Sensor') {
-      return matter.deviceTypes.LeakSensor;
-    }
-    if (deviceType === 'Water Flow Low Sensor') {
-      return matter.deviceTypes.ContactSensor;
-    }
-    return matter.deviceTypes.OnOffSwitch;
-  }
-
-  private defaultMatterClustersFor(deviceType: string, matter: any) {
-    if (this.isMatterPumpType(deviceType)) {
-      return {
-        onOff: {
-          onOff: false,
-        },
-        fanControl: {
-          fanMode: (matter.types.FanControl?.FanMode?.Off ?? 0),
-          fanModeSequence: (matter.types.FanControl?.FanModeSequence?.OffLowHigh ?? 4),
-        },
-      };
-    }
-    if (this.isMatterBlowerType(deviceType)) {
-      return {
-        onOff: {
-          onOff: false,
-        },
-        fanControl: {
-          fanMode: (matter.types.FanControl?.FanMode?.Off ?? 0),
-          fanModeSequence: (matter.types.FanControl?.FanModeSequence?.OffLowMedHigh ?? 5),
-        },
-      };
-    }
-    if (this.isMatterLightType(deviceType) || this.isMatterSwitchType(deviceType)) {
-      return {
-        onOff: {
-          onOff: false,
-        },
-      };
-    }
-    if (this.isMatterLockType(deviceType)) {
-      return {
-        doorLock: {
-          lockState: (matter.types.DoorLock?.LockState?.Unlocked ?? 2),
-          lockType: (matter.types.DoorLock?.LockType?.DeadBolt ?? 0),
-          operatingMode: (matter.types.DoorLock?.OperatingMode?.Normal ?? 0),
-          actuatorEnabled: true,
-        },
-      };
-    }
-    if (this.isMatterThermostatType(deviceType)) {
-      return {
-        thermostat: {
-          localTemperature: 2000,
-          occupiedHeatingSetpoint: 3200,
-          unoccupiedHeatingSetpoint: 3000,
-          externallyMeasuredOccupancy: true,
-          absMinHeatSetpointLimit: 700,
-          absMaxHeatSetpointLimit: 4000,
-          minHeatSetpointLimit: 1000,
-          maxHeatSetpointLimit: 4000,
-          systemMode: (matter.types.Thermostat?.SystemMode?.Heat ?? 4),
-          controlSequenceOfOperation: (matter.types.Thermostat?.ControlSequenceOfOperation?.HeatingOnly ?? 4),
-        },
-      };
-    }
-    if (deviceType === 'Temperature Sensor') {
-      return {
-        temperatureMeasurement: {
-          measuredValue: 2000,
-          minMeasuredValue: -5000,
-          maxMeasuredValue: 10000,
-        },
-      };
+      return new MatterTemperatureAccessory(this, device);
     }
     if (deviceType === 'Water Flow Problem Sensor' || deviceType === 'Water Flow Low Sensor') {
-      return {
-        booleanState: {
-          stateValue: false,
-        },
-      };
+      return new MatterFlowAccessory(this, device);
     }
-    return {};
-  }
-
-  private makeMatterAccessory(accessory: any) {
-    const deviceType = accessory.context?.device?.deviceType;
-    if (!this.isMatterEnabledDeviceType(deviceType)) {
-      return;
-    }
-
-    if (this.isMatterPumpType(deviceType)) {
-      const pumpNumber = (deviceType === 'Circulation Pump') ? 0 : parseInt(deviceType.split(' ')[1], 10);
-      this.matterDeviceObjects.push(new MatterPumpAccessory(this, accessory, pumpNumber));
-      return;
-    }
-    if (this.isMatterBlowerType(deviceType)) {
-      this.matterDeviceObjects.push(new MatterBlowerAccessory(this, accessory));
-      return;
-    }
-    if (this.isMatterLightType(deviceType)) {
-      const lightNumber = parseInt(deviceType.split(' ')[1], 10);
-      this.matterDeviceObjects.push(new MatterLightsAccessory(this, accessory, lightNumber));
-      return;
-    }
-    if (this.isMatterSwitchType(deviceType)) {
-      const kind = this.matterSwitchKindFor(deviceType);
-      if (kind) {
-        this.matterDeviceObjects.push(new MatterSwitchAccessory(this, accessory, kind));
-      }
-      return;
-    }
-    if (this.isMatterLockType(deviceType)) {
-      this.matterDeviceObjects.push(new MatterLockAccessory(this, accessory, deviceType === 'Spa Panel'));
-      return;
-    }
-    if (this.isMatterThermostatType(deviceType)) {
-      this.matterDeviceObjects.push(new MatterThermostatAccessory(this, accessory));
-      return;
-    }
-    if (deviceType === 'Temperature Sensor') {
-      this.matterDeviceObjects.push(new MatterTemperatureAccessory(this, accessory));
-      return;
-    }
-    if (deviceType === 'Water Flow Problem Sensor') {
-      this.matterDeviceObjects.push(new MatterFlowAccessory(this, accessory, 'failed'));
-      return;
-    }
-    if (deviceType === 'Water Flow Low Sensor') {
-      this.matterDeviceObjects.push(new MatterFlowAccessory(this, accessory, 'low'));
-    }
-  }
-
-  private matterSwitchKindFor(deviceType: string) {
-    switch (deviceType) {
-      case 'Hold Switch':
-        return 'hold';
-      case 'Spa Heat Mode Ready':
-        return 'heatingReady';
-      case 'Vacation Mode':
-        return 'vacationMode';
-      case 'Mister':
-        return 'mister';
-      case 'Aux 1':
-        return 'aux1';
-      case 'Aux 2':
-        return 'aux2';
-      default:
-        return undefined;
-    }
+    return undefined;
   }
 
   /*

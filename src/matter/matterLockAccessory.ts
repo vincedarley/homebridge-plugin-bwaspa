@@ -1,42 +1,35 @@
-import { SpaHomebridgePlatform } from '../platform';
+import { BaseMatterSpaAccessory } from './baseMatterSpaAccessory';
+import type { SpaHomebridgePlatform } from '../platform';
 
-export class MatterLockAccessory {
-  private readonly matter: any;
+export class MatterLockAccessory extends BaseMatterSpaAccessory {
+  private readonly entireSpa: boolean;
   private lastLocked: boolean | undefined = undefined;
-  private readonly lockStateUnlocked: number;
-  private readonly lockStateLocked: number;
-  private readonly lockTypeDeadBolt: number;
-  private readonly operatingModeNormal: number;
 
   constructor(
-    private readonly platform: SpaHomebridgePlatform,
-    private readonly accessory: any,
-    private readonly entireSpa: boolean,
+    platform: SpaHomebridgePlatform,
+    device: { name: string; deviceType: string },
   ) {
-    this.matter = (this.platform.api as any).matter;
-    this.lockStateUnlocked = this.matter.types.DoorLock?.LockState?.Unlocked ?? 2;
-    this.lockStateLocked = this.matter.types.DoorLock?.LockState?.Locked ?? 1;
-    this.lockTypeDeadBolt = this.matter.types.DoorLock?.LockType?.DeadBolt ?? 0;
-    this.operatingModeNormal = this.matter.types.DoorLock?.OperatingMode?.Normal ?? 0;
-
-    if (!this.accessory.clusters) {
-      this.accessory.clusters = {};
-    }
-    if (!this.accessory.clusters.doorLock) {
-      this.accessory.clusters.doorLock = {
-        lockState: this.lockStateUnlocked,
-        lockType: this.lockTypeDeadBolt,
-        operatingMode: this.operatingModeNormal,
-        actuatorEnabled: true,
-      };
-    }
-
-    this.accessory.handlers = {
-      doorLock: {
-        lockDoor: async () => this.setLocked(true),
-        unlockDoor: async () => this.setLocked(false),
+    const matter = (platform.api as any).matter;
+    super(
+      platform,
+      device,
+      matter.deviceTypes.DoorLock,
+      {
+        doorLock: {
+          lockState: matter.types.DoorLock?.LockState?.Unlocked ?? 2,
+          lockType: matter.types.DoorLock?.LockType?.DeadBolt ?? 0,
+          operatingMode: matter.types.DoorLock?.OperatingMode?.Normal ?? 0,
+          actuatorEnabled: true,
+        },
       },
-    };
+      {
+        doorLock: {
+          lockDoor: async () => this.setLocked(true),
+          unlockDoor: async () => this.setLocked(false),
+        },
+      },
+    );
+    this.entireSpa = device.deviceType === 'Spa Panel';
   }
 
   spaConfigurationKnown() {
@@ -51,11 +44,9 @@ export class MatterLockAccessory {
     const isLocked = this.platform.spa!.getIsLocked(this.entireSpa);
     if (this.lastLocked !== isLocked) {
       const lockState = isLocked
-        ? this.lockStateLocked
-        : this.lockStateUnlocked;
-      await this.matter.updateAccessoryState(this.accessory.UUID, this.matter.clusterNames.DoorLock, {
-        lockState,
-      });
+        ? (this.matter.types.DoorLock?.LockState?.Locked ?? 1)
+        : (this.matter.types.DoorLock?.LockState?.Unlocked ?? 2);
+      await this.updateState('doorLock', { lockState });
       this.lastLocked = isLocked;
     }
   }

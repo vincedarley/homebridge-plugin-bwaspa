@@ -1,8 +1,8 @@
 import { SpaClient } from '../spaClient';
-import { SpaHomebridgePlatform } from '../platform';
+import { BaseMatterSpaAccessory } from './baseMatterSpaAccessory';
+import type { SpaHomebridgePlatform } from '../platform';
 
-export class MatterBlowerAccessory {
-  private readonly matter: any;
+export class MatterBlowerAccessory extends BaseMatterSpaAccessory {
   private numSpeedSettings = 0;
   private scheduleId: any = undefined;
   private lastOn: boolean | undefined = undefined;
@@ -12,38 +12,36 @@ export class MatterBlowerAccessory {
   private lastNonZeroSpeed = 1;
 
   constructor(
-    private readonly platform: SpaHomebridgePlatform,
-    private readonly accessory: any,
+    platform: SpaHomebridgePlatform,
+    device: { name: string; deviceType: string },
   ) {
-    this.matter = (this.platform.api as any).matter;
-
-    if (!this.accessory.clusters) {
-      this.accessory.clusters = {};
-    }
-    if (!this.accessory.clusters.onOff) {
-      this.accessory.clusters.onOff = { onOff: false };
-    }
-    if (!this.accessory.clusters.fanControl) {
-      this.accessory.clusters.fanControl = {
-        fanMode: (this.matter.types.FanControl?.FanMode?.Off ?? 0),
-        fanModeSequence: (this.matter.types.FanControl?.FanModeSequence?.OffLowMedHigh ?? 5),
-      };
-    }
-
-    this.accessory.handlers = {
-      onOff: {
-        on: async () => this.setOn(true),
-        off: async () => this.setOn(false),
-      },
-      fanControl: {
-        fanModeChange: async (request: any) => {
-          await this.setFanMode(request?.fanMode);
-        },
-        percentSettingChange: async (request: any) => {
-          await this.setPercentSetting(request?.percentSetting);
+    const matter = (platform.api as any).matter;
+    super(
+      platform,
+      device,
+      matter.deviceTypes.Fan || matter.deviceTypes.Pump,
+      {
+        onOff: { onOff: false },
+        fanControl: {
+          fanMode: (matter.types.FanControl?.FanMode?.Off ?? 0),
+          fanModeSequence: (matter.types.FanControl?.FanModeSequence?.OffLowMedHigh ?? 5),
         },
       },
-    };
+      {
+        onOff: {
+          on: async () => this.setOn(true),
+          off: async () => this.setOn(false),
+        },
+        fanControl: {
+          fanModeChange: async (request: any) => {
+            await this.setFanMode(request?.fanMode);
+          },
+          percentSettingChange: async (request: any) => {
+            await this.setPercentSetting(request?.percentSetting);
+          },
+        },
+      },
+    );
   }
 
   spaConfigurationKnown() {
@@ -71,12 +69,12 @@ export class MatterBlowerAccessory {
     const percentSetting = this.toPercentSettingValue(speed);
 
     if (this.lastOn !== isOn) {
-      await this.matter.updateAccessoryState(this.accessory.UUID, this.matter.clusterNames.OnOff, { onOff: isOn });
+      await this.updateState('onOff', { onOff: isOn });
       this.lastOn = isOn;
     }
 
     if (this.lastFanMode !== fanMode || this.lastPercentSetting !== percentSetting) {
-      await this.matter.updateAccessoryState(this.accessory.UUID, this.matter.clusterNames.FanControl, {
+      await this.updateState('fanControl', {
         fanMode,
         percentSetting,
         percentCurrent: percentSetting,

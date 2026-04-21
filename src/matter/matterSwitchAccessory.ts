@@ -1,31 +1,42 @@
-import { SpaHomebridgePlatform } from '../platform';
+import { BaseMatterSpaAccessory } from './baseMatterSpaAccessory';
+import type { SpaHomebridgePlatform } from '../platform';
 
 type SwitchKind = 'hold' | 'heatingReady' | 'vacationMode' | 'mister' | 'aux1' | 'aux2';
 
-export class MatterSwitchAccessory {
-  private readonly matter: any;
+function kindForDeviceType(deviceType: string): SwitchKind | undefined {
+  switch (deviceType) {
+    case 'Hold Switch': return 'hold';
+    case 'Spa Heat Mode Ready': return 'heatingReady';
+    case 'Vacation Mode': return 'vacationMode';
+    case 'Mister': return 'mister';
+    case 'Aux 1': return 'aux1';
+    case 'Aux 2': return 'aux2';
+    default: return undefined;
+  }
+}
+
+export class MatterSwitchAccessory extends BaseMatterSpaAccessory {
+  private readonly kind: SwitchKind;
   private lastOn: boolean | undefined = undefined;
 
   constructor(
-    private readonly platform: SpaHomebridgePlatform,
-    private readonly accessory: any,
-    private readonly kind: SwitchKind,
+    platform: SpaHomebridgePlatform,
+    device: { name: string; deviceType: string },
   ) {
-    this.matter = (this.platform.api as any).matter;
-
-    if (!this.accessory.clusters) {
-      this.accessory.clusters = {};
-    }
-    if (!this.accessory.clusters.onOff) {
-      this.accessory.clusters.onOff = { onOff: false };
-    }
-
-    this.accessory.handlers = {
-      onOff: {
-        on: async () => this.setOn(true),
-        off: async () => this.setOn(false),
+    const matter = (platform.api as any).matter;
+    super(
+      platform,
+      device,
+      matter.deviceTypes.OnOffLight,
+      { onOff: { onOff: false } },
+      {
+        onOff: {
+          on: async () => this.setOn(true),
+          off: async () => this.setOn(false),
+        },
       },
-    };
+    );
+    this.kind = kindForDeviceType(device.deviceType)!;
   }
 
   spaConfigurationKnown() {
@@ -61,7 +72,7 @@ export class MatterSwitchAccessory {
     }
 
     if (this.lastOn !== isOn) {
-      await this.matter.updateAccessoryState(this.accessory.UUID, this.matter.clusterNames.OnOff, { onOff: isOn });
+      await this.updateState('onOff', { onOff: isOn });
       this.lastOn = isOn;
     }
   }

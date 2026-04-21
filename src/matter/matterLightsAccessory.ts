@@ -1,29 +1,28 @@
-import { SpaHomebridgePlatform } from '../platform';
+import { BaseMatterSpaAccessory } from './baseMatterSpaAccessory';
+import type { SpaHomebridgePlatform } from '../platform';
 
-export class MatterLightsAccessory {
-  private readonly matter: any;
+export class MatterLightsAccessory extends BaseMatterSpaAccessory {
+  private readonly lightNumber: number;
   private lastOn: boolean | undefined = undefined;
 
   constructor(
-    private readonly platform: SpaHomebridgePlatform,
-    private readonly accessory: any,
-    private readonly lightNumber: number,
+    platform: SpaHomebridgePlatform,
+    device: { name: string; deviceType: string },
   ) {
-    this.matter = (this.platform.api as any).matter;
-
-    if (!this.accessory.clusters) {
-      this.accessory.clusters = {};
-    }
-    if (!this.accessory.clusters.onOff) {
-      this.accessory.clusters.onOff = { onOff: false };
-    }
-
-    this.accessory.handlers = {
-      onOff: {
-        on: async () => this.setOn(true),
-        off: async () => this.setOn(false),
+    const matter = (platform.api as any).matter;
+    super(
+      platform,
+      device,
+      matter.deviceTypes.OnOffLight,
+      { onOff: { onOff: false } },
+      {
+        onOff: {
+          on: async () => this.setOn(true),
+          off: async () => this.setOn(false),
+        },
       },
-    };
+    );
+    this.lightNumber = parseInt(device.deviceType.split(' ')[1], 10);
   }
 
   spaConfigurationKnown() {
@@ -42,7 +41,7 @@ export class MatterLightsAccessory {
     }
 
     if (this.lastOn !== isOn) {
-      await this.matter.updateAccessoryState(this.accessory.UUID, this.matter.clusterNames.OnOff, { onOff: isOn });
+      await this.updateState('onOff', { onOff: isOn });
       this.lastOn = isOn;
     }
   }

@@ -1,27 +1,27 @@
 import { FLOW_FAILED, FLOW_LOW } from '../spaClient';
-import { SpaHomebridgePlatform } from '../platform';
+import { BaseMatterSpaAccessory } from './baseMatterSpaAccessory';
+import type { SpaHomebridgePlatform } from '../platform';
 
-type FlowSensorMode = 'failed' | 'low';
-
-export class MatterFlowAccessory {
-  private readonly matter: any;
+export class MatterFlowAccessory extends BaseMatterSpaAccessory {
+  private readonly mode: 'failed' | 'low';
   private lastState: boolean | undefined = undefined;
 
   constructor(
-    private readonly platform: SpaHomebridgePlatform,
-    private readonly accessory: any,
-    private readonly mode: FlowSensorMode,
+    platform: SpaHomebridgePlatform,
+    device: { name: string; deviceType: string },
   ) {
-    this.matter = (this.platform.api as any).matter;
-
-    if (!this.accessory.clusters) {
-      this.accessory.clusters = {};
-    }
-    if (!this.accessory.clusters.booleanState) {
-      this.accessory.clusters.booleanState = {
-        stateValue: false,
-      };
-    }
+    const matter = (platform.api as any).matter;
+    const mode: 'failed' | 'low' = device.deviceType === 'Water Flow Problem Sensor' ? 'failed' : 'low';
+    const matterDeviceType = mode === 'failed'
+      ? matter.deviceTypes.LeakSensor
+      : matter.deviceTypes.ContactSensor;
+    super(
+      platform,
+      device,
+      matterDeviceType,
+      { booleanState: { stateValue: false } },
+    );
+    this.mode = mode;
   }
 
   spaConfigurationKnown() {
@@ -38,9 +38,7 @@ export class MatterFlowAccessory {
       : flowState === FLOW_LOW;
 
     if (this.lastState !== stateValue) {
-      await this.matter.updateAccessoryState(this.accessory.UUID, this.matter.clusterNames.BooleanState, {
-        stateValue,
-      });
+      await this.updateState('booleanState', { stateValue });
       this.lastState = stateValue;
     }
   }

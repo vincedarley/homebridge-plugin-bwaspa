@@ -1,8 +1,9 @@
 import { SpaClient } from '../spaClient';
-import { SpaHomebridgePlatform } from '../platform';
+import { BaseMatterSpaAccessory } from './baseMatterSpaAccessory';
+import type { SpaHomebridgePlatform } from '../platform';
 
-export class MatterPumpAccessory {
-  private readonly matter: any;
+export class MatterPumpAccessory extends BaseMatterSpaAccessory {
+  private readonly pumpNumber: number;
   private numSpeedSettings = 0;
   private scheduleId: any = undefined;
   private lastOn: boolean | undefined = undefined;
@@ -14,62 +15,57 @@ export class MatterPumpAccessory {
    */
   private lastNonZeroSpeed = 1;
 
-  private readonly name: string;
-
   constructor(
-    private readonly platform: SpaHomebridgePlatform,
-    private readonly accessory: any,
-    private readonly pumpNumber: number,
+    platform: SpaHomebridgePlatform,
+    device: { name: string; deviceType: string },
   ) {
-    this.matter = (this.platform.api as any).matter;
-    this.name = (pumpNumber === 0 ? 'Circulation Pump' : `Pump ${pumpNumber}`);
-
-    if (!this.accessory.clusters) {
-      this.accessory.clusters = {};
-    }
-    if (!this.accessory.clusters.onOff) {
-      this.accessory.clusters.onOff = { onOff: false };
-    }
-    if (!this.accessory.clusters.fanControl) {
-      this.accessory.clusters.fanControl = {
-        fanMode: (this.matter.types.FanControl?.FanMode?.Off ?? 0),
-        fanModeSequence: this.getFanModeSequenceOffLowHigh(),
-      };
-    }
-
-    this.accessory.handlers = {
-      onOff: {
-        on: async () => this.setOn(true),
-        off: async () => this.setOn(false),
-      },
-      fanControl: {
-        fanModeChange: async (request: any) => {
-          await this.setFanMode(request?.fanMode);
-        },
-        percentSettingChange: async (request: any) => {
-          await this.setPercentSetting(request?.percentSetting);
+    const matter = (platform.api as any).matter;
+    super(
+      platform,
+      device,
+      matter.deviceTypes.Fan,
+      {
+        onOff: { onOff: false },
+        fanControl: {
+          fanMode: (matter.types.FanControl?.FanMode?.Off ?? 0),
+          fanModeSequence: (matter.types.FanControl?.FanModeSequence?.OffLowHigh ?? 4),
         },
       },
-    };
+      {
+        onOff: {
+          on: async () => this.setOn(true),
+          off: async () => this.setOn(false),
+        },
+        fanControl: {
+          fanModeChange: async (request: any) => {
+            await this.setFanMode(request?.fanMode);
+          },
+          percentSettingChange: async (request: any) => {
+            await this.setPercentSetting(request?.percentSetting);
+          },
+        },
+      },
+    );
+    this.pumpNumber = device.deviceType === 'Circulation Pump' ? 0 : parseInt(device.deviceType.split(' ')[1], 10);
   }
 
   spaConfigurationKnown() {
     if (this.platform.spa!.getPumpSpeedRange(this.pumpNumber) === 0) {
-      this.platform.log.warn('Nonexistent', this.name, 'matter accessory declared.');
+      this.platform.log.warn('Nonexistent', this.displayName, 'matter accessory declared.');
       return;
     }
 
     this.numSpeedSettings = this.platform.spa!.getPumpSpeedRange(this.pumpNumber);
-    this.platform.log.info(this.name, 'matter accessory has', this.numSpeedSettings, 'speeds.');
+    this.platform.log.info(this.displayName, 'matter accessory has', this.numSpeedSettings, 'speeds.');
 
     // Pumps are either off/high (1 speed) or off/low/high (2 speeds).
     const fanModeSequence = this.numSpeedSettings <= 1
       ? this.getFanModeSequenceOffHigh()
       : this.getFanModeSequenceOffLowHigh();
-    void this.matter.updateAccessoryState(this.accessory.UUID, this.matter.clusterNames.FanControl, {
+    void this.updateState('fanControl', {
       fanModeSequence,
-    }).catch((error: unknown) => {
-      this.platform.log.warn('Could not update pump fan mode sequence for', this.name, 'because:', error);
+    } as Record<string, unknown>).catch((error: unknown) => {
+      this.platform.log.warn('Could not update pump fan mode sequence for', this.displayName, 'because:', error);
     });
   }
 
@@ -84,12 +80,12 @@ export class MatterPumpAccessory {
     const percentSetting = this.toPercentSettingValue(speed);
 
     if (this.lastOn !== isOn) {
-      await this.matter.updateAccessoryState(this.accessory.UUID, this.matter.clusterNames.OnOff, { onOff: isOn });
+      await this.updateState('onOff', { onOff: isOn });
       this.lastOn = isOn;
     }
 
     if (this.lastFanMode !== fanMode || this.lastPercentSetting !== percentSetting) {
-      await this.matter.updateAccessoryState(this.accessory.UUID, this.matter.clusterNames.FanControl, {
+      await this.updateState('fanControl', {
         fanMode,
         percentSetting,
         percentCurrent: percentSetting,
@@ -100,7 +96,7 @@ export class MatterPumpAccessory {
   }
 
   private async setOn(value: boolean) {
-    this.platform.log.debug('Matter set', this.name, '->', value ? 'On' : 'Off', this.platform.status());
+    this.platform.log.debug('Matter set', this.displayName, '->', value ? 'On' : 'Off', this.platform.status());
 
     if (!this.platform.isCurrentlyConnected()) {
       throw this.platform.connectionProblem;
@@ -123,7 +119,7 @@ export class MatterPumpAccessory {
 
     this.lastNonZeroSpeed = speed > 0 ? speed : this.lastNonZeroSpeed;
 
-    this.platform.log.debug('Matter set', this.name, 'Speed ->', percent, 'which is',
+    this.platform.log.debug('Matter set', this.displayName, 'Speed ->', percent, 'which is',
       SpaClient.getSpeedAsString(maxSpeed, speed), this.platform.status());
 
     this.scheduleSetSpeed(speed);
@@ -173,7 +169,7 @@ export class MatterPumpAccessory {
   }
 
   private setSpeed(speed: number) {
-    this.platform.log.debug('Matter', this.name, 'actually setting speed to', speed, 'which is',
+    this.platform.log.debug('Matter', this.displayName, 'actually setting speed to', speed, 'which is',
       SpaClient.getSpeedAsString(this.numSpeedSettings, speed), this.platform.status());
     this.platform.spa!.setPumpSpeed(this.pumpNumber, speed);
     if (speed !== 0) {
