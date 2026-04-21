@@ -1,6 +1,9 @@
 # Ignore compiled code
 dist
 
+# Reference repositories
+refs/
+
 # ------------- Defaults ------------- #
 
 # Logs

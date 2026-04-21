@@ -507,10 +507,9 @@ export class SpaHomebridgePlatform implements DynamicPlatformPlugin {
       return {
         doorLock: {
           lockState: (matter.types.DoorLock?.LockState?.Unlocked ?? 2),
-          lockType: (matter.types.DoorLock?.LockType?.Other ?? 0),
+          lockType: (matter.types.DoorLock?.LockType?.DeadBolt ?? 0),
           operatingMode: (matter.types.DoorLock?.OperatingMode?.Normal ?? 0),
           actuatorEnabled: true,
-          wrongCodeEntryLimit: 3,
         },
       };
     }

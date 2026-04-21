@@ -5,7 +5,7 @@ export class MatterLockAccessory {
   private lastLocked: boolean | undefined = undefined;
   private readonly lockStateUnlocked: number;
   private readonly lockStateLocked: number;
-  private readonly lockTypeOther: number;
+  private readonly lockTypeDeadBolt: number;
   private readonly operatingModeNormal: number;
 
   constructor(
@@ -16,7 +16,7 @@ export class MatterLockAccessory {
     this.matter = (this.platform.api as any).matter;
     this.lockStateUnlocked = this.matter.types.DoorLock?.LockState?.Unlocked ?? 2;
     this.lockStateLocked = this.matter.types.DoorLock?.LockState?.Locked ?? 1;
-    this.lockTypeOther = this.matter.types.DoorLock?.LockType?.Other ?? 0;
+    this.lockTypeDeadBolt = this.matter.types.DoorLock?.LockType?.DeadBolt ?? 0;
     this.operatingModeNormal = this.matter.types.DoorLock?.OperatingMode?.Normal ?? 0;
 
     if (!this.accessory.clusters) {
@@ -25,7 +25,7 @@ export class MatterLockAccessory {
     if (!this.accessory.clusters.doorLock) {
       this.accessory.clusters.doorLock = {
         lockState: this.lockStateUnlocked,
-        lockType: this.lockTypeOther,
+        lockType: this.lockTypeDeadBolt,
         operatingMode: this.operatingModeNormal,
         actuatorEnabled: true,
       };
