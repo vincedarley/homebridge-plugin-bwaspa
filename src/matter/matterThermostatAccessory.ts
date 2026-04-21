@@ -37,6 +37,8 @@ export class MatterThermostatAccessory extends BaseMatterSpaAccessory {
     }
 
     const matterDeviceType = thermostatType.with(thermostatRequirement.with('Heating', 'Occupancy'));
+    const constructedFeatures = (matterDeviceType as any)?.behaviors?.thermostat?.cluster?.supportedFeatures;
+    platform.log.info('[Matter Thermostat] constructed behavior features', JSON.stringify(constructedFeatures ?? {}));
     super(
       platform,
       device,
