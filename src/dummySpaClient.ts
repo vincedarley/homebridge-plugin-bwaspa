@@ -199,6 +199,14 @@ export class DummySpaClient implements SpaController {
     return this.getTargetTempC();
   }
 
+  getTargetTempHigh() {
+    return this.targetTempHighC;
+  }
+
+  getTargetTempLow() {
+    return this.targetTempLowC;
+  }
+
   getTempIsCorF() {
     return CELSIUS;
   }

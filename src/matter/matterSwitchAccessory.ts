@@ -1,6 +1,6 @@
 import { SpaHomebridgePlatform } from '../platform';
 
-type SwitchKind = 'hold' | 'heatingReady' | 'mister' | 'aux1' | 'aux2';
+type SwitchKind = 'hold' | 'heatingReady' | 'vacationMode' | 'mister' | 'aux1' | 'aux2';
 
 export class MatterSwitchAccessory {
   private readonly matter: any;
@@ -72,6 +72,9 @@ export class MatterSwitchAccessory {
         return this.platform.spa!.getIsHold();
       case 'heatingReady':
         return this.platform.spa!.isHeatingModeAlwaysReady();
+      case 'vacationMode':
+        // User-facing semantics requested: On => Unoccupied/low temp range.
+        return !this.platform.spa!.getTempRangeIsHigh();
       case 'mister':
         return this.platform.spa!.getIsMisterOn();
       case 'aux1':
@@ -85,7 +88,7 @@ export class MatterSwitchAccessory {
 
   private async setOn(value: boolean) {
     if (!this.platform.isCurrentlyConnected()) {
-      if (this.kind === 'hold' || this.kind === 'heatingReady') {
+      if (this.kind === 'hold' || this.kind === 'heatingReady' || this.kind === 'vacationMode') {
         this.platform.recordAction(this.setOn.bind(this, value));
       }
       throw this.platform.connectionProblem;
@@ -99,6 +102,10 @@ export class MatterSwitchAccessory {
       case 'heatingReady':
         this.platform.spa!.setHeatingModeAlwaysReady(value);
         this.platform.log.debug('Matter set Heating Always Ready On ->', value);
+        break;
+      case 'vacationMode':
+        this.platform.spa!.setTempRangeIsHigh(!value);
+        this.platform.log.debug('Matter set Vacation Mode On (unoccupied/low range) ->', value);
         break;
       case 'mister':
         this.platform.spa!.setMisterState(value);

@@ -33,6 +33,8 @@ export interface SpaController {
 
   getCurrentTemp(): number | undefined;
   getTargetTemp(): number;
+  getTargetTempHigh(): number | undefined;
+  getTargetTempLow(): number | undefined;
 
   getTempIsCorF(): string;
   convertTempToC(temp: number): number | undefined;

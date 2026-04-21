@@ -4,7 +4,9 @@ import { SpaHomebridgePlatform } from '../platform';
 export class MatterThermostatAccessory {
   private readonly matter: any;
   private lastLocalTemperature: number | undefined = undefined;
-  private lastHeatingSetpoint: number | undefined = undefined;
+  private lastOccupiedHeatingSetpoint: number | undefined = undefined;
+  private lastUnoccupiedHeatingSetpoint: number | undefined = undefined;
+  private lastExternallyMeasuredOccupancy: boolean | undefined = undefined;
   private lastSystemMode: number | undefined = undefined;
   private lastRunningMode: number | undefined = undefined;
 
@@ -21,6 +23,8 @@ export class MatterThermostatAccessory {
       this.accessory.clusters.thermostat = {
         localTemperature: 2000,
         occupiedHeatingSetpoint: 3200,
+        unoccupiedHeatingSetpoint: 3000,
+        externallyMeasuredOccupancy: true,
         absMinHeatSetpointLimit: 700,
         absMaxHeatSetpointLimit: 4000,
         minHeatSetpointLimit: 1000,
@@ -53,23 +57,33 @@ export class MatterThermostatAccessory {
 
     const localTemperature = this.getLocalTemperature();
     const occupiedHeatingSetpoint = this.getOccupiedHeatingSetpoint();
-    if (localTemperature === undefined || occupiedHeatingSetpoint === undefined) {
+    const unoccupiedHeatingSetpoint = this.getUnoccupiedHeatingSetpoint();
+    if (localTemperature === undefined || occupiedHeatingSetpoint === undefined || unoccupiedHeatingSetpoint === undefined) {
       return;
     }
+    const externallyMeasuredOccupancy = this.getExternallyMeasuredOccupancy();
 
     const systemMode = this.getCurrentSystemMode();
     const runningMode = this.platform.spa!.getIsHeatingNow() ? this.getRunningModeHeat() : this.getRunningModeOff();
 
-    if (this.lastLocalTemperature !== localTemperature || this.lastHeatingSetpoint !== occupiedHeatingSetpoint
-      || this.lastSystemMode !== systemMode || this.lastRunningMode !== runningMode) {
+    if (this.lastLocalTemperature !== localTemperature
+      || this.lastOccupiedHeatingSetpoint !== occupiedHeatingSetpoint
+      || this.lastUnoccupiedHeatingSetpoint !== unoccupiedHeatingSetpoint
+      || this.lastExternallyMeasuredOccupancy !== externallyMeasuredOccupancy
+      || this.lastSystemMode !== systemMode
+      || this.lastRunningMode !== runningMode) {
       await this.matter.updateAccessoryState(this.accessory.UUID, this.matter.clusterNames.Thermostat, {
         localTemperature,
         occupiedHeatingSetpoint,
+        unoccupiedHeatingSetpoint,
+        externallyMeasuredOccupancy,
         systemMode,
         thermostatRunningMode: runningMode,
       });
       this.lastLocalTemperature = localTemperature;
-      this.lastHeatingSetpoint = occupiedHeatingSetpoint;
+      this.lastOccupiedHeatingSetpoint = occupiedHeatingSetpoint;
+      this.lastUnoccupiedHeatingSetpoint = unoccupiedHeatingSetpoint;
+      this.lastExternallyMeasuredOccupancy = externallyMeasuredOccupancy;
       this.lastSystemMode = systemMode;
       this.lastRunningMode = runningMode;
     }
@@ -88,7 +102,7 @@ export class MatterThermostatAccessory {
   }
 
   private getOccupiedHeatingSetpoint() {
-    const target = this.platform.spa!.getTargetTemp();
+    const target = this.platform.spa!.getTargetTempHigh();
     if (target === undefined) {
       return undefined;
     }
@@ -96,7 +110,26 @@ export class MatterThermostatAccessory {
     if (targetC === undefined) {
       return undefined;
     }
-    return Math.max(1000, Math.min(4000, Math.round(targetC * 100)));
+    const targetCenti = Math.round(targetC * 100);
+    return Math.max(2650, Math.min(4000, targetCenti));
+  }
+
+  private getUnoccupiedHeatingSetpoint() {
+    const target = this.platform.spa!.getTargetTempLow();
+    if (target === undefined) {
+      return undefined;
+    }
+    const targetC = this.platform.spa!.convertTempToC(target);
+    if (targetC === undefined) {
+      return undefined;
+    }
+    const targetCenti = Math.round(targetC * 100);
+    return Math.max(1000, Math.min(3600, targetCenti));
+  }
+
+  private getExternallyMeasuredOccupancy() {
+    // High temperature range represents normal occupied use; low range is vacation/away.
+    return this.platform.spa!.getTempRangeIsHigh();
   }
 
   private getCurrentSystemMode() {
@@ -104,7 +137,7 @@ export class MatterThermostatAccessory {
     if (flowState === FLOW_FAILED) {
       return this.getSystemModeOff();
     }
-    return this.platform.spa!.getTempRangeIsHigh() ? this.getSystemModeHeat() : this.getSystemModeCool();
+    return this.getSystemModeHeat();
   }
 
   private async setSystemMode(mode: number) {
@@ -115,18 +148,20 @@ export class MatterThermostatAccessory {
     const flowState = this.platform.spa!.getFlowState();
     if (mode === this.getSystemModeOff()) {
       if (flowState === FLOW_GOOD) {
-        throw new Error("Spa doesn't allow turning heating off (only heat or cool). Reverting.");
+        throw new Error("Spa doesn't allow turning heating off while flow is good. Reverting.");
       }
       return;
+    }
+
+    if (mode !== this.getSystemModeHeat()) {
+      throw new Error('Spa thermostat supports Heat mode only (plus Off during flow faults).');
     }
 
     if (flowState !== FLOW_GOOD) {
       throw new Error('Water flow is low or has failed. Heating off');
     }
 
-    const isHeat = mode === this.getSystemModeHeat();
-    this.platform.spa!.setTempRangeIsHigh(isHeat);
-    this.platform.log.debug('Matter set Thermostat mode ->', isHeat ? 'Heat' : 'Cool/Low');
+    this.platform.log.debug('Matter set Thermostat mode -> Heat');
   }
 
   private async setTargetTemperatureFromSetpoint(setpoint: number | undefined) {
@@ -160,10 +195,6 @@ export class MatterThermostatAccessory {
 
   private getSystemModeOff() {
     return this.matter.types.Thermostat?.SystemMode?.Off ?? 0;
-  }
-
-  private getSystemModeCool() {
-    return this.matter.types.Thermostat?.SystemMode?.Cool ?? 3;
   }
 
   private getSystemModeHeat() {

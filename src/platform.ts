@@ -261,6 +261,7 @@ export class SpaHomebridgePlatform implements DynamicPlatformPlugin {
       }
       this.makeDevice({name: 'Spa Temperature Sensor', deviceType: 'Temperature Sensor'});
       this.makeDevice({name: 'Spa Thermostat', deviceType: 'Thermostat'});
+      this.makeDevice({name: 'Vacation Mode', deviceType: 'Vacation Mode'});
       this.makeDevice({name: 'Spa Flow', deviceType: 'Water Flow Problem Sensor'});
       this.makeDevice({name: 'Spa Flow Low', deviceType: 'Water Flow Low Sensor'});
       this.makeDevice({name: 'Hold Spa', deviceType: 'Hold Switch'});
@@ -299,7 +300,7 @@ export class SpaHomebridgePlatform implements DynamicPlatformPlugin {
     });
 
     // This is a Matter-only warning endpoint.
-    if (device.deviceType === 'Water Flow Low Sensor') {
+    if (device.deviceType === 'Water Flow Low Sensor' || device.deviceType === 'Vacation Mode') {
       return;
     }
 
@@ -367,10 +368,10 @@ export class SpaHomebridgePlatform implements DynamicPlatformPlugin {
       };
 
       this.matterAccessories.set(uuid, accessory);
-      this.makeMatterAccessory(accessory);
 
       try {
         await matter.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory]);
+        this.makeMatterAccessory(accessory);
       } catch (error) {
         this.log.warn('Could not register matter accessory', device.name, 'because:', error);
         this.matterAccessories.delete(uuid);
@@ -417,6 +418,7 @@ export class SpaHomebridgePlatform implements DynamicPlatformPlugin {
   private isMatterSwitchType(deviceType: string) {
     return deviceType === 'Hold Switch'
       || deviceType === 'Spa Heat Mode Ready'
+      || deviceType === 'Vacation Mode'
       || deviceType === 'Mister'
       || deviceType === 'Aux 1'
       || deviceType === 'Aux 2';
@@ -428,6 +430,15 @@ export class SpaHomebridgePlatform implements DynamicPlatformPlugin {
 
   private isMatterThermostatType(deviceType: string) {
     return deviceType === 'Thermostat';
+  }
+
+  private toMatterThermostatDeviceType(matter: any) {
+    const thermostatType = matter.deviceTypes.Thermostat;
+    const thermostatServer = thermostatType?.requirements?.ThermostatServer;
+    if (typeof thermostatType?.with === 'function' && typeof thermostatServer?.with === 'function') {
+      return thermostatType.with(thermostatServer.with('Heating', 'Occupancy'));
+    }
+    return thermostatType;
   }
 
   private toMatterDeviceType(deviceType: string) {
@@ -448,7 +459,7 @@ export class SpaHomebridgePlatform implements DynamicPlatformPlugin {
       return matter.deviceTypes.DoorLock;
     }
     if (this.isMatterThermostatType(deviceType)) {
-      return matter.deviceTypes.Thermostat || matter.deviceTypes.TemperatureSensor;
+      return this.toMatterThermostatDeviceType(matter) || matter.deviceTypes.TemperatureSensor;
     }
     if (deviceType === 'Temperature Sensor') {
       return matter.deviceTypes.TemperatureSensor;
@@ -457,7 +468,7 @@ export class SpaHomebridgePlatform implements DynamicPlatformPlugin {
       return matter.deviceTypes.LeakSensor;
     }
     if (deviceType === 'Water Flow Low Sensor') {
-      return matter.deviceTypes.OnOffSensor;
+      return matter.deviceTypes.ContactSensor;
     }
     return matter.deviceTypes.OnOffSwitch;
   }
@@ -507,6 +518,8 @@ export class SpaHomebridgePlatform implements DynamicPlatformPlugin {
         thermostat: {
           localTemperature: 2000,
           occupiedHeatingSetpoint: 3200,
+          unoccupiedHeatingSetpoint: 3000,
+          externallyMeasuredOccupancy: true,
           absMinHeatSetpointLimit: 700,
           absMaxHeatSetpointLimit: 4000,
           minHeatSetpointLimit: 1000,
@@ -589,6 +602,8 @@ export class SpaHomebridgePlatform implements DynamicPlatformPlugin {
         return 'hold';
       case 'Spa Heat Mode Ready':
         return 'heatingReady';
+      case 'Vacation Mode':
+        return 'vacationMode';
       case 'Mister':
         return 'mister';
       case 'Aux 1':
