@@ -42,6 +42,27 @@ export class MatterThermostatAccessory extends BaseMatterSpaAccessory {
     const constructedFeatures = (matterDeviceType as any)?.behaviors?.thermostat?.features;
     const createdFeatureSnapshot = JSON.stringify(constructedFeatures ?? {});
     platform.log.info('[Matter Thermostat] constructed behavior features', JSON.stringify(constructedFeatures ?? {}));
+
+    // Defensive: trap any mutation of autoMode from false to true to capture stack trace
+    if (constructedFeatures && typeof constructedFeatures === 'object') {
+      const originalAutoMode = constructedFeatures.autoMode;
+      Object.defineProperty(constructedFeatures, 'autoMode', {
+        get() {
+          return originalAutoMode;
+        },
+        set(value) {
+          if (originalAutoMode === false && value === true) {
+            const stack = new Error('DEFENSIVE CHECK: autoMode changed from false to true').stack;
+            platform.log.error('[Matter Thermostat] MUTATION DETECTED: autoMode enabled when we requested heating-only!');
+            platform.log.error('[Matter Thermostat] Stack trace at mutation point:', stack);
+            throw new Error('Homebridge illegally enabled autoMode on heating-only thermostat. Created with autoMode:false, now being set to true.');
+          }
+          throw new Error(`Attempt to set autoMode to ${value} (was ${originalAutoMode}). Features should be immutable after construction.`);
+        },
+        configurable: true,
+        enumerable: true,
+      });
+    }
     super(
       platform,
       device,
