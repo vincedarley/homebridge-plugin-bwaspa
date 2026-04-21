@@ -63,10 +63,32 @@ export class MatterThermostatAccessory extends BaseMatterSpaAccessory {
         enumerable: true,
       });
     }
+
+    // Defensive: wrap deviceType in Proxy to detect if Homebridge reads/replaces behaviors
+    const deviceTypeProxy = new Proxy(matterDeviceType, {
+      get(target, prop) {
+        if (prop === 'behaviors') {
+          platform.log.info('[Matter Thermostat] Homebridge accessed deviceType.behaviors');
+          const behaviors = (target as any)[prop];
+          if (behaviors && typeof behaviors === 'object') {
+            return new Proxy(behaviors, {
+              get(behaviorsTarget, behaviorProp) {
+                if (behaviorProp === 'thermostat') {
+                  platform.log.info('[Matter Thermostat] Homebridge accessed deviceType.behaviors.thermostat');
+                }
+                return (behaviorsTarget as any)[behaviorProp];
+              },
+            });
+          }
+          return behaviors;
+        }
+        return (target as any)[prop];
+      },
+    });
     super(
       platform,
       device,
-      matterDeviceType,
+      deviceTypeProxy,
       {
         thermostat: {
           localTemperature: 2000,
