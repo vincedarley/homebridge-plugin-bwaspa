@@ -6,6 +6,8 @@ export class MatterThermostatAccessory extends BaseMatterSpaAccessory {
   private readonly systemModeOff: number;
   private readonly systemModeHeat: number;
   private readonly controlSequenceHeatingOnly: number;
+  private readonly createdFeatureSnapshot: string;
+  private hasLoggedCreationSnapshot = false;
 
   private lastLocalTemperature: number | undefined = undefined;
   private lastOccupiedHeatingSetpoint: number | undefined = undefined;
@@ -38,6 +40,7 @@ export class MatterThermostatAccessory extends BaseMatterSpaAccessory {
 
     const matterDeviceType = thermostatType.with(thermostatRequirement.with('Heating', 'Occupancy'));
     const constructedFeatures = (matterDeviceType as any)?.behaviors?.thermostat?.cluster?.supportedFeatures;
+    const createdFeatureSnapshot = JSON.stringify(constructedFeatures ?? {});
     platform.log.info('[Matter Thermostat] constructed behavior features', JSON.stringify(constructedFeatures ?? {}));
     super(
       platform,
@@ -73,6 +76,7 @@ export class MatterThermostatAccessory extends BaseMatterSpaAccessory {
     this.systemModeOff = systemModeOff;
     this.systemModeHeat = systemModeHeat;
     this.controlSequenceHeatingOnly = controlSequenceHeatingOnly;
+    this.createdFeatureSnapshot = createdFeatureSnapshot;
   }
 
   spaConfigurationKnown() {
@@ -82,6 +86,11 @@ export class MatterThermostatAccessory extends BaseMatterSpaAccessory {
   async updateCharacteristics() {
     if (!this.platform.isCurrentlyConnected()) {
       return;
+    }
+
+    if (!this.hasLoggedCreationSnapshot) {
+      this.platform.log.warn('[Matter Thermostat] created feature snapshot', this.UUID, this.createdFeatureSnapshot);
+      this.hasLoggedCreationSnapshot = true;
     }
 
     const localTemperature = this.getLocalTemperature();
