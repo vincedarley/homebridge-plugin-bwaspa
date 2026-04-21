@@ -6,8 +6,6 @@ export class MatterThermostatAccessory extends BaseMatterSpaAccessory {
   private readonly systemModeOff: number;
   private readonly systemModeHeat: number;
   private readonly controlSequenceHeatingOnly: number;
-  private readonly createdFeatureSnapshot: string;
-  private hasLoggedCreationSnapshot = false;
 
   private lastLocalTemperature: number | undefined = undefined;
   private lastOccupiedHeatingSetpoint: number | undefined = undefined;
@@ -27,40 +25,9 @@ export class MatterThermostatAccessory extends BaseMatterSpaAccessory {
       throw new Error('Matter Thermostat enums are unavailable: Off/Heat/SystemSequence HeatingOnly are required.');
     }
 
-    const thermostatType = matter.deviceTypes.Thermostat;
-    if (typeof thermostatType?.with !== 'function') {
-      throw new Error('Matter Thermostat device type does not support .with().');
-    }
-
-    const thermostatRequirement = thermostatType?.requirements?.Thermostat
-      ?? thermostatType?.requirements?.ThermostatServer;
-    if (typeof thermostatRequirement?.with !== 'function') {
-      throw new Error('Matter Thermostat requirement does not support .with(Heating, Occupancy).');
-    }
-
-    const matterDeviceType = thermostatType.with(thermostatRequirement.with('Heating', 'Occupancy'));
-    const constructedFeatures = (matterDeviceType as any)?.behaviors?.thermostat?.features;
-    const createdFeatureSnapshot = JSON.stringify(constructedFeatures ?? {});
-    platform.log.warn('[Matter Thermostat] CREATED with features:', createdFeatureSnapshot);
-    
-    // WORKAROUND: Homebridge bug - it reads behavior.cluster.supportedFeatures instead of behavior.features
-    // We need to set cluster.supportedFeatures so Homebridge can detect our custom features.
-    const behaviorsStructure = (matterDeviceType as any)?.behaviors;
-    if (behaviorsStructure) {
-      const behaviorsArray = Array.isArray(behaviorsStructure) 
-        ? behaviorsStructure 
-        : Object.values(behaviorsStructure);
-      const thermostatBehavior = behaviorsArray.find((b: any) => 
-        b?.cluster?.id === 0x201 || b?.id === 'thermostat',
-      );
-      
-      if (thermostatBehavior && thermostatBehavior.cluster && thermostatBehavior.features) {
-        // Set cluster.supportedFeatures to point to the actual enabled features
-        thermostatBehavior.cluster.supportedFeatures = thermostatBehavior.features;
-        platform.log.warn('[Matter Thermostat] WORKAROUND: Set cluster.supportedFeatures =', 
-          JSON.stringify(thermostatBehavior.cluster.supportedFeatures));
-      }
-    }
+    // Use base ThermostatDevice without specifying behavior - let Homebridge's HomebridgeThermostatServer
+    // handle feature detection and behavior construction to avoid schema/conformance conflicts
+    const matterDeviceType = matter.deviceTypes.Thermostat;
     
     super(
       platform,
@@ -91,12 +58,10 @@ export class MatterThermostatAccessory extends BaseMatterSpaAccessory {
         },
       },
     );
-    this.platform.log.info('[Matter Thermostat] constructed behavior features', JSON.stringify(constructedFeatures ?? {}));
     
     this.systemModeOff = systemModeOff;
     this.systemModeHeat = systemModeHeat;
     this.controlSequenceHeatingOnly = controlSequenceHeatingOnly;
-    this.createdFeatureSnapshot = createdFeatureSnapshot;
   }
 
   spaConfigurationKnown() {
@@ -106,11 +71,6 @@ export class MatterThermostatAccessory extends BaseMatterSpaAccessory {
   async updateCharacteristics() {
     if (!this.platform.isCurrentlyConnected()) {
       return;
-    }
-
-    if (!this.hasLoggedCreationSnapshot) {
-      this.platform.log.warn('[Matter Thermostat] created feature snapshot', this.UUID, this.createdFeatureSnapshot);
-      this.hasLoggedCreationSnapshot = true;
     }
 
     const localTemperature = this.getLocalTemperature();

@@ -355,26 +355,9 @@ export class SpaHomebridgePlatform implements DynamicPlatformPlugin {
     }
 
     try {
-      if (device.deviceType === 'Thermostat') {
-        const preRegFeatures = (controller as any).deviceType?.behaviors?.thermostat?.features;
-        this.log.warn('[Matter Thermostat] deviceType.behaviors.thermostat.features BEFORE registration', uuid, JSON.stringify(preRegFeatures ?? {}));
-      }
-
       await matter.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [controller]);
       this.matterAccessories.set(uuid, controller);
       this.matterDeviceObjects.push(controller);
-
-      if (device.deviceType === 'Thermostat') {
-        const postRegFeatures = (controller as any).deviceType?.behaviors?.thermostat?.features;
-        this.log.warn('[Matter Thermostat] deviceType.behaviors.thermostat.features AFTER registration', uuid, JSON.stringify(postRegFeatures ?? {}));
-        
-        try {
-          const immediateState = await matter.getAccessoryState(uuid, 'thermostat');
-          this.log.warn('[Matter Thermostat] state immediately after registration', uuid, JSON.stringify(immediateState ?? {}));
-        } catch (error) {
-          this.log.warn('[Matter Thermostat] failed to read state immediately after registration for', uuid, error);
-        }
-      }
     } catch (error) {
       this.log.warn('Could not register matter accessory', device.name, 'because:', error);
       this.matterAccessories.delete(uuid);
