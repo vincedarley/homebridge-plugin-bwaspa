@@ -43,19 +43,22 @@ export class MatterThermostatAccessory extends BaseMatterSpaAccessory {
     const createdFeatureSnapshot = JSON.stringify(constructedFeatures ?? {});
     platform.log.warn('[Matter Thermostat] CREATED with features:', createdFeatureSnapshot);
     
-    // Log the structure Homebridge will read
+    // Log what Homebridge will try to read: behavior.cluster.supportedFeatures
     const behaviorsStructure = (matterDeviceType as any)?.behaviors;
     if (behaviorsStructure) {
-      const thermostatBehavior = Object.values(behaviorsStructure).find((b: any) => 
-        b?.cluster?.id === 0x201 || b?.cluster?.name === 'Thermostat' || b?.id === 'Thermostat',
+      const behaviorsArray = Array.isArray(behaviorsStructure) 
+        ? behaviorsStructure 
+        : Object.values(behaviorsStructure);
+      const thermostatBehavior = behaviorsArray.find((b: any) => 
+        b?.cluster?.id === 0x201 || b?.id === 'thermostat',
       );
-      platform.log.warn('[Matter Thermostat] Thermostat behavior in deviceType.behaviors:', 
-        JSON.stringify({
-          found: !!thermostatBehavior,
-          hasCluster: !!(thermostatBehavior as any)?.cluster,
-          hasSupportedFeatures: !!(thermostatBehavior as any)?.cluster?.supportedFeatures,
-          supportedFeatures: (thermostatBehavior as any)?.cluster?.supportedFeatures,
-        }));
+      if (thermostatBehavior) {
+        const clusterSupportedFeatures = (thermostatBehavior as any)?.cluster?.supportedFeatures;
+        platform.log.warn('[Matter Thermostat] Homebridge will read behavior.cluster.supportedFeatures:', 
+          JSON.stringify(clusterSupportedFeatures ?? 'NOT FOUND'));
+      } else {
+        platform.log.error('[Matter Thermostat] Thermostat behavior NOT FOUND in deviceType.behaviors!');
+      }
     } else {
       platform.log.error('[Matter Thermostat] deviceType.behaviors is undefined!');
     }
