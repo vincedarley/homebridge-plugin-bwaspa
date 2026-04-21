@@ -8,7 +8,6 @@ export class MatterThermostatAccessory {
   private lastUnoccupiedHeatingSetpoint: number | undefined = undefined;
   private lastExternallyMeasuredOccupancy: boolean | undefined = undefined;
   private lastSystemMode: number | undefined = undefined;
-  private lastRunningMode: number | undefined = undefined;
 
   constructor(
     private readonly platform: SpaHomebridgePlatform,
@@ -64,28 +63,24 @@ export class MatterThermostatAccessory {
     const externallyMeasuredOccupancy = this.getExternallyMeasuredOccupancy();
 
     const systemMode = this.getCurrentSystemMode();
-    const runningMode = this.platform.spa!.getIsHeatingNow() ? this.getRunningModeHeat() : this.getRunningModeOff();
 
     if (this.lastLocalTemperature !== localTemperature
       || this.lastOccupiedHeatingSetpoint !== occupiedHeatingSetpoint
       || this.lastUnoccupiedHeatingSetpoint !== unoccupiedHeatingSetpoint
       || this.lastExternallyMeasuredOccupancy !== externallyMeasuredOccupancy
-      || this.lastSystemMode !== systemMode
-      || this.lastRunningMode !== runningMode) {
+      || this.lastSystemMode !== systemMode) {
       await this.matter.updateAccessoryState(this.accessory.UUID, this.matter.clusterNames.Thermostat, {
         localTemperature,
         occupiedHeatingSetpoint,
         unoccupiedHeatingSetpoint,
         externallyMeasuredOccupancy,
         systemMode,
-        thermostatRunningMode: runningMode,
       });
       this.lastLocalTemperature = localTemperature;
       this.lastOccupiedHeatingSetpoint = occupiedHeatingSetpoint;
       this.lastUnoccupiedHeatingSetpoint = unoccupiedHeatingSetpoint;
       this.lastExternallyMeasuredOccupancy = externallyMeasuredOccupancy;
       this.lastSystemMode = systemMode;
-      this.lastRunningMode = runningMode;
     }
   }
 
@@ -199,14 +194,6 @@ export class MatterThermostatAccessory {
 
   private getSystemModeHeat() {
     return this.matter.types.Thermostat?.SystemMode?.Heat ?? 4;
-  }
-
-  private getRunningModeOff() {
-    return this.matter.types.Thermostat?.RunningMode?.Off ?? 0;
-  }
-
-  private getRunningModeHeat() {
-    return this.matter.types.Thermostat?.RunningMode?.Heat ?? 4;
   }
 
   private getControlSequenceHeatingOnly() {

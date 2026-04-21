@@ -453,7 +453,7 @@ export class SpaHomebridgePlatform implements DynamicPlatformPlugin {
       return matter.deviceTypes.OnOffLight;
     }
     if (this.isMatterSwitchType(deviceType)) {
-      return matter.deviceTypes.OnOffSwitch;
+      return matter.deviceTypes.OnOffLight;
     }
     if (this.isMatterLockType(deviceType)) {
       return matter.deviceTypes.DoorLock;
@@ -510,6 +510,7 @@ export class SpaHomebridgePlatform implements DynamicPlatformPlugin {
           lockType: (matter.types.DoorLock?.LockType?.Other ?? 0),
           operatingMode: (matter.types.DoorLock?.OperatingMode?.Normal ?? 0),
           actuatorEnabled: true,
+          wrongCodeEntryLimit: 3,
         },
       };
     }
