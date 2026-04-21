@@ -25,9 +25,43 @@ export class MatterThermostatAccessory extends BaseMatterSpaAccessory {
       throw new Error('Matter Thermostat enums are unavailable: Off/Heat/SystemSequence HeatingOnly are required.');
     }
 
-    // Use base ThermostatDevice without specifying behavior - let Homebridge's HomebridgeThermostatServer
-    // handle feature detection and behavior construction to avoid schema/conformance conflicts
-    const matterDeviceType = matter.deviceTypes.Thermostat;
+    // Create thermostat with Heating, Occupancy, and Presets features
+    // - Heating + Occupancy: core functionality for spa heating control
+    // - Presets: required to satisfy persistedPresets conformance in ThermostatBaseServer schema
+    //   (schema always includes persistedPresets field with "[PRES]" conformance requirement)
+    // - NO AutoMode = no deadband constraint between heating/cooling setpoints
+    // - NO Cooling = heating-only spa behavior (spa cannot cool, only heat)
+    // The ThermostatServer will initialize persistedPresets to [] when Presets feature is enabled
+    const thermostatType = matter.deviceTypes.Thermostat;
+    if (typeof thermostatType?.with !== 'function') {
+      throw new Error('Matter Thermostat device type does not support .with().');
+    }
+
+    const thermostatRequirement = thermostatType?.requirements?.Thermostat
+      ?? thermostatType?.requirements?.ThermostatServer;
+    if (typeof thermostatRequirement?.with !== 'function') {
+      throw new Error('Matter Thermostat requirement does not support .with(Heating, Occupancy, Presets).');
+    }
+
+    const matterDeviceType = thermostatType.with(thermostatRequirement.with('Heating', 'Occupancy', 'Presets'));
+    
+    // WORKAROUND: Homebridge bug - it reads behavior.cluster.supportedFeatures instead of behavior.features
+    // We need to set cluster.supportedFeatures so Homebridge can detect our custom features.
+    const behaviorsStructure = (matterDeviceType as any)?.behaviors;
+    if (behaviorsStructure) {
+      const behaviorsArray = Array.isArray(behaviorsStructure) 
+        ? behaviorsStructure 
+        : Object.values(behaviorsStructure);
+      const thermostatBehavior = behaviorsArray.find((b: any) => 
+        b?.cluster?.id === 0x201 || b?.id === 'thermostat',
+      );
+      
+      if (thermostatBehavior && thermostatBehavior.cluster && thermostatBehavior.features) {
+        thermostatBehavior.cluster.supportedFeatures = thermostatBehavior.features;
+        platform.log.info('[Matter Thermostat] Set cluster.supportedFeatures for Homebridge detection:', 
+          JSON.stringify(thermostatBehavior.features));
+      }
+    }
     
     super(
       platform,
