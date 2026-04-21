@@ -98,14 +98,26 @@ export class MatterThermostatAccessory extends BaseMatterSpaAccessory {
       || this.lastUnoccupiedHeatingSetpoint !== unoccupiedHeatingSetpoint
       || this.lastExternallyMeasuredOccupancy !== externallyMeasuredOccupancy
       || this.lastSystemMode !== systemMode) {
-      await this.updateState('thermostat', {
+      const payload = {
         localTemperature,
         occupiedHeatingSetpoint,
         unoccupiedHeatingSetpoint,
         externallyMeasuredOccupancy,
         controlSequenceOfOperation: this.getControlSequenceHeatingOnly(),
         systemMode,
-      });
+      };
+
+      this.platform.log.info('[Matter Thermostat] update payload', this.UUID, JSON.stringify(payload));
+
+      try {
+        await this.updateState('thermostat', payload);
+      } catch (error) {
+        const currentState = await this.readState('thermostat');
+        this.platform.log.error('[Matter Thermostat] update failed for', this.UUID, 'payload:', JSON.stringify(payload));
+        this.platform.log.error('[Matter Thermostat] current thermostat state', this.UUID, JSON.stringify(currentState ?? {}));
+        throw error;
+      }
+
       this.lastLocalTemperature = localTemperature;
       this.lastOccupiedHeatingSetpoint = occupiedHeatingSetpoint;
       this.lastUnoccupiedHeatingSetpoint = unoccupiedHeatingSetpoint;

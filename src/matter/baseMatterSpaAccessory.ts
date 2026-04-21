@@ -50,6 +50,10 @@ export abstract class BaseMatterSpaAccessory implements MatterAccessory {
     await (this.platform.api as any).matter.updateAccessoryState(this.UUID, cluster, attributes);
   }
 
+  protected async readState(cluster: string): Promise<Record<string, unknown> | undefined> {
+    return (this.platform.api as any).matter.getAccessoryState(this.UUID, cluster);
+  }
+
   abstract spaConfigurationKnown(): void;
   abstract updateCharacteristics(): Promise<void>;
 }
