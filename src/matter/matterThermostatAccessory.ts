@@ -43,7 +43,7 @@ export class MatterThermostatAccessory extends BaseMatterSpaAccessory {
     const createdFeatureSnapshot = JSON.stringify(constructedFeatures ?? {});
     platform.log.warn('[Matter Thermostat] CREATED with features:', createdFeatureSnapshot);
     
-    // Log what Homebridge will try to read: behavior.cluster.supportedFeatures
+    // Deep inspection of the behavior structure to understand why cluster.supportedFeatures doesn't exist
     const behaviorsStructure = (matterDeviceType as any)?.behaviors;
     if (behaviorsStructure) {
       const behaviorsArray = Array.isArray(behaviorsStructure) 
@@ -52,10 +52,27 @@ export class MatterThermostatAccessory extends BaseMatterSpaAccessory {
       const thermostatBehavior = behaviorsArray.find((b: any) => 
         b?.cluster?.id === 0x201 || b?.id === 'thermostat',
       );
+      
       if (thermostatBehavior) {
-        const clusterSupportedFeatures = (thermostatBehavior as any)?.cluster?.supportedFeatures;
-        platform.log.warn('[Matter Thermostat] Homebridge will read behavior.cluster.supportedFeatures:', 
-          JSON.stringify(clusterSupportedFeatures ?? 'NOT FOUND'));
+        platform.log.warn('[Matter Thermostat] Behavior found. Inspecting structure:');
+        platform.log.warn('  - behavior.id:', (thermostatBehavior as any)?.id);
+        platform.log.warn('  - behavior.cluster exists:', !!(thermostatBehavior as any)?.cluster);
+        platform.log.warn('  - behavior.cluster.id:', (thermostatBehavior as any)?.cluster?.id);
+        platform.log.warn('  - behavior.cluster.supportedFeatures:', (thermostatBehavior as any)?.cluster?.supportedFeatures);
+        platform.log.warn('  - behavior.features:', (thermostatBehavior as any)?.features);
+        
+        // Check what properties cluster actually has
+        const cluster = (thermostatBehavior as any)?.cluster;
+        if (cluster) {
+          const clusterKeys = Object.keys(cluster).filter(k => !k.startsWith('_'));
+          platform.log.warn('  - behavior.cluster available properties:', clusterKeys.join(', '));
+          
+          // Maybe supportedFeatures is nested deeper?
+          if (cluster.supportedFeatures === undefined && cluster.features) {
+            platform.log.warn('  - Found cluster.features instead of cluster.supportedFeatures!');
+            platform.log.warn('  - cluster.features value:', JSON.stringify(cluster.features));
+          }
+        }
       } else {
         platform.log.error('[Matter Thermostat] Thermostat behavior NOT FOUND in deviceType.behaviors!');
       }
