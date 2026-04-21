@@ -37,7 +37,7 @@ export class DummySpaClient implements SpaController {
 
   private flowState = FLOW_GOOD;
 
-  private removePumps = true;
+  private removePumps = false;
 
   constructor(
     private readonly log: Logger,

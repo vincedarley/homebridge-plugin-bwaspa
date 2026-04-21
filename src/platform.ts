@@ -256,7 +256,7 @@ export class SpaHomebridgePlatform implements DynamicPlatformPlugin {
       }
       this.makeDevice({name: 'Spa Temperature Sensor', deviceType: 'Temperature Sensor'});
       this.makeDevice({name: 'Spa Thermostat', deviceType: 'Thermostat'});
-      this.makeDevice({name: 'Vacation Mode', deviceType: 'Vacation Mode'});
+      this.makeDevice({name: 'Spa Vacation Mode', deviceType: 'Vacation Mode'});
       this.makeDevice({name: 'Spa Flow', deviceType: 'Water Flow Problem Sensor'});
       this.makeDevice({name: 'Spa Flow Low', deviceType: 'Water Flow Low Sensor'});
       this.makeDevice({name: 'Hold Spa', deviceType: 'Hold Switch'});
