@@ -25,13 +25,12 @@ export class MatterThermostatAccessory extends BaseMatterSpaAccessory {
       throw new Error('Matter Thermostat enums are unavailable: Off/Heat/SystemSequence HeatingOnly are required.');
     }
 
-    // Create thermostat with Heating, Occupancy, and Presets features
-    // - Heating + Occupancy: core functionality for spa heating control
-    // - Presets: required to satisfy persistedPresets conformance in ThermostatBaseServer schema
-    //   (schema always includes persistedPresets field with "[PRES]" conformance requirement)
+    // Create thermostat with Heating and Occupancy features
+    // - Heating: core functionality for spa heating control
+    // - Occupancy: track occupied (high temp range) vs unoccupied (low/vacation temp range)
     // - NO AutoMode = no deadband constraint between heating/cooling setpoints
     // - NO Cooling = heating-only spa behavior (spa cannot cool, only heat)
-    // The ThermostatServer will initialize persistedPresets to [] when Presets feature is enabled
+    // - NO Presets = we don't use preset schedules (enabling Presets requires persistedPresets initialization)
     const thermostatType = matter.deviceTypes.Thermostat;
     if (typeof thermostatType?.with !== 'function') {
       throw new Error('Matter Thermostat device type does not support .with().');
@@ -40,10 +39,10 @@ export class MatterThermostatAccessory extends BaseMatterSpaAccessory {
     const thermostatRequirement = thermostatType?.requirements?.Thermostat
       ?? thermostatType?.requirements?.ThermostatServer;
     if (typeof thermostatRequirement?.with !== 'function') {
-      throw new Error('Matter Thermostat requirement does not support .with(Heating, Occupancy, Presets).');
+      throw new Error('Matter Thermostat requirement does not support .with(Heating, Occupancy).');
     }
 
-    const matterDeviceType = thermostatType.with(thermostatRequirement.with('Heating', 'Occupancy', 'Presets'));
+    const matterDeviceType = thermostatType.with(thermostatRequirement.with('Heating', 'Occupancy'));
     
     // WORKAROUND: Homebridge bug - it reads behavior.cluster.supportedFeatures instead of behavior.features
     // We need to set cluster.supportedFeatures so Homebridge can detect our custom features.
@@ -147,9 +146,11 @@ export class MatterThermostatAccessory extends BaseMatterSpaAccessory {
         this.platform.log.error('[Matter Thermostat] update failed for', this.UUID, 'payload:', JSON.stringify(payload));
         try {
           const currentState = await this.readState('thermostat');
-          this.platform.log.error('[Matter Thermostat] current thermostat state after failed update', this.UUID, JSON.stringify(currentState ?? {}));
+          this.platform.log.error('[Matter Thermostat] current thermostat state after failed update',
+            this.UUID, JSON.stringify(currentState ?? {}));
         } catch (stateReadError) {
-          this.platform.log.error('[Matter Thermostat] could not read thermostat state after failed update for', this.UUID, stateReadError);
+          this.platform.log.error('[Matter Thermostat] could not read thermostat state after failed update for',
+            this.UUID, stateReadError);
         }
         throw error;
       }
