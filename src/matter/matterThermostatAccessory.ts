@@ -10,7 +10,7 @@ export class MatterThermostatAccessory extends BaseMatterSpaAccessory {
   private lastLocalTemperature: number | undefined = undefined;
   private lastOccupiedHeatingSetpoint: number | undefined = undefined;
   private lastUnoccupiedHeatingSetpoint: number | undefined = undefined;
-  private lastExternallyMeasuredOccupancy: boolean | undefined = undefined;
+  private lastOccupancy: boolean | undefined = undefined;
   private lastSystemMode: number | undefined = undefined;
 
   constructor(
@@ -74,8 +74,9 @@ export class MatterThermostatAccessory extends BaseMatterSpaAccessory {
       {
         thermostat: {
           localTemperature: 2000,
-          occupiedHeatingSetpoint: 3200,
+          occupiedHeatingSetpoint: 3850,
           unoccupiedHeatingSetpoint: 3000,
+          occupancy: { occupied: true },
           externallyMeasuredOccupancy: true,
           absMinHeatSetpointLimit: 700,
           absMaxHeatSetpointLimit: 4000,
@@ -119,20 +120,20 @@ export class MatterThermostatAccessory extends BaseMatterSpaAccessory {
       || unoccupiedHeatingSetpoint === undefined) {
       return;
     }
-    const externallyMeasuredOccupancy = this.getExternallyMeasuredOccupancy();
+    const occupancy = this.getOccupancy();
 
     const systemMode = this.getCurrentSystemMode();
 
     if (this.lastLocalTemperature !== localTemperature
       || this.lastOccupiedHeatingSetpoint !== occupiedHeatingSetpoint
       || this.lastUnoccupiedHeatingSetpoint !== unoccupiedHeatingSetpoint
-      || this.lastExternallyMeasuredOccupancy !== externallyMeasuredOccupancy
+      || this.lastOccupancy !== occupancy
       || this.lastSystemMode !== systemMode) {
       const payload = {
         localTemperature,
         occupiedHeatingSetpoint,
         unoccupiedHeatingSetpoint,
-        externallyMeasuredOccupancy,
+        occupancy: { occupied: occupancy },
         controlSequenceOfOperation: this.getControlSequenceHeatingOnly(),
         systemMode,
       };
@@ -163,7 +164,7 @@ export class MatterThermostatAccessory extends BaseMatterSpaAccessory {
       this.lastLocalTemperature = localTemperature;
       this.lastOccupiedHeatingSetpoint = occupiedHeatingSetpoint;
       this.lastUnoccupiedHeatingSetpoint = unoccupiedHeatingSetpoint;
-      this.lastExternallyMeasuredOccupancy = externallyMeasuredOccupancy;
+      this.lastOccupancy = occupancy;
       this.lastSystemMode = systemMode;
     }
   }
@@ -206,8 +207,8 @@ export class MatterThermostatAccessory extends BaseMatterSpaAccessory {
     return Math.max(1000, Math.min(3600, targetCenti));
   }
 
-  private getExternallyMeasuredOccupancy() {
-    // High temperature range represents normal occupied use; low range is vacation/away.
+  private getOccupancy() {
+    // High temperature range = occupied (normal use); low range = unoccupied (vacation/away).
     return this.platform.spa!.getTempRangeIsHigh();
   }
 
