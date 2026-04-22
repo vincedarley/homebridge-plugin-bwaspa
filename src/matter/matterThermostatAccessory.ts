@@ -45,7 +45,12 @@ export class MatterThermostatAccessory extends BaseMatterSpaAccessory {
     const matterDeviceType = thermostatType.with(thermostatRequirement.with('Heating', 'Occupancy'));
     
     // WORKAROUND: Homebridge bug - it reads behavior.cluster.supportedFeatures instead of behavior.features
-    // We need to set cluster.supportedFeatures so Homebridge can detect our custom features.
+    // We need to set cluster.supportedFeatures so Homebridge can detect our custom features.  The homebridge-matter
+    // sample Thermostat accessory code is very simple and just uses defaults. Unfortunately therefore it doesn't
+    // help us understanding how to correctly code a thermostat with particular configured features.
+    // For that we need to look at homebridge and/or matter source code and documentation.
+    // This code below solves or works around the problem of having thermostat with Off/Heat states only.
+    // But it still leads to Presets issues.  We need to diagnose those further.
     const behaviorsStructure = (matterDeviceType as any)?.behaviors;
     if (behaviorsStructure) {
       const behaviorsArray = Array.isArray(behaviorsStructure) 

@@ -14,7 +14,7 @@ export class HeatingReadySwitchAccessory {
 
   constructor(
     private readonly platform: SpaHomebridgePlatform,
-    private readonly accessory: PlatformAccessory
+    private readonly accessory: PlatformAccessory,
   ) {
 
     // set accessory information

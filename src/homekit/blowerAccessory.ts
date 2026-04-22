@@ -22,7 +22,7 @@ export class BlowerAccessory {
 
   constructor(
     private readonly platform: SpaHomebridgePlatform,
-    private readonly accessory: PlatformAccessory
+    private readonly accessory: PlatformAccessory,
   ) {
 
     // set accessory information
@@ -150,11 +150,11 @@ export class BlowerAccessory {
   spaConfigurationKnown() {
     if (this.platform.spa!.getBlowerSpeed() == undefined) {
       // The blower doesn't exist.
-      this.platform.log.warn("Nonexistent blower accessory declared.");
+      this.platform.log.warn('Nonexistent blower accessory declared.');
       return;
     }
     this.numSpeedSettings = this.platform.spa!.getBlowerSpeedRange();
-    this.platform.log.info("Blower has", this.numSpeedSettings, "speeds.");
+    this.platform.log.info('Blower has', this.numSpeedSettings, 'speeds.');
     // Tell Home about the minimum step size to use.
     this.service.getCharacteristic(this.platform.Characteristic.RotationSpeed)
       .setProps({minStep: (100.0/this.numSpeedSettings)});

@@ -29,7 +29,8 @@ export class WaterFlowProblemAccessory {
 
     // get the LeakSensor service if it exists, otherwise create a new LeakSensor service
     // you can create multiple services for each accessory
-    this.service = this.accessory.getService(this.platform.Service.LeakSensor) ?? this.accessory.addService(this.platform.Service.LeakSensor);
+    this.service = this.accessory.getService(this.platform.Service.LeakSensor) 
+      ?? this.accessory.addService(this.platform.Service.LeakSensor);
 
     // set the service name, this is what is displayed as the default name on the Home app
     // in this example we are using the name we stored in the `accessory.context` in the `discoverDevices` method.
@@ -39,9 +40,9 @@ export class WaterFlowProblemAccessory {
     // see https://developers.homebridge.io/#/service/LeakSensor
 
     this.service.getCharacteristic(this.platform.Characteristic.LeakDetected)
-    .on(CharacteristicEventTypes.GET, this.handleLeakDetectedGet.bind(this));
+      .on(CharacteristicEventTypes.GET, this.handleLeakDetectedGet.bind(this));
     this.service.getCharacteristic(this.platform.Characteristic.StatusFault)
-    .on(CharacteristicEventTypes.GET, this.handleFaultDetectedGet.bind(this));
+      .on(CharacteristicEventTypes.GET, this.handleFaultDetectedGet.bind(this));
 
   }
 

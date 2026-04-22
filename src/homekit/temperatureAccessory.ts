@@ -23,7 +23,8 @@ export class TemperatureAccessory {
 
     // get the TemperatureSensor service if it exists, otherwise create a new TemperatureSensor service
     // you can create multiple services for each accessory
-    this.service = this.accessory.getService(this.platform.Service.TemperatureSensor) ?? this.accessory.addService(this.platform.Service.TemperatureSensor);
+    this.service = this.accessory.getService(this.platform.Service.TemperatureSensor) 
+      ?? this.accessory.addService(this.platform.Service.TemperatureSensor);
 
     // set the service name, this is what is displayed as the default name on the Home app
     // in this example we are using the name we stored in the `accessory.context` in the `discoverDevices` method.
@@ -79,8 +80,9 @@ export class TemperatureAccessory {
     const temperature = this.platform.spa!.getCurrentTemp();
     const val = (temperature == undefined ? null : this.platform.spa!.convertTempToC(temperature!)!);
     this.platform.log.debug('Temperature updating to',val);
-    if (val)
+    if (val) {
       this.service.getCharacteristic(this.platform.Characteristic.CurrentTemperature).updateValue(val);
+    }
   }
 
 }

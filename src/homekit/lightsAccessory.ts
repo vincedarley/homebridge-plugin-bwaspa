@@ -16,7 +16,7 @@ export class LightsAccessory {
   constructor(
     private readonly platform: SpaHomebridgePlatform,
     private readonly accessory: PlatformAccessory,
-    private readonly lightNumber : number
+    private readonly lightNumber : number,
   ) {
 
     // set accessory information
@@ -61,7 +61,7 @@ export class LightsAccessory {
   spaConfigurationKnown() {
     if (this.platform.spa!.getIsLightOn(this.lightNumber) == undefined) {
       // This light doesn't exist.
-      this.platform.log.warn("Nonexistent light", this.lightNumber, "accessory declared.");
+      this.platform.log.warn('Nonexistent light', this.lightNumber, 'accessory declared.');
     }
   }
 

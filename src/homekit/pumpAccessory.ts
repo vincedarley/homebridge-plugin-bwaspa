@@ -27,7 +27,7 @@ export class PumpAccessory {
   constructor(
     private readonly platform: SpaHomebridgePlatform,
     private readonly accessory: PlatformAccessory,
-    private readonly pumpNumber: number // 1-6 as defined by Balboa, 0 for circulation pump
+    private readonly pumpNumber: number, // 1-6 as defined by Balboa, 0 for circulation pump
   ) {
 
     // set accessory information
@@ -45,7 +45,7 @@ export class PumpAccessory {
     this.service.setCharacteristic(this.platform.Characteristic.Name, accessory.context.device.name);
     // until it is set automatically
     this.numSpeedSettings = 0;
-    this.name = (pumpNumber == 0 ? "Circulation Pump" : "Pump " + pumpNumber);
+    this.name = (pumpNumber == 0 ? 'Circulation Pump' : 'Pump ' + pumpNumber);
 
     // Important note: Home/Siri call both the "on" and the "setRotationSpeed" together when the pump
     // is turned from off to on. I've observed that using Siri the speed is set first, then 'on', and
@@ -156,11 +156,11 @@ export class PumpAccessory {
   spaConfigurationKnown() {
     if (this.platform.spa!.getPumpSpeedRange(this.pumpNumber) === 0) {
       // This pump doesn't exist.
-      this.platform.log.warn("Nonexistent", this.name, "accessory declared.");
+      this.platform.log.warn('Nonexistent', this.name, 'accessory declared.');
       return;
     }
     this.numSpeedSettings = this.platform.spa!.getPumpSpeedRange(this.pumpNumber);
-    this.platform.log.info(this.name, "has", this.numSpeedSettings, "speeds.");
+    this.platform.log.info(this.name, 'has', this.numSpeedSettings, 'speeds.');
     // Tell Home about the minimum step size to use (e.g. 50% means values of 0, 50%, 100% are ok)
     this.service.getCharacteristic(this.platform.Characteristic.RotationSpeed)
       .setProps({ minStep: (100.0 / this.numSpeedSettings) });

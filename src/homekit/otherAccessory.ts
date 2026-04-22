@@ -15,7 +15,7 @@ export class OtherAccessory {
   constructor(
     private readonly platform: SpaHomebridgePlatform,
     private readonly accessory: PlatformAccessory,
-    private readonly type : number // 0 = mister, 1 = aux1, 2 = aux2
+    private readonly type : number, // 0 = mister, 1 = aux1, 2 = aux2
   ) {
 
     // set accessory information
@@ -66,12 +66,12 @@ export class OtherAccessory {
     if (this.type === 0) {
       if (this.platform.spa!.getIsMisterOn() == undefined) {
         // The mister doesn't exist.
-        this.platform.log.warn("Nonexistent mister accessory declared.");
+        this.platform.log.warn('Nonexistent mister accessory declared.');
       }
     } else {
       if (this.platform.spa!.getIsAuxOn(this.type) == undefined) {
         // This aux device doesn't exist.
-        this.platform.log.warn("Nonexistent aux", this.type, "accessory declared.");
+        this.platform.log.warn('Nonexistent aux', this.type, 'accessory declared.');
       }
     }
   }

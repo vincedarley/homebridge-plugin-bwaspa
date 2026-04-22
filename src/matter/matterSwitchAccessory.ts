@@ -27,7 +27,7 @@ export class MatterSwitchAccessory extends BaseMatterSpaAccessory {
     super(
       platform,
       device,
-      matter.deviceTypes.OnOffLight,
+      matter.deviceTypes.OnOffSwitch,
       { onOff: { onOff: false } },
       {
         onOff: {

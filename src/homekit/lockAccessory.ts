@@ -17,7 +17,7 @@ export class LockAccessory {
   constructor(
     private readonly platform: SpaHomebridgePlatform,
     private readonly accessory: PlatformAccessory,
-    private readonly entireSpa : boolean 
+    private readonly entireSpa : boolean, 
   ) {
 
     // set accessory information
@@ -26,7 +26,8 @@ export class LockAccessory {
       .setCharacteristic(this.platform.Characteristic.Model, this.platform.name)
       .setCharacteristic(this.platform.Characteristic.SerialNumber, VERSION);
 
-    this.service = this.accessory.getService(this.platform.Service.LockMechanism) ?? this.accessory.addService(this.platform.Service.LockMechanism);
+    this.service = this.accessory.getService(this.platform.Service.LockMechanism) 
+      ?? this.accessory.addService(this.platform.Service.LockMechanism);
 
     // set the service name, this is what is displayed as the default name on the Home app
     // in this example we are using the name we stored in the `accessory.context` in the `discoverDevices` method.
