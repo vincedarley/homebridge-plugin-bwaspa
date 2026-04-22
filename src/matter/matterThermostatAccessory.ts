@@ -134,6 +134,7 @@ export class MatterThermostatAccessory extends BaseMatterSpaAccessory {
         occupiedHeatingSetpoint,
         unoccupiedHeatingSetpoint,
         occupancy: { occupied: occupancy },
+        externallyMeasuredOccupancy: true,
         controlSequenceOfOperation: this.getControlSequenceHeatingOnly(),
         systemMode,
       };
