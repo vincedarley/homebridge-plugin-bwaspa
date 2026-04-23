@@ -1,13 +1,13 @@
 import { BaseMatterSpaAccessory } from './baseMatterSpaAccessory';
 import type { SpaHomebridgePlatform } from '../platform';
 
-type SwitchKind = 'hold' | 'heatingReady' | 'vacationMode' | 'mister' | 'aux1' | 'aux2';
+type SwitchKind = 'hold' | 'heatingReady' | 'ecoMode' | 'mister' | 'aux1' | 'aux2';
 
 function kindForDeviceType(deviceType: string): SwitchKind | undefined {
   switch (deviceType) {
     case 'Hold Switch': return 'hold';
     case 'Spa Heat Mode Ready': return 'heatingReady';
-    case 'Vacation Mode': return 'vacationMode';
+    case 'Eco Mode': return 'ecoMode';
     case 'Mister': return 'mister';
     case 'Aux 1': return 'aux1';
     case 'Aux 2': return 'aux2';
@@ -83,7 +83,7 @@ export class MatterSwitchAccessory extends BaseMatterSpaAccessory {
         return this.platform.spa!.getIsHold();
       case 'heatingReady':
         return this.platform.spa!.isHeatingModeAlwaysReady();
-      case 'vacationMode':
+      case 'ecoMode':
         // User-facing semantics requested: On => Unoccupied/low temp range.
         return !this.platform.spa!.getTempRangeIsHigh();
       case 'mister':
@@ -99,7 +99,7 @@ export class MatterSwitchAccessory extends BaseMatterSpaAccessory {
 
   private async setOn(value: boolean) {
     if (!this.platform.isCurrentlyConnected()) {
-      if (this.kind === 'hold' || this.kind === 'heatingReady' || this.kind === 'vacationMode') {
+      if (this.kind === 'hold' || this.kind === 'heatingReady' || this.kind === 'ecoMode') {
         this.platform.recordAction(this.setOn.bind(this, value));
       }
       throw this.platform.connectionProblem;
@@ -114,9 +114,9 @@ export class MatterSwitchAccessory extends BaseMatterSpaAccessory {
         this.platform.spa!.setHeatingModeAlwaysReady(value);
         this.platform.log.debug('Matter set Heating Always Ready On ->', value);
         break;
-      case 'vacationMode':
+      case 'ecoMode':
         this.platform.spa!.setTempRangeIsHigh(!value);
-        this.platform.log.debug('Matter set Vacation Mode On (unoccupied/low range) ->', value);
+        this.platform.log.debug('Matter set Eco Mode On (unoccupied/low range) ->', value);
         break;
       case 'mister':
         this.platform.spa!.setMisterState(value);

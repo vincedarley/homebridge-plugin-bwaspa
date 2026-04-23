@@ -14,7 +14,7 @@
 
 This plugin connects to Balboa spa and hot-tub wifi modules and exposes spa controls such as pumps, lights, blower, thermostat, temperature, locks, hold mode, and water-flow status to Homebridge.
 
-Version 3.0.0-beta.1 adds Matter accessory support alongside the existing HomeKit exposure path. Because of that, this release now requires Homebridge 2.0.0 beta.85 or later, running on Node 22 or Node 24.  Note that Matter support is currently a work in progress - it may not work correctly, or at all, depending on your Matter setup and the rate I debug and fix issues in this plugin.
+Version 3.0.0-beta.1 adds Matter accessory support alongside the existing HomeKit exposure path. Because of that, this release now requires Homebridge 2.0.0 beta.85 or later, running on Node 22 or Node 24.  Matter support is new and less tested. 
 
 The plugin keeps control state in sync whether you manipulate the spa through Home, Siri, Matter controllers, physical controls on the spa, and takes account of situations such as filter cycles where some pumps cannot be turned off.  The Balboa Wifi module on your Spa only allows 1 connection at a time. This means you cannot use this plugin and also use the BWA Smartphone app. 
 
@@ -29,7 +29,8 @@ The default behaviour is to discover your spa automatically on the network, quer
 
 Please note if your spa is controlled by Balboa's "Control My Spa" app, hardware and cloud-service, then this plugin is not compatible, and likely never will be. It works with spas that use Balboa wifi receiver module and the Balboa Worldwide App (BWA app).  Also usage of this [project](https://github.com/NorthernMan54/esp32_balboa_spa) to create your own WiFi module is supported.
 
-Note (2025): this plugin hasn't been updated for some years because it simply works well. No meaningful bugs have been reported.  The only meaningful recent changes are to add Matter support via Homebridge 2.0's matter capabilities.
+Note the plugin during 2023-2025 wasn't updated because it simply works well. No meaningful bugs have been reported.  The only meaningful recent changes are to add Matter support via Homebridge 2.0's matter capabilities.  And even this has not required changing the code
+which communicates with the Spa, nor the HomeKit specific code.
 
 # Getting started
 
@@ -59,7 +60,9 @@ It supports pumps that are single speed (off or high) and 2-speed (off, low, hig
 
 You can control two lights and up to six pumps, a mister, a blower, 2 aux devices and the overall heating state of the spa. You can also view the state of the circulation pump.
 
-The "Thermostat" device type exposes control of the spa's target temperature and high (="Heat" in Home app) vs low (="Cool" in Home app), heating mode. The low mode is generally used as a low-energy vacation mode. The target temperature is separate for the two modes and the valid ranges are also different. If the flow sensor indicates water flow has failed, then the thermostat is "off". You cannot turn it off yourself because that is not a valid state for the spa itself.
+If using HomeKit, the "Thermostat" device type exposes control of the spa's target temperature and high (="Heat" in Home app) vs low (="Cool" in Home app), heating mode. The low mode is generally used as a low-energy eco mode. The target temperature is separate for the two modes and the valid ranges are also different. If the flow sensor indicates water flow has failed, then the thermostat is "off". You cannot turn it off yourself because that is not a valid state for the spa itself.
+
+For Matter controllers, the plugin creates two separate thermostats: "Primary Thermostat" (high range, 26.5-40°C) and "Eco Thermostat" (low range, 10-36°C). Only one shows as active at a time. Turning one on or off automatically switches the other. An "Eco Mode" switch is also provided as a convenient way to toggle between them. If the flow sensor indicates water flow has failed, then both thermostats are "off"
 
 The spa's current temperature is visible both in the Thermostat device and in the read-only Temperature Sensor. Up to you whether you want both devices exposed.
 
@@ -155,7 +158,7 @@ However, if you wish to, or need to, make some manual adjustments, you can provi
 ## Automation and notifications
 
 You can use the Home and Shortcuts apps to create automations, as you might with any homekit 
-device. For example I've created an automation which runs when I turn off my alarm in the morning and notifies me if the spa is hot enough. I also use time-based automations to adjust the thermostat during the night to make good use of cheaper electricity.
+device. For example I've created an automation which runs when I turn off my alarm in the morning and notifies me if the spa is hot enough. I also use time-based automations to adjust the thermostat during the night to make good use of cheaper electricity.  With Matter the "Spa Eco Mode" switch is the simplest way to turn off and on the Spa's heating - I get cheap electricity at night and mostly use the spa in the early morning, so I have eco mode turned on from 8am till midnight, and then off after that.
 
 <p align="left">
   <a href="https://github.com/vincedarley/homebridge-plugin-bwaspa"><img src="https://raw.githubusercontent.com/vincedarley/homebridge-plugin-bwaspa/master/graphics/spa-automation1.png" height="400"></a>

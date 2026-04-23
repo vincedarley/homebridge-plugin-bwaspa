@@ -257,8 +257,8 @@ export class SpaHomebridgePlatform implements DynamicPlatformPlugin {
       this.makeDevice({name: 'Spa Temperature Sensor', deviceType: 'Temperature Sensor'});
       this.makeDevice({name: 'Spa Thermostat', deviceType: 'Thermostat'});
       this.makeDevice({name: 'Primary Thermostat', deviceType: 'Primary Thermostat'});
-      this.makeDevice({name: 'Vacation Thermostat', deviceType: 'Vacation Thermostat'});
-      this.makeDevice({name: 'Spa Vacation Mode', deviceType: 'Vacation Mode'});
+      this.makeDevice({name: 'Eco Thermostat', deviceType: 'Eco Thermostat'});
+      this.makeDevice({name: 'Spa Eco Mode', deviceType: 'Eco Mode'});
       this.makeDevice({name: 'Spa Flow', deviceType: 'Water Flow Problem Sensor'});
       this.makeDevice({name: 'Spa Flow Low', deviceType: 'Water Flow Low Sensor'});
       this.makeDevice({name: 'Hold Spa', deviceType: 'Hold Switch'});
@@ -297,7 +297,7 @@ export class SpaHomebridgePlatform implements DynamicPlatformPlugin {
     });
 
     // This is a Matter-only warning endpoint.
-    if (device.deviceType === 'Water Flow Low Sensor' || device.deviceType === 'Vacation Mode') {
+    if (device.deviceType === 'Water Flow Low Sensor' || device.deviceType === 'Eco Mode') {
       return;
     }
 
@@ -399,7 +399,7 @@ export class SpaHomebridgePlatform implements DynamicPlatformPlugin {
   private isMatterSwitchType(deviceType: string) {
     return deviceType === 'Hold Switch'
       || deviceType === 'Spa Heat Mode Ready'
-      || deviceType === 'Vacation Mode'
+      || deviceType === 'Eco Mode'
       || deviceType === 'Mister'
       || deviceType === 'Aux 1'
       || deviceType === 'Aux 2';
@@ -410,7 +410,7 @@ export class SpaHomebridgePlatform implements DynamicPlatformPlugin {
   }
 
   private isMatterThermostatType(deviceType: string) {
-    return deviceType === 'Primary Thermostat' || deviceType === 'Vacation Thermostat';
+    return deviceType === 'Primary Thermostat' || deviceType === 'Eco Thermostat';
   }
 
   private createMatterController(device: { name: string; deviceType: string }): any {
@@ -431,7 +431,7 @@ export class SpaHomebridgePlatform implements DynamicPlatformPlugin {
       return new MatterLockAccessory(this, device);
     }
     if (this.isMatterThermostatType(deviceType)) {
-      const mode = deviceType === 'Primary Thermostat' ? 'primary' : 'vacation';
+      const mode = deviceType === 'Primary Thermostat' ? 'primary' : 'eco';
       return new MatterThermostatAccessory(this, device, mode);
     }
     if (deviceType === 'Temperature Sensor') {

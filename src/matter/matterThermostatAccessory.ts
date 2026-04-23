@@ -5,7 +5,7 @@ import type { SpaHomebridgePlatform } from '../platform';
 /*
  * The Spa's heating control works in a very specific way. First there is a primary mode "High" which we will refer to as "Heat" or the
  * primary thermostat. This allows a temperature range of 26.5C-40C (80F-104F) which is the normal operating range for the spa when in use. 
- * Then there is a secondary mode "Low" which we will refer to as "Vacation Mode" or the secondary thermostat. This allows a 
+ * Then there is a secondary mode "Low" which we will refer to as "Eco Mode" or the secondary thermostat. This allows a 
  * temperature range of 10C-36C (50F-96F) which is intended for when the spa is not in use and you want to maintain a lower temperature 
  * to save energy while still preventing freezing and allowing faster heating when you want to use it again. 
  * The user can switch between these two modes by changing the "temperature range" setting on the spa (Low/High). 
@@ -14,18 +14,26 @@ import type { SpaHomebridgePlatform } from '../platform';
  * The question is how best to represent this in Matter in a user-friendly fashion. 
  * 
  * The approach we use is as follows:
- * - We have two Matter thermostats: a "primary" one and a "vacation" one. Each can be in "Heat" or "Off" mode.
+ * - We have two Matter thermostats: a "primary" one and an "eco" one. Each can be in "Heat" or "Off" mode.
  * - Setting one to Heat automatically switches the spa mode, causing the other thermostat to show Off on the next update.
  * - The primary thermostat controls the high temperature range (26.5-40°C) and is active when spa is in high mode.
- * - The vacation thermostat controls the low temperature range (10-36°C) and is active when spa is in low mode.
- * - Separately, we provide a "Vacation Mode" switch as a convenience to toggle between the two modes.
+ * - The eco thermostat controls the low temperature range (10-36°C) and is active when spa is in low mode.
+ * - Separately, we provide an "Eco Mode" switch as a convenience to toggle between the two modes.
  * - The user can choose which accessories to expose in their Matter UI.
  * 
- * Implementation: This class is instantiated twice with different 'mode' parameters ('primary' or 'vacation').
+ * Implementation: This class is instantiated twice with different 'mode' parameters ('primary' or 'eco').
  * The mode determines which spa temperature range this thermostat controls and when it shows as active.
+ * 
+ * Note that we previously considered an approach with a single thermostat with "occupancy" status, but this didn't
+ * provide a nice UI, and seemed less supported by Homebridge-Matter.  
+ * 
+ * A final option worth considering for Matter is a "Water Heater" device type. While this is
+ * not designed for Spas, it does have some semantic overlap (e.g. the schedule you want to set up for hot water for
+ * showers). Worth investigating at some point, especially if the Home UI for a water heater is nice (reading Apple's
+ * developer documentation it looks well supported). However WaterHeater seems not to be in Homebridge-Matter yet.
  */
 export class MatterThermostatAccessory extends BaseMatterSpaAccessory {
-  private readonly mode: 'primary' | 'vacation';
+  private readonly mode: 'primary' | 'eco';
   private readonly systemModeOff: number;
   private readonly systemModeHeat: number;
   private readonly controlSequenceHeatingOnly: number;
@@ -37,7 +45,7 @@ export class MatterThermostatAccessory extends BaseMatterSpaAccessory {
   constructor(
     platform: SpaHomebridgePlatform,
     device: { name: string; deviceType: string },
-    mode: 'primary' | 'vacation',
+    mode: 'primary' | 'eco',
   ) {
     const matter = (platform.api as any).matter;
     const systemModeOff = matter.types.Thermostat?.SystemMode?.Off;
@@ -91,7 +99,7 @@ export class MatterThermostatAccessory extends BaseMatterSpaAccessory {
     
     // Set temperature limits based on mode
     // Primary (high range): 26.5-40°C = 2650-4000 (in hundredths)
-    // Vacation (low range): 10-36°C = 1000-3600 (in hundredths)
+    // Eco (low range): 10-36°C = 1000-3600 (in hundredths)
     const minLimit = mode === 'primary' ? 2650 : 1000;
     const maxLimit = mode === 'primary' ? 4000 : 3600;
     const initialSetpoint = mode === 'primary' ? 3850 : 3000;
@@ -248,10 +256,10 @@ export class MatterThermostatAccessory extends BaseMatterSpaAccessory {
       
       if (flowState === FLOW_GOOD && isThisThermostatActive) {
         // Turn off this thermostat by switching to the other one
-        // Primary Off → switch to vacation (low range), Vacation Off → switch to primary (high range)
-        const shouldBeHighRange = this.mode === 'vacation';
+        // Primary Off → switch to eco (low range), Eco Off → switch to primary (high range)
+        const shouldBeHighRange = this.mode === 'eco';
         this.platform.spa!.setTempRangeIsHigh(shouldBeHighRange);
-        this.platform.log.debug(`Matter turned off ${this.mode} Thermostat -> switching to ${shouldBeHighRange ? 'primary' : 'vacation'}`);
+        this.platform.log.debug(`Matter turned off ${this.mode} Thermostat -> switching to ${shouldBeHighRange ? 'primary' : 'eco'}`);
         return;
       }
       // If this thermostat is already off, do nothing
@@ -293,7 +301,7 @@ export class MatterThermostatAccessory extends BaseMatterSpaAccessory {
         tempC = 40.0;
       }
     } else {
-      // Low range (vacation): 10-36°C
+      // Low range (eco): 10-36°C
       if (tempC < 10.0) {
         tempC = 10.0;
       }
