@@ -121,7 +121,7 @@ export class SpaHomebridgePlatform implements DynamicPlatformPlugin {
    * It should be used to setup event handlers for characteristics and update respective values.
    */
   configureAccessory(accessory: PlatformAccessory) {
-    this.log.info('Restoring accessory from cache:', accessory.displayName);
+    this.log.info('Restoring homekit accessory from cache:', accessory.displayName);
 
     this.makeAccessory(accessory);
 
@@ -296,8 +296,11 @@ export class SpaHomebridgePlatform implements DynamicPlatformPlugin {
       this.log.error('Unhandled Matter setup error for', device?.name ?? 'unknown device', 'of type', device?.deviceType ?? 'unknown', error);
     });
 
-    // This is a Matter-only warning endpoint.
-    if (device.deviceType === 'Water Flow Low Sensor' || device.deviceType === 'Eco Mode') {
+    // These device types are Matter-only and should not be registered as HomeKit accessories.
+    if (device.deviceType === 'Water Flow Low Sensor' 
+        || device.deviceType === 'Eco Mode'
+        || device.deviceType === 'Primary Thermostat'
+        || device.deviceType === 'Eco Thermostat') {
       return;
     }
 
