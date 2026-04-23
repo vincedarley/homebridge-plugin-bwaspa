@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## 3.0.0-beta.38 (23.04.2026)
+- Matter is working on both Apple Home and Home Assistant in my testing
+- For Matter there is a different approach to the "high" and "low" heating modes. We've replaced the HomeKit approach 
+  of a single thermostat that is switched between "Heat" and "Cool" with one "Spa Vacation Mode" switch and two
+  thermostats - the Primary Thermostat and the Vacation Thermostat. Their Off/Heat status is automatically kept in sync.
+  In most cases you probably only need the Primary Thermostat and the Spa Vacation Mode switch in your UI.
+- General code clean up, removing warnings.
+
 ## 3.0.0-beta.11 (15.04.2026)
 - Move from using a matter Pump to a Fan.  The Pumps seem poorly supported at present.
 
