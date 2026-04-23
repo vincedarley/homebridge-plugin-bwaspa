@@ -9,6 +9,7 @@ All notable changes to this project will be documented in this file.
   thermostats - the Primary Thermostat and the Eco Thermostat. Their Off/Heat status is automatically kept in sync.
   In most cases you probably only need the Primary Thermostat and the Spa Eco Mode switch in your UI.
 - General code clean up, removing warnings.
+- Updated README.md to explain approach to Matter
 
 ## 3.0.0-beta.11 (15.04.2026)
 - Move from using a matter Pump to a Fan.  The Pumps seem poorly supported at present.

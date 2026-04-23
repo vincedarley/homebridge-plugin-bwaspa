@@ -1,7 +1,7 @@
 {
   "pluginAlias": "Balboa-Spa",
   "pluginType": "platform",
-  "headerDisplay": "This plugin works with Balboa-Spa wifi modules. Version 3.0.0-beta.1 requires Homebridge 2.0.0-beta.85 or later on Node 22 or 24 because of Matter support. Spa devices such as pumps, lights, thermostat, locks, and sensors can be exposed through Homebridge, with most setups remaining automatic.",
+  "headerDisplay": "This plugin works with Balboa-Spa wifi modules. Spa devices such as pumps, lights, thermostat, locks, and sensors can be exposed through Homebridge, with most setups remaining automatic.",
   "singular": true,
   "layout": [
     {
