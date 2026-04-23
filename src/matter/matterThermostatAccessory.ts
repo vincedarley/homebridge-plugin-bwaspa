@@ -92,7 +92,7 @@ export class MatterThermostatAccessory extends BaseMatterSpaAccessory {
       
       if (thermostatBehavior && thermostatBehavior.cluster && thermostatBehavior.features) {
         thermostatBehavior.cluster.supportedFeatures = thermostatBehavior.features;
-        platform.log.info('[Matter Thermostat] Set cluster.supportedFeatures for Homebridge detection:', 
+        platform.log.debug('[Matter Thermostat] Set cluster.supportedFeatures for Homebridge detection:', 
           JSON.stringify(thermostatBehavior.features));
       }
     }
@@ -165,10 +165,10 @@ export class MatterThermostatAccessory extends BaseMatterSpaAccessory {
         systemMode,
       };
 
-      this.platform.log.info('[Matter Thermostat] update payload', this.UUID, JSON.stringify(payload));
+      this.platform.log.debug('[Matter Thermostat] update payload', this.UUID, JSON.stringify(payload));
       try {
         const beforeState = await this.readState('thermostat');
-        this.platform.log.info('[Matter Thermostat] current thermostat state before update', this.UUID, JSON.stringify(beforeState ?? {}));
+        this.platform.log.debug('[Matter Thermostat] current thermostat state before update', this.UUID, JSON.stringify(beforeState ?? {}));
       } catch (stateReadError) {
         this.platform.log.error('[Matter Thermostat] could not read thermostat state before update for', this.UUID, stateReadError);
       }
