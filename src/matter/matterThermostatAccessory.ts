@@ -2,20 +2,42 @@ import { FLOW_FAILED, FLOW_GOOD } from '../spaClient';
 import { BaseMatterSpaAccessory } from './baseMatterSpaAccessory';
 import type { SpaHomebridgePlatform } from '../platform';
 
+/*
+ * The Spa's heating control works in a very specific way. First there is a primary mode "High" which we will refer to as "Heat" or the
+ * primary thermostat. This allows a temperature range of 26.5C-40C (80F-104F) which is the normal operating range for the spa when in use. 
+ * Then there is a secondary mode "Low" which we will refer to as "Vacation Mode" or the secondary thermostat. This allows a 
+ * temperature range of 10C-36C (50F-96F) which is intended for when the spa is not in use and you want to maintain a lower temperature 
+ * to save energy while still preventing freezing and allowing faster heating when you want to use it again. 
+ * The user can switch between these two modes by changing the "temperature range" setting on the spa (Low/High). 
+ * A final detail is that when the water flow has failed or is slow, the thermostat turns off.
+ * 
+ * The question is how best to represent this in Matter in a user-friendly fashion. 
+ * 
+ * The approach we use is as follows:
+ * - We have two Matter thermostats: a "primary" one and a "vacation" one. Each can be in "Heat" or "Off" mode.
+ * - Setting one to Heat automatically switches the spa mode, causing the other thermostat to show Off on the next update.
+ * - The primary thermostat controls the high temperature range (26.5-40°C) and is active when spa is in high mode.
+ * - The vacation thermostat controls the low temperature range (10-36°C) and is active when spa is in low mode.
+ * - Separately, we provide a "Vacation Mode" switch as a convenience to toggle between the two modes.
+ * - The user can choose which accessories to expose in their Matter UI.
+ * 
+ * Implementation: This class is instantiated twice with different 'mode' parameters ('primary' or 'vacation').
+ * The mode determines which spa temperature range this thermostat controls and when it shows as active.
+ */
 export class MatterThermostatAccessory extends BaseMatterSpaAccessory {
+  private readonly mode: 'primary' | 'vacation';
   private readonly systemModeOff: number;
   private readonly systemModeHeat: number;
   private readonly controlSequenceHeatingOnly: number;
 
   private lastLocalTemperature: number | undefined = undefined;
   private lastOccupiedHeatingSetpoint: number | undefined = undefined;
-  private lastUnoccupiedHeatingSetpoint: number | undefined = undefined;
-  private lastOccupancy: boolean | undefined = undefined;
   private lastSystemMode: number | undefined = undefined;
 
   constructor(
     platform: SpaHomebridgePlatform,
     device: { name: string; deviceType: string },
+    mode: 'primary' | 'vacation',
   ) {
     const matter = (platform.api as any).matter;
     const systemModeOff = matter.types.Thermostat?.SystemMode?.Off;
@@ -25,12 +47,12 @@ export class MatterThermostatAccessory extends BaseMatterSpaAccessory {
       throw new Error('Matter Thermostat enums are unavailable: Off/Heat/SystemSequence HeatingOnly are required.');
     }
 
-    // Create thermostat with Heating and Occupancy features
+    // Create thermostat with Heating feature only
     // - Heating: core functionality for spa heating control
-    // - Occupancy: track occupied (high temp range) vs unoccupied (low/vacation temp range)
-    // - NO AutoMode = no deadband constraint between heating/cooling setpoints
-    // - NO Cooling = heating-only spa behavior (spa cannot cool, only heat)
-    // - NO Presets = we don't use preset schedules (enabling Presets requires persistedPresets initialization)
+    // - NO Occupancy: using two separate thermostat instances instead
+    // - NO AutoMode: no deadband constraint between heating/cooling setpoints
+    // - NO Cooling: heating-only spa behavior (spa cannot cool, only heat)
+    // - NO Presets: we don't use preset schedules
     const thermostatType = matter.deviceTypes.Thermostat;
     if (typeof thermostatType?.with !== 'function') {
       throw new Error('Matter Thermostat device type does not support .with().');
@@ -39,10 +61,10 @@ export class MatterThermostatAccessory extends BaseMatterSpaAccessory {
     const thermostatRequirement = thermostatType?.requirements?.Thermostat
       ?? thermostatType?.requirements?.ThermostatServer;
     if (typeof thermostatRequirement?.with !== 'function') {
-      throw new Error('Matter Thermostat requirement does not support .with(Heating, Occupancy).');
+      throw new Error('Matter Thermostat requirement does not support .with(Heating).');
     }
 
-    const matterDeviceType = thermostatType.with(thermostatRequirement.with('Heating', 'Occupancy'));
+    const matterDeviceType = thermostatType.with(thermostatRequirement.with('Heating'));
     
     // WORKAROUND: Homebridge bug - it reads behavior.cluster.supportedFeatures instead of behavior.features
     // We need to set cluster.supportedFeatures so Homebridge can detect our custom features.  The homebridge-matter
@@ -67,6 +89,13 @@ export class MatterThermostatAccessory extends BaseMatterSpaAccessory {
       }
     }
     
+    // Set temperature limits based on mode
+    // Primary (high range): 26.5-40°C = 2650-4000 (in hundredths)
+    // Vacation (low range): 10-36°C = 1000-3600 (in hundredths)
+    const minLimit = mode === 'primary' ? 2650 : 1000;
+    const maxLimit = mode === 'primary' ? 4000 : 3600;
+    const initialSetpoint = mode === 'primary' ? 3850 : 3000;
+    
     super(
       platform,
       device,
@@ -74,14 +103,11 @@ export class MatterThermostatAccessory extends BaseMatterSpaAccessory {
       {
         thermostat: {
           localTemperature: 2000,
-          occupiedHeatingSetpoint: 3850,
-          unoccupiedHeatingSetpoint: 3000,
-          occupancy: { occupied: true },
-          externallyMeasuredOccupancy: true,
+          occupiedHeatingSetpoint: initialSetpoint,
           absMinHeatSetpointLimit: 700,
           absMaxHeatSetpointLimit: 4000,
-          minHeatSetpointLimit: 1000,
-          maxHeatSetpointLimit: 4000,
+          minHeatSetpointLimit: minLimit,
+          maxHeatSetpointLimit: maxLimit,
           systemMode: systemModeHeat,
           controlSequenceOfOperation: controlSequenceHeatingOnly,
         },
@@ -98,6 +124,7 @@ export class MatterThermostatAccessory extends BaseMatterSpaAccessory {
       },
     );
     
+    this.mode = mode;
     this.systemModeOff = systemModeOff;
     this.systemModeHeat = systemModeHeat;
     this.controlSequenceHeatingOnly = controlSequenceHeatingOnly;
@@ -114,27 +141,18 @@ export class MatterThermostatAccessory extends BaseMatterSpaAccessory {
 
     const localTemperature = this.getLocalTemperature();
     const occupiedHeatingSetpoint = this.getOccupiedHeatingSetpoint();
-    const unoccupiedHeatingSetpoint = this.getUnoccupiedHeatingSetpoint();
-    if (localTemperature === undefined
-      || occupiedHeatingSetpoint === undefined
-      || unoccupiedHeatingSetpoint === undefined) {
+    if (localTemperature === undefined || occupiedHeatingSetpoint === undefined) {
       return;
     }
-    const occupancy = this.getOccupancy();
 
     const systemMode = this.getCurrentSystemMode();
 
     if (this.lastLocalTemperature !== localTemperature
       || this.lastOccupiedHeatingSetpoint !== occupiedHeatingSetpoint
-      || this.lastUnoccupiedHeatingSetpoint !== unoccupiedHeatingSetpoint
-      || this.lastOccupancy !== occupancy
       || this.lastSystemMode !== systemMode) {
       const payload = {
         localTemperature,
         occupiedHeatingSetpoint,
-        unoccupiedHeatingSetpoint,
-        occupancy: { occupied: occupancy },
-        externallyMeasuredOccupancy: true,
         controlSequenceOfOperation: this.getControlSequenceHeatingOnly(),
         systemMode,
       };
@@ -164,8 +182,6 @@ export class MatterThermostatAccessory extends BaseMatterSpaAccessory {
 
       this.lastLocalTemperature = localTemperature;
       this.lastOccupiedHeatingSetpoint = occupiedHeatingSetpoint;
-      this.lastUnoccupiedHeatingSetpoint = unoccupiedHeatingSetpoint;
-      this.lastOccupancy = occupancy;
       this.lastSystemMode = systemMode;
     }
   }
@@ -183,7 +199,11 @@ export class MatterThermostatAccessory extends BaseMatterSpaAccessory {
   }
 
   private getOccupiedHeatingSetpoint() {
-    const target = this.platform.spa!.getTargetTempHigh();
+    // Route to correct spa temperature range based on mode
+    const target = this.mode === 'primary' 
+      ? this.platform.spa!.getTargetTempHigh()
+      : this.platform.spa!.getTargetTempLow();
+    
     if (target === undefined) {
       return undefined;
     }
@@ -192,25 +212,13 @@ export class MatterThermostatAccessory extends BaseMatterSpaAccessory {
       return undefined;
     }
     const targetCenti = Math.round(targetC * 100);
-    return Math.max(2650, Math.min(4000, targetCenti));
-  }
-
-  private getUnoccupiedHeatingSetpoint() {
-    const target = this.platform.spa!.getTargetTempLow();
-    if (target === undefined) {
-      return undefined;
+    
+    // Apply limits based on mode
+    if (this.mode === 'primary') {
+      return Math.max(2650, Math.min(4000, targetCenti)); // 26.5-40°C
+    } else {
+      return Math.max(1000, Math.min(3600, targetCenti)); // 10-36°C
     }
-    const targetC = this.platform.spa!.convertTempToC(target);
-    if (targetC === undefined) {
-      return undefined;
-    }
-    const targetCenti = Math.round(targetC * 100);
-    return Math.max(1000, Math.min(3600, targetCenti));
-  }
-
-  private getOccupancy() {
-    // High temperature range = occupied (normal use); low range = unoccupied (vacation/away).
-    return this.platform.spa!.getTempRangeIsHigh();
   }
 
   private getCurrentSystemMode() {
@@ -218,7 +226,12 @@ export class MatterThermostatAccessory extends BaseMatterSpaAccessory {
     if (flowState === FLOW_FAILED) {
       return this.getSystemModeOff();
     }
-    return this.getSystemModeHeat();
+    
+    // Determine if this thermostat should be active based on mode
+    const isSpaInHighRange = this.platform.spa!.getTempRangeIsHigh();
+    const isThisThermostatActive = this.mode === 'primary' ? isSpaInHighRange : !isSpaInHighRange;
+    
+    return isThisThermostatActive ? this.getSystemModeHeat() : this.getSystemModeOff();
   }
 
   private async setSystemMode(mode: number) {
@@ -227,22 +240,37 @@ export class MatterThermostatAccessory extends BaseMatterSpaAccessory {
     }
 
     const flowState = this.platform.spa!.getFlowState();
+    
     if (mode === this.getSystemModeOff()) {
-      if (flowState === FLOW_GOOD) {
-        throw new Error('Spa doesn\'t allow turning heating off while flow is good. Reverting.');
+      // Check if we're trying to turn off the currently active thermostat
+      const isSpaInHighRange = this.platform.spa!.getTempRangeIsHigh();
+      const isThisThermostatActive = this.mode === 'primary' ? isSpaInHighRange : !isSpaInHighRange;
+      
+      if (flowState === FLOW_GOOD && isThisThermostatActive) {
+        // Turn off this thermostat by switching to the other one
+        // Primary Off → switch to vacation (low range), Vacation Off → switch to primary (high range)
+        const shouldBeHighRange = this.mode === 'vacation';
+        this.platform.spa!.setTempRangeIsHigh(shouldBeHighRange);
+        this.platform.log.debug(`Matter turned off ${this.mode} Thermostat -> switching to ${shouldBeHighRange ? 'primary' : 'vacation'}`);
+        return;
       }
+      // If this thermostat is already off, do nothing
       return;
     }
 
     if (mode !== this.getSystemModeHeat()) {
-      throw new Error('Spa thermostat supports Heat mode only (plus Off during flow faults).');
+      throw new Error('Spa thermostat supports Heat and Off modes only.');
     }
 
     if (flowState !== FLOW_GOOD) {
       throw new Error('Water flow is low or has failed. Heating off');
     }
 
-    this.platform.log.debug('Matter set Thermostat mode -> Heat');
+    // Setting to Heat: switch spa to this thermostat's mode
+    // This will cause the other thermostat to show Off on next update
+    const shouldBeHighRange = this.mode === 'primary';
+    this.platform.spa!.setTempRangeIsHigh(shouldBeHighRange);
+    this.platform.log.debug(`Matter set ${this.mode} Thermostat mode -> Heat (spa range: ${shouldBeHighRange ? 'high' : 'low'})`);
   }
 
   private async setTargetTemperatureFromSetpoint(setpoint: number | undefined) {
@@ -254,15 +282,24 @@ export class MatterThermostatAccessory extends BaseMatterSpaAccessory {
     }
 
     let tempC = setpoint / 100.0;
-    if (tempC > 40.0) {
-      tempC = 40.0;
-    }
-    if (this.platform.spa!.getTempRangeIsHigh()) {
+    
+    // Apply range constraints based on mode
+    if (this.mode === 'primary') {
+      // High range (occupied): 26.5-40°C
       if (tempC < 26.5) {
         tempC = 26.5;
       }
-    } else if (tempC > 36.0) {
-      tempC = 36.0;
+      if (tempC > 40.0) {
+        tempC = 40.0;
+      }
+    } else {
+      // Low range (vacation): 10-36°C
+      if (tempC < 10.0) {
+        tempC = 10.0;
+      }
+      if (tempC > 36.0) {
+        tempC = 36.0;
+      }
     }
 
     const converted = this.platform.spa!.convertTempFromC(tempC);
@@ -271,7 +308,7 @@ export class MatterThermostatAccessory extends BaseMatterSpaAccessory {
     }
 
     this.platform.spa!.setTargetTemperature(converted);
-    this.platform.log.debug('Matter set Thermostat target temperature ->', tempC, 'C');
+    this.platform.log.debug(`Matter set ${this.mode} Thermostat target temperature ->`, tempC, 'C');
   }
 
   private getSystemModeOff() {
