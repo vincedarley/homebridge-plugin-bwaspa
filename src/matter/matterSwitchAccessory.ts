@@ -48,6 +48,11 @@ export class MatterSwitchAccessory extends BaseMatterSpaAccessory {
       default:
         break;
     }
+    
+    // Set initial state for all switch types
+    void this.updateCharacteristics().catch((error: unknown) => {
+      this.platform.log.warn('Could not set initial switch state for', this.displayName, 'because:', error);
+    });
   }
 
   async updateCharacteristics() {

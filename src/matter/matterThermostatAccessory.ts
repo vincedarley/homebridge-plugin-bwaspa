@@ -139,7 +139,10 @@ export class MatterThermostatAccessory extends BaseMatterSpaAccessory {
   }
 
   spaConfigurationKnown() {
-    // nothing to do
+    // Set initial state based on which thermostat should be active
+    void this.updateCharacteristics().catch((error: unknown) => {
+      this.platform.log.warn('Could not set initial thermostat state for', this.displayName, 'because:', error);
+    });
   }
 
   async updateCharacteristics() {
