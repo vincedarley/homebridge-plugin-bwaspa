@@ -18,7 +18,6 @@ export class MatterPumpAccessory extends BaseMatterSpaAccessory {
   constructor(
     platform: SpaHomebridgePlatform,
     device: { name: string; deviceType: string },
-    pumpNumber: number,
   ) {
     const matter = (platform.api as any).matter;
     super(
@@ -47,7 +46,7 @@ export class MatterPumpAccessory extends BaseMatterSpaAccessory {
         },
       },
     );
-    this.pumpNumber = pumpNumber;
+    this.pumpNumber = device.deviceType === 'Circulation Pump' ? 0 : parseInt(device.deviceType.split(' ')[1], 10);
   }
 
   spaConfigurationKnown() {

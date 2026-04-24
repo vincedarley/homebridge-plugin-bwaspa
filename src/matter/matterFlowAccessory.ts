@@ -9,9 +9,9 @@ export class MatterFlowAccessory extends BaseMatterSpaAccessory {
   constructor(
     platform: SpaHomebridgePlatform,
     device: { name: string; deviceType: string },
+    mode: 'failed' | 'low',
   ) {
     const matter = (platform.api as any).matter;
-    const mode: 'failed' | 'low' = device.deviceType === 'Water Flow Problem Sensor' ? 'failed' : 'low';
     const matterDeviceType = mode === 'failed'
       ? matter.deviceTypes.LeakSensor
       : matter.deviceTypes.ContactSensor;

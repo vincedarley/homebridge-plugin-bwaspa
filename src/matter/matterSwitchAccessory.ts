@@ -22,6 +22,7 @@ export class MatterSwitchAccessory extends BaseMatterSpaAccessory {
   constructor(
     platform: SpaHomebridgePlatform,
     device: { name: string; deviceType: string },
+    kind: SwitchKind,
   ) {
     const matter = (platform.api as any).matter;
     super(
@@ -36,7 +37,7 @@ export class MatterSwitchAccessory extends BaseMatterSpaAccessory {
         },
       },
     );
-    this.kind = kindForDeviceType(device.deviceType)!;
+    this.kind = kind;
   }
 
   spaConfigurationKnown() {

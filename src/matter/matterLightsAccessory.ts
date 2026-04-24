@@ -8,6 +8,7 @@ export class MatterLightsAccessory extends BaseMatterSpaAccessory {
   constructor(
     platform: SpaHomebridgePlatform,
     device: { name: string; deviceType: string },
+    lightNumber: number,
   ) {
     const matter = (platform.api as any).matter;
     super(
@@ -22,7 +23,7 @@ export class MatterLightsAccessory extends BaseMatterSpaAccessory {
         },
       },
     );
-    this.lightNumber = parseInt(device.deviceType.split(' ')[1], 10);
+    this.lightNumber = lightNumber;
   }
 
   spaConfigurationKnown() {

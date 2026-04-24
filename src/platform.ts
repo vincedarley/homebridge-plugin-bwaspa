@@ -241,48 +241,50 @@ export class SpaHomebridgePlatform implements DynamicPlatformPlugin {
     if (this.config.autoCreateAccessories && this.spa && this.spa.accurateConfigReadFromSpa) {
       this.log.info('Autocreating accessories...');
       if (this.spa!.getIsLightOn(1) != undefined) {
-        this.makeDevice({name: 'Spa Lights 1', deviceType: 'Lights 1'});
+        this.makeDevice('Spa Lights 1', 'Lights 1');
       }
       if (this.spa!.getIsLightOn(2) != undefined) {
-        this.makeDevice({name: 'Spa Lights 2', deviceType: 'Lights 2'});
+        this.makeDevice('Spa Lights 2', 'Lights 2');
       }
       for (let pump = 1; pump <=6; pump++) {
         if (this.spa!.getPumpSpeedRange(pump) != 0) {
-          this.makeDevice({name: 'Spa Pump '+pump, deviceType: 'Pump '+pump});
+          this.makeDevice('Spa Pump '+pump, 'Pump '+pump);
         }
       }
       if (this.spa!.getPumpSpeedRange(0) != 0) {
-        this.makeDevice({name: 'Spa Circulation Pump', deviceType: 'Circulation Pump'});
+        this.makeDevice('Spa Circulation Pump', 'Circulation Pump');
       }
-      this.makeDevice({name: 'Spa Temperature Sensor', deviceType: 'Temperature Sensor'});
-      this.makeDevice({name: 'Spa Thermostat', deviceType: 'Thermostat'});
-      this.makeDevice({name: 'Primary Thermostat', deviceType: 'Primary Thermostat'});
-      this.makeDevice({name: 'Eco Thermostat', deviceType: 'Eco Thermostat'});
-      this.makeDevice({name: 'Spa Eco Mode', deviceType: 'Eco Mode'});
-      this.makeDevice({name: 'Spa Flow', deviceType: 'Water Flow Problem Sensor'});
-      this.makeDevice({name: 'Spa Flow Low', deviceType: 'Water Flow Low Sensor'});
-      this.makeDevice({name: 'Hold Spa', deviceType: 'Hold Switch'});
-      this.makeDevice({name: 'Spa Settings', deviceType: 'Spa Settings'});
-      this.makeDevice({name: 'Spa Panel', deviceType: 'Spa Panel'});
-      this.makeDevice({name: 'Spa Heat Mode Ready', deviceType: 'Spa Heat Mode Ready'});
+      this.makeDevice('Spa Temperature Sensor', 'Temperature Sensor');
+      this.makeDevice('Spa Thermostat', 'Thermostat');
+      this.makeDevice('Primary Thermostat', 'Primary Thermostat');
+      this.makeDevice('Eco Thermostat', 'Eco Thermostat');
+      this.makeDevice('Spa Eco Mode', 'Eco Mode');
+      this.makeDevice('Spa Flow Error', 'Water Flow Problem Sensor');
+      this.makeDevice('Spa Flow Low', 'Water Flow Low Sensor');
+      this.makeDevice('Hold Spa', 'Hold Switch');
+      this.makeDevice('Spa Settings', 'Spa Settings');
+      this.makeDevice('Spa Panel', 'Spa Panel');
+      this.makeDevice('Spa Heat Mode Ready', 'Spa Heat Mode Ready');
       if (this.spa!.getBlowerSpeedRange() != 0) {
-        this.makeDevice({name: 'Spa Blower', deviceType: 'Blower'});
+        this.makeDevice('Spa Blower', 'Blower');
       }
       if (this.spa!.getIsMisterOn() != undefined) {
-        this.makeDevice({name: 'Spa Mister', deviceType: 'Mister'});
+        this.makeDevice('Spa Mister', 'Mister');
       }
       if (this.spa!.getIsAuxOn(1) != undefined) {
-        this.makeDevice({name: 'Spa Aux 1', deviceType: 'Aux 1'});
+        this.makeDevice('Spa Aux 1', 'Aux 1');
       }
       if (this.spa!.getIsAuxOn(2) != undefined) {
-        this.makeDevice({name: 'Spa Aux 2', deviceType: 'Aux 2'});
+        this.makeDevice('Spa Aux 2', 'Aux 2');
       }
     }
     for (const device of this.devices) {
       if (!device.deviceType) {
         this.log.warn('Device Type Missing');
+      } else if (!device.name) {
+        this.log.warn('Device Name Missing for type:', device.deviceType);
       } else {
-        this.makeDevice(device);
+        this.makeDevice(device.name, device.deviceType);
       }
     }
   }
@@ -291,30 +293,32 @@ export class SpaHomebridgePlatform implements DynamicPlatformPlugin {
    * Accessories must only be registered once, previously created accessories
    * must not be registered again to prevent "duplicate UUID" errors.
    */
-  private makeDevice(device: any) {
-    void this.makeMatterDevice(device).catch((error) => {
-      this.log.error('Unhandled Matter setup error for', device?.name ?? 'unknown device', 'of type', device?.deviceType ?? 'unknown', error);
+  private makeDevice(name: string, deviceType: string) {
+    void this.makeMatterDevice(name, deviceType).catch((error) => {
+      this.log.error('Unhandled Matter setup error for', name, 'of type', deviceType, error);
     });
 
     // These device types are Matter-only and should not be registered as HomeKit accessories.
-    if (device.deviceType === 'Water Flow Low Sensor' 
-        || device.deviceType === 'Eco Mode'
-        || device.deviceType === 'Primary Thermostat'
-        || device.deviceType === 'Eco Thermostat') {
+    if (deviceType === 'Water Flow Low Sensor' 
+        || deviceType === 'Eco Mode'
+        || deviceType === 'Primary Thermostat'
+        || deviceType === 'Eco Thermostat') {
       return;
     }
+
+    const device = { name, deviceType };
 
     // generate a unique id for the accessory this should be generated from
     // something globally unique, but constant, for example, the device serial
     // number or MAC address
-    const uuid = this.api.hap.uuid.generate(device.deviceType);
+    const uuid = this.api.hap.uuid.generate(deviceType);
 
     // check that the device has not already been registered by checking the
     // cached devices we stored in the `configureAccessory` method above
     if (!this.accessories.find(accessory => accessory.UUID === uuid)) {
-      this.log.info('Registering new accessory:', device.name, 'of type', device.deviceType);
+      this.log.info('Registering new accessory:', name, 'of type', deviceType);
       // create a new accessory
-      const accessory = new this.api.platformAccessory(device.name, uuid);
+      const accessory = new this.api.platformAccessory(name, uuid);
 
       // store a copy of the device object in the `accessory.context`
       // the `context` property can be used to store any data about the accessory you may need
@@ -334,29 +338,29 @@ export class SpaHomebridgePlatform implements DynamicPlatformPlugin {
     }
   }
 
-  private async makeMatterDevice(device: any) {
+  private async makeMatterDevice(name: string, deviceType: string) {
     const matter = (this.api as any).matter;
     if (!matter) {
       return;
     }
 
-    if (!this.isMatterEnabledDeviceType(device.deviceType)) {
+    if (!this.isMatterEnabledDeviceType(deviceType)) {
       return;
     }
 
-    const uuid = matter.uuid.generate(device.deviceType);
+    const uuid = matter.uuid.generate(deviceType);
     // Guard: prevent double-registration if discoverDevices is called more than once.
     if (this.matterDeviceObjects.some((d: any) => d.UUID === uuid)) {
       return;
     }
 
-    const controller = this.createMatterController(device);
+    const controller = this.createMatterController(name, deviceType);
     if (!controller) {
       return;
     }
 
     if (!this.matterAccessories.has(uuid)) {
-      this.log.info('Registering new matter accessory:', device.name, 'of type', device.deviceType);
+      this.log.info('Registering new matter accessory:', name, 'of type', deviceType);
     }
 
     try {
@@ -364,7 +368,7 @@ export class SpaHomebridgePlatform implements DynamicPlatformPlugin {
       this.matterAccessories.set(uuid, controller);
       this.matterDeviceObjects.push(controller);
     } catch (error) {
-      this.log.warn('Could not register matter accessory', device.name, 'because:', error);
+      this.log.warn('Could not register matter accessory', name, 'because:', error);
       this.matterAccessories.delete(uuid);
     }
   }
@@ -416,34 +420,59 @@ export class SpaHomebridgePlatform implements DynamicPlatformPlugin {
     return deviceType === 'Primary Thermostat' || deviceType === 'Eco Thermostat';
   }
 
-  private createMatterController(device: { name: string; deviceType: string }): any {
-    const deviceType = device.deviceType;
-    if (this.isMatterPumpType(deviceType)) {
-      return new MatterPumpAccessory(this, device);
+  private createMatterController(name: string, deviceType: string): any {
+    const device = { name, deviceType };
+    
+    switch (deviceType) {
+      case 'Circulation Pump':
+        return new MatterPumpAccessory(this, device, 0);
+      case 'Pump 1':
+        return new MatterPumpAccessory(this, device, 1);
+      case 'Pump 2':
+        return new MatterPumpAccessory(this, device, 2);
+      case 'Pump 3':
+        return new MatterPumpAccessory(this, device, 3);
+      case 'Pump 4':
+        return new MatterPumpAccessory(this, device, 4);
+      case 'Pump 5':
+        return new MatterPumpAccessory(this, device, 5);
+      case 'Pump 6':
+        return new MatterPumpAccessory(this, device, 6);
+      case 'Blower':
+        return new MatterBlowerAccessory(this, device);
+      case 'Lights 1':
+        return new MatterLightsAccessory(this, device, 1);
+      case 'Lights 2':
+        return new MatterLightsAccessory(this, device, 2);
+      case 'Hold Switch':
+        return new MatterSwitchAccessory(this, device, 'hold');
+      case 'Spa Heat Mode Ready':
+        return new MatterSwitchAccessory(this, device, 'heatingReady');
+      case 'Eco Mode':
+        return new MatterSwitchAccessory(this, device, 'ecoMode');
+      case 'Mister':
+        return new MatterSwitchAccessory(this, device, 'mister');
+      case 'Aux 1':
+        return new MatterSwitchAccessory(this, device, 'aux1');
+      case 'Aux 2':
+        return new MatterSwitchAccessory(this, device, 'aux2');
+      case 'Spa Settings':
+        return new MatterLockAccessory(this, device, false);
+      case 'Spa Panel':
+        return new MatterLockAccessory(this, device, true);
+      case 'Primary Thermostat':
+        return new MatterThermostatAccessory(this, device, 'primary');
+      case 'Eco Thermostat':
+        return new MatterThermostatAccessory(this, device, 'eco');
+      case 'Temperature Sensor':
+        return new MatterTemperatureAccessory(this, device);
+      case 'Water Flow Problem Sensor':
+        return new MatterFlowAccessory(this, device, 'failed');
+      case 'Water Flow Low Sensor':
+        return new MatterFlowAccessory(this, device, 'low');
+      default:
+        return undefined;
     }
-    if (this.isMatterBlowerType(deviceType)) {
-      return new MatterBlowerAccessory(this, device);
-    }
-    if (this.isMatterLightType(deviceType)) {
-      return new MatterLightsAccessory(this, device);
-    }
-    if (this.isMatterSwitchType(deviceType)) {
-      return new MatterSwitchAccessory(this, device);
-    }
-    if (this.isMatterLockType(deviceType)) {
-      return new MatterLockAccessory(this, device);
-    }
-    if (this.isMatterThermostatType(deviceType)) {
-      const mode = deviceType === 'Primary Thermostat' ? 'primary' : 'eco';
-      return new MatterThermostatAccessory(this, device, mode);
-    }
-    if (deviceType === 'Temperature Sensor') {
-      return new MatterTemperatureAccessory(this, device);
-    }
-    if (deviceType === 'Water Flow Problem Sensor' || deviceType === 'Water Flow Low Sensor') {
-      return new MatterFlowAccessory(this, device);
-    }
-    return undefined;
   }
 
   /*

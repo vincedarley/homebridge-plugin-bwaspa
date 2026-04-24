@@ -8,6 +8,7 @@ export class MatterLockAccessory extends BaseMatterSpaAccessory {
   constructor(
     platform: SpaHomebridgePlatform,
     device: { name: string; deviceType: string },
+    entireSpa: boolean,
   ) {
     const matter = (platform.api as any).matter;
     super(
@@ -29,7 +30,7 @@ export class MatterLockAccessory extends BaseMatterSpaAccessory {
         },
       },
     );
-    this.entireSpa = device.deviceType === 'Spa Panel';
+    this.entireSpa = entireSpa;
   }
 
   spaConfigurationKnown() {
