@@ -439,6 +439,14 @@ export class SpaClient implements SpaController {
       clearInterval(this.stateUpdateCheckIntervalId);
       this.stateUpdateCheckIntervalId = undefined;
     }
+    if (this.stateLoggingIntervalId) {
+      clearInterval(this.stateLoggingIntervalId);
+      this.stateLoggingIntervalId = undefined;
+    }
+    if (this.healthLogIntervalId) {
+      clearInterval(this.healthLogIntervalId);
+      this.healthLogIntervalId = undefined;
+    }
     // Not sure I understand enough about these sockets to be sure
     // of best way to clean them up.
     if (this.socket != undefined) {
@@ -455,7 +463,7 @@ export class SpaClient implements SpaController {
   // Called every half hour
   recordTemperatureHistory() {
     this.temperatureHistory.push(this.getCurrentTemp());
-    if (this.temperatureHistory.length == 48) {
+    if (this.temperatureHistory.length === 48) {
       this.log.info('Temperature for last day (half hour intervals):', this.temperatureHistory.toString());
       this.temperatureHistory = new Array();
     }
