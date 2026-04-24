@@ -367,6 +367,12 @@ export class SpaHomebridgePlatform implements DynamicPlatformPlugin {
       await matter.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [controller]);
       this.matterAccessories.set(uuid, controller);
       this.matterDeviceObjects.push(controller);
+      
+      // If spa configuration was already received before this accessory registered,
+      // notify the accessory immediately so it can configure itself properly.
+      if (this.spa?.accurateConfigReadFromSpa) {
+        controller.spaConfigurationKnown();
+      }
     } catch (error) {
       this.log.warn('Could not register matter accessory', name, 'because:', error);
       this.matterAccessories.delete(uuid);
