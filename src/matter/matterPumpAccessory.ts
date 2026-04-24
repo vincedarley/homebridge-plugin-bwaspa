@@ -115,7 +115,7 @@ export class MatterPumpAccessory extends BaseMatterSpaAccessory {
       throw this.platform.connectionProblem;
     }
 
-    const maxSpeed = this.numSpeedSettings > 0 ? this.numSpeedSettings : this.platform.spa!.getPumpSpeedRange(this.pumpNumber);
+    const maxSpeed = this.getMaxSpeed();
     const speed = this.speedForPercent(percent, maxSpeed);
 
     this.lastNonZeroSpeed = speed > 0 ? speed : this.lastNonZeroSpeed;
@@ -170,8 +170,9 @@ export class MatterPumpAccessory extends BaseMatterSpaAccessory {
   }
 
   private setSpeed(speed: number) {
+    const maxSpeed = this.getMaxSpeed();
     this.platform.log.debug('Matter', this.displayName, 'actually setting speed to', speed, 'which is',
-      SpaClient.getSpeedAsString(this.numSpeedSettings, speed), this.platform.status());
+      SpaClient.getSpeedAsString(maxSpeed, speed), this.platform.status());
     this.platform.spa!.setPumpSpeed(this.pumpNumber, speed);
     if (speed !== 0) {
       this.lastNonZeroSpeed = speed;
@@ -182,25 +183,34 @@ export class MatterPumpAccessory extends BaseMatterSpaAccessory {
     return this.platform.spa!.getPumpSpeed(this.pumpNumber);
   }
 
+  private getMaxSpeed() {
+    return this.numSpeedSettings > 0 ? this.numSpeedSettings : this.platform.spa!.getPumpSpeedRange(this.pumpNumber);
+  }
+
   private toFanModeValue(speed: number) {
     if (speed <= 0) {
       return this.getFanModeOff();
     }
-    if (this.numSpeedSettings <= 1) {
+    const maxSpeed = this.getMaxSpeed();
+    if (maxSpeed <= 1) {
       return this.getFanModeHigh();
     }
     return speed >= 2 ? this.getFanModeHigh() : this.getFanModeLow();
   }
 
   private toPercentSettingValue(speed: number) {
-    if (speed <= 0 || this.numSpeedSettings <= 0) {
+    if (speed <= 0) {
       return 0;
     }
-    return Math.max(1, Math.min(100, Math.round((100.0 * speed) / this.numSpeedSettings)));
+    const maxSpeed = this.getMaxSpeed();
+    if (maxSpeed <= 0) {
+      return 0;
+    }
+    return Math.max(1, Math.min(100, Math.round((100.0 * speed) / maxSpeed)));
   }
 
   private speedForFanMode(mode: 'low' | 'medium' | 'high') {
-    const maxSpeed = this.numSpeedSettings > 0 ? this.numSpeedSettings : this.platform.spa!.getPumpSpeedRange(this.pumpNumber);
+    const maxSpeed = this.getMaxSpeed();
     if (maxSpeed <= 1) {
       return mode === 'high' ? 1 : 0;
     }
