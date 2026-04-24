@@ -52,6 +52,11 @@ export class MatterBlowerAccessory extends BaseMatterSpaAccessory {
 
     this.numSpeedSettings = this.platform.spa!.getBlowerSpeedRange();
     this.platform.log.info('Blower matter accessory has', this.numSpeedSettings, 'speeds.');
+    
+    // Set initial state
+    void this.updateCharacteristics().catch((error: unknown) => {
+      this.platform.log.warn('Could not set initial blower state for', this.displayName, 'because:', error);
+    });
   }
 
   async updateCharacteristics() {

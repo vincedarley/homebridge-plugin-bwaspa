@@ -25,7 +25,10 @@ export class MatterFlowAccessory extends BaseMatterSpaAccessory {
   }
 
   spaConfigurationKnown() {
-    // nothing to do
+    // Set initial flow state
+    void this.updateCharacteristics().catch((error: unknown) => {
+      this.platform.log.warn('Could not set initial flow state for', this.displayName, 'because:', error);
+    });
   }
 
   async updateCharacteristics() {

@@ -68,6 +68,11 @@ export class MatterPumpAccessory extends BaseMatterSpaAccessory {
     } as Record<string, unknown>).catch((error: unknown) => {
       this.platform.log.warn('Could not update pump fan mode sequence for', this.displayName, 'because:', error);
     });
+    
+    // Set initial state
+    void this.updateCharacteristics().catch((error: unknown) => {
+      this.platform.log.warn('Could not set initial pump state for', this.displayName, 'because:', error);
+    });
   }
 
   async updateCharacteristics() {

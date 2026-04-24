@@ -30,6 +30,11 @@ export class MatterLightsAccessory extends BaseMatterSpaAccessory {
     if (this.platform.spa!.getIsLightOn(this.lightNumber) === undefined) {
       this.platform.log.warn('Nonexistent matter light', this.lightNumber, 'accessory declared.');
     }
+    
+    // Set initial state
+    void this.updateCharacteristics().catch((error: unknown) => {
+      this.platform.log.warn('Could not set initial light state for', this.displayName, 'because:', error);
+    });
   }
 
   async updateCharacteristics() {

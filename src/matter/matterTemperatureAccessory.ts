@@ -24,7 +24,10 @@ export class MatterTemperatureAccessory extends BaseMatterSpaAccessory {
   }
 
   spaConfigurationKnown() {
-    // nothing to do
+    // Set initial temperature reading
+    void this.updateCharacteristics().catch((error: unknown) => {
+      this.platform.log.warn('Could not set initial temperature for', this.displayName, 'because:', error);
+    });
   }
 
   async updateCharacteristics() {

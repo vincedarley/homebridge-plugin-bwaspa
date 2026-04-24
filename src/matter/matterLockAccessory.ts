@@ -34,7 +34,10 @@ export class MatterLockAccessory extends BaseMatterSpaAccessory {
   }
 
   spaConfigurationKnown() {
-    // nothing to do
+    // Set initial lock state
+    void this.updateCharacteristics().catch((error: unknown) => {
+      this.platform.log.warn('Could not set initial lock state for', this.displayName, 'because:', error);
+    });
   }
 
   async updateCharacteristics() {

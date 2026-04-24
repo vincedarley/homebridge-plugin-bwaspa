@@ -2,6 +2,9 @@
 
 All notable changes to this project will be documented in this file.
 
+## 3.0.0-beta.48 (24.04.2026)
+- More thorough testing on Matter. Fixing a bunch of small problems (race conditions, etc).
+
 ## 3.0.0-beta.38 (23.04.2026)
 - Matter is working on both Apple Home and Home Assistant in my testing
 - For Matter there is a different approach to the "high" and "low" heating modes. We've replaced the HomeKit approach 
