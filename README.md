@@ -214,7 +214,8 @@ The Spa can report many more faults/errors (some completely critical) beyond the
 
 If you have more than one Spa, with minor modifications this plugin could happily handle that situation - please submit a bug report (and/or try to make the code changes yourself).
 
-It looks like it might be possible to move the Flow sensor to a pair of "Filter Condition", "Filter life" settings on the thermostat. Might be a slightly better fit for Homekit's approach.
+It looks like it might be possible to move the Flow sensor to a pair of "Filter Condition", "Filter life" settings on the thermostat. Might be a slightly better fit for Homekit's approach. Similarly in Matter treating the Spa as a "Water Heater" device might make more sense than the 
+current thermostat approach.
 
 ## Other related work
 
