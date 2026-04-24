@@ -3,18 +3,6 @@ import type { SpaHomebridgePlatform } from '../platform';
 
 type SwitchKind = 'hold' | 'heatingReady' | 'ecoMode' | 'mister' | 'aux1' | 'aux2';
 
-function kindForDeviceType(deviceType: string): SwitchKind | undefined {
-  switch (deviceType) {
-    case 'Hold Switch': return 'hold';
-    case 'Spa Heat Mode Ready': return 'heatingReady';
-    case 'Eco Mode': return 'ecoMode';
-    case 'Mister': return 'mister';
-    case 'Aux 1': return 'aux1';
-    case 'Aux 2': return 'aux2';
-    default: return undefined;
-  }
-}
-
 export class MatterSwitchAccessory extends BaseMatterSpaAccessory {
   private readonly kind: SwitchKind;
   private lastOn: boolean | undefined = undefined;
