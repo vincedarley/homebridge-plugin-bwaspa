@@ -369,9 +369,11 @@ export class SpaHomebridgePlatform implements DynamicPlatformPlugin {
       this.matterDeviceObjects.push(controller);
       
       // If spa configuration was already received before this accessory registered,
-      // notify the accessory immediately so it can configure itself properly.
+      // notify the accessory after a delay to allow Matter to complete endpoint setup.
       if (this.spa?.accurateConfigReadFromSpa) {
-        controller.spaConfigurationKnown();
+        setTimeout(() => {
+          controller.spaConfigurationKnown();
+        }, 1000);
       }
     } catch (error) {
       this.log.warn('Could not register matter accessory', name, 'because:', error);
