@@ -21,6 +21,12 @@ export class MatterPumpAccessory extends BaseMatterSpaAccessory {
     pumpNumber: number,
   ) {
     const matter = (platform.api as any).matter;
+    // Query the spa to determine the correct fan mode sequence based on pump speed range
+    const speedRange = platform.spa!.getPumpSpeedRange(pumpNumber);
+    const fanModeSequence = speedRange <= 1
+      ? (matter.types.FanControl?.FanModeSequence?.OffHigh ?? 2)
+      : (matter.types.FanControl?.FanModeSequence?.OffLowHigh ?? 4);
+    
     super(
       platform,
       device,
@@ -29,7 +35,7 @@ export class MatterPumpAccessory extends BaseMatterSpaAccessory {
         onOff: { onOff: false },
         fanControl: {
           fanMode: (matter.types.FanControl?.FanMode?.Off ?? 0),
-          fanModeSequence: (matter.types.FanControl?.FanModeSequence?.OffLowHigh ?? 4),
+          fanModeSequence,
         },
       },
       {
@@ -59,17 +65,8 @@ export class MatterPumpAccessory extends BaseMatterSpaAccessory {
     this.numSpeedSettings = this.platform.spa!.getPumpSpeedRange(this.pumpNumber);
     this.platform.log.info(this.displayName, 'matter accessory has', this.numSpeedSettings, 'speeds.');
 
-    // Pumps are either off/high (1 speed) or off/low/high (2 speeds).
-    const fanModeSequence = this.numSpeedSettings <= 1
-      ? this.getFanModeSequenceOffHigh()
-      : this.getFanModeSequenceOffLowHigh();
-    void this.updateState('fanControl', {
-      fanModeSequence,
-    } as Record<string, unknown>).catch((error: unknown) => {
-      this.platform.log.warn('Could not update pump fan mode sequence for', this.displayName, 'because:', error);
-    });
-    
-    // Set initial state
+    // Fan mode sequence was already set correctly in the constructor based on discovered pump speeds.
+    // Just set the initial state.
     void this.updateCharacteristics().catch((error: unknown) => {
       this.platform.log.warn('Could not set initial pump state for', this.displayName, 'because:', error);
     });
