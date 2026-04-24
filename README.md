@@ -14,7 +14,7 @@
 
 This plugin connects to Balboa spa and hot-tub wifi modules and exposes spa controls such as pumps, lights, blower, thermostat, temperature, locks, hold mode, and water-flow status to Homebridge.
 
-Version 3.0.0-beta.1 adds Matter accessory support alongside the existing HomeKit exposure path. Because of that, this release now requires Homebridge 2.0.0 beta.85 or later, running on Node 22 or Node 24.  Matter support is new and less tested. 
+Version 3.0.0 adds Matter accessory support alongside the existing HomeKit exposure path. Because of that, this release now requires Homebridge 2.0.0, running on Node 22 or Node 24.  Matter support is new and less tested. 
 
 The plugin keeps control state in sync whether you manipulate the spa through Home, Siri, Matter controllers, physical controls on the spa, and takes account of situations such as filter cycles where some pumps cannot be turned off.  The Balboa Wifi module on your Spa only allows 1 connection at a time. This means you cannot use this plugin and also use the BWA Smartphone app. 
 
@@ -66,7 +66,7 @@ For Matter controllers, the plugin creates two separate thermostats: "Primary Th
 
 The spa's current temperature is visible both in the Thermostat device and in the read-only Temperature Sensor. Up to you whether you want both devices exposed.
 
-The flow sensor has 3 states: normal, failed, or low water flow. In the Home app this is exposed using the leak-sensor style alerting model. In Matter this is exposed as two boolean sensors: a LeakSensor alarm endpoint for failed flow, and a separate generic OnOffSensor warning endpoint for low flow. This is useful for detecting dirty filters because reduced flow disables heating and results in the spa to cooling down.
+The flow sensor has 3 states: normal, failed, or low water flow. In the Home app this is exposed using the leak-sensor style alerting model. In Matter this is exposed as two boolean sensors: a LeakSensor alarm for failed flow, and a separate generic contact sensor warning for low flow. This is useful for detecting dirty filters because reduced flow disables heating and results in the spa to cooling down.
 
 There is a "Hold" switch to activate the Spa's hold mode (temporarily turn off all pumps, including the circulation pump), so that you can safely change filters, etc.
 
@@ -75,7 +75,7 @@ are the same locking/unlocking as Balboa provides in the Spa control panel.
 
 Finally there are other devices on some spas: a "blower" (typically with 3-speeds), a "mister" and two auxiliary devices (aux1 and aux2).
 
-## Version 3.0.0-beta.1 and Matter
+## Version 3.0.0 and Matter
 
 - Minimum runtime is now Homebridge 2.0.0-beta.85 with Node 22 or Node 24.
 - Added Matter accessory infrastructure and initial Matter mappings for pumps, blower, lights, switches, thermostat, temperature sensor, locks, and water flow status.

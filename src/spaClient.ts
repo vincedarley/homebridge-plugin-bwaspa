@@ -111,6 +111,10 @@ export class SpaClient implements SpaController {
   // Stored so that we can cancel intervals if needed
   faultCheckIntervalId: any;
   stateUpdateCheckIntervalId: any;
+  stateLoggingIntervalId: any;
+  lastLoggedStateString: string = '';
+  healthLogIntervalId: any;
+  tempHistoryIntervalId: any;
   // Can be set in the overall config to provide more detailed logging
   devMode: boolean;
 
@@ -251,7 +255,7 @@ export class SpaClient implements SpaController {
       }, 10 * 60 * 1000);
     }, 5000);
 
-    // Every 15 minutes, make sure we update the log. And if we haven't
+    // Every 90 seconds, make sure we update the log. And if we haven't
     // received a state update, then message the spa so it starts sending
     // us messages again.
     if (this.stateUpdateCheckIntervalId) {
@@ -261,8 +265,38 @@ export class SpaClient implements SpaController {
       if (this.isCurrentlyConnectedToSpa) {
         this.checkWeHaveReceivedStateUpdate();
       }
+    }, 90 * 1000);
+
+    // Separate timer for periodic state logging and clock sync (every 15 minutes)
+    if (this.stateLoggingIntervalId) {
+      this.log.error('Shouldn\'t ever already have a state logging interval running here.');
+    }
+    this.stateLoggingIntervalId = setInterval(() => {
+      if (this.isCurrentlyConnectedToSpa) {
+        const currentState = this.stateToString();
+        const compareKey = this.stateCompareKey();
+        if (compareKey !== this.lastLoggedStateString) {
+          this.log.info('Latest spa state', currentState);
+          this.lastLoggedStateString = compareKey;
+        }
+        // We use this periodic occasion to see if we should correct the Spa's clock
+        this.checkAndSetTimeOfDay();
+      }
     }, 15 * 60 * 1000);
-        
+
+    // Hourly connection health log
+    if (this.healthLogIntervalId) {
+      this.log.error('Shouldn\'t ever already have a health log interval running here.');
+    }
+    this.healthLogIntervalId = setInterval(() => {
+      if (this.isCurrentlyConnectedToSpa) {
+        const uptimeMs = Math.abs(new Date().getTime() - this.liveSinceDate.getTime());
+        const uptimeHours = (uptimeMs / (1000 * 3600)).toFixed(1);
+        this.log.info('Spa connection health: uptime', uptimeHours, 'hours,',
+          this.numberOfConnectionsSoFar, 'connections total');
+      }
+    }, 60 * 60 * 1000);
+
     // Call to ensure we catch up on anything that happened while we
     // were disconnected.
     this.reconnectedCallback();
@@ -367,14 +401,9 @@ export class SpaClient implements SpaController {
   checkWeHaveReceivedStateUpdate() {
     if (this.receivedStateUpdate) {
       // All good - reset for next time
-      this.log.info('Latest spa state', this.stateToString());
       this.receivedStateUpdate = false;
-
-      // We use this periodic occasion to see if we should correct the Spa's clock
-      this.checkAndSetTimeOfDay();
     } else {
-      this.log.error('No spa state update received for some time.  Last state was', 
-        this.stateToString());
+      this.log.error('No spa state update received for some time.  Last state was', this.stateToString());
             
       // TODO - it would be nice if there was a softer way of getting the spa
       // to start sending the status updates again then a full disconnect, reconnect.
@@ -972,6 +1001,16 @@ export class SpaClient implements SpaController {
       return temperature.toString() + 'F';
     }
     return this.convertSpaTemperatureToExternal(temperature).toFixed(1).toString() + 'C'; 
+  }
+
+  private stateCompareKey() {
+    return [
+      this.currentTemp, this.tempRangeIsHigh, this.targetTempModeHigh, this.targetTempModeLow,
+      this.priming, this.heatingMode, this.isHeatingNow, ...this.pumpsCurrentSpeed,
+      this.circulationPumpIsOn, this.filtering, ...this.lightIsOn,
+      this.blowerCurrentSpeed, this.misterIsOn, ...this.auxIsOn,
+      this.lockTheEntirePanel, this.lockTheSettings, this.hold,
+    ].join(',');
   }
 
   stateToString() {
