@@ -14,7 +14,7 @@
 
 This plugin connects to Balboa spa and hot-tub wifi modules and exposes spa controls such as pumps, lights, blower, thermostat, temperature, locks, hold mode, and water-flow status to Homebridge.
 
-Version 3.0.0 adds Matter accessory support alongside the existing HomeKit exposure path. Because of that, this release now requires Homebridge 2.0.0, running on Node 22 or Node 24.  Matter support is new and less tested. 
+Version 3.0.0 adds Matter to the existing HomeKit support. Because of that, this release now requires Homebridge 2.0.0, running on Node 22 or Node 24. Matter support is new and less tested. 
 
 The plugin keeps control state in sync whether you manipulate the spa through Home, Siri, Matter controllers, physical controls on the spa, and takes account of situations such as filter cycles where some pumps cannot be turned off.  The Balboa Wifi module on your Spa only allows 1 connection at a time. This means you cannot use this plugin and also use the BWA Smartphone app. 
 
@@ -66,7 +66,7 @@ For Matter controllers, the plugin creates two separate thermostats: "Primary Th
 
 The spa's current temperature is visible both in the Thermostat device and in the read-only Temperature Sensor. Up to you whether you want both devices exposed.
 
-The flow sensor has 3 states: normal, failed, or low water flow. In the Home app this is exposed using the leak-sensor style alerting model. In Matter this is exposed as two boolean sensors: a LeakSensor alarm for failed flow, and a separate generic contact sensor warning for low flow. This is useful for detecting dirty filters because reduced flow disables heating and results in the spa to cooling down.
+The spa flow sensor has 3 states: normal, failed, or low water flow. In the Home app this is exposed using the leak-sensor style alerting model. In Matter this is exposed as two boolean sensors: a LeakSensor alarm for failed flow, and a separate generic contact sensor warning for low flow. This is useful for detecting dirty filters because reduced flow disables heating and results in the spa to cooling down.
 
 There is a "Hold" switch to activate the Spa's hold mode (temporarily turn off all pumps, including the circulation pump), so that you can safely change filters, etc.
 
@@ -74,12 +74,6 @@ There are two "Locks" - one to lock the spa settings (while still allowing contr
 are the same locking/unlocking as Balboa provides in the Spa control panel.
 
 Finally there are other devices on some spas: a "blower" (typically with 3-speeds), a "mister" and two auxiliary devices (aux1 and aux2).
-
-## Version 3.0.0 and Matter
-
-- Minimum runtime is now Homebridge 2.0.0-beta.85 with Node 22 or Node 24.
-- Added Matter accessory infrastructure and initial Matter mappings for pumps, blower, lights, switches, thermostat, temperature sensor, locks, and water flow status.
-- Pump and blower Matter control now uses FanControl semantics.
 
 ## Siri
 
@@ -157,7 +151,7 @@ However, if you wish to, or need to, make some manual adjustments, you can provi
 
 ## Automation and notifications
 
-You can use the Home and Shortcuts apps to create automations, as you might with any homekit 
+You can use the Home and Shortcuts apps to create automations, as you might with any homekit/matter 
 device. For example I've created an automation which runs when I turn off my alarm in the morning and notifies me if the spa is hot enough. I also use time-based automations to adjust the thermostat during the night to make good use of cheaper electricity.  With Matter the "Spa Eco Mode" switch is the simplest way to turn off and on the Spa's heating - I get cheap electricity at night and mostly use the spa in the early morning, so I have eco mode turned on from 8am till midnight, and then off after that.
 
 <p align="left">
@@ -165,7 +159,7 @@ device. For example I've created an automation which runs when I turn off my ala
   <a href="https://github.com/vincedarley/homebridge-plugin-bwaspa"><img src="https://raw.githubusercontent.com/vincedarley/homebridge-plugin-bwaspa/master/graphics/spa-automation2.png" height="400"></a>
 </p>
 
-Beyond the water-flow/leak-sensor notification which is an integral part of homekit, any other notifications you require need to be created through automations like the above.
+Beyond the water-flow/leak-sensor notification which is an integral part of homekit/matter, any other notifications you require need to be created through automations like the above.
 
 ## Limitations?
 
@@ -175,7 +169,7 @@ If the water flow sensor discovers a fault (which it checks for every ten minute
 
 ## Reliability
 
-There's a fair amount of information on the internet of how the Balboa Wifi module is pretty unreliable.  In particular prior to the '-06' release of the '50350' module, it would regularly disconnect and then be unable to reconnect (without rebooting the power supply to the module).  With my own spa, the module is adequately reliable but even then does disconnect for a few minutes to an hour once every day or two, sometimes as often as a few times a day.  But between the module and this plugin's reconnect capability, a reconnection does always ultimately happen.  If your Spa's module is less reliable, I would suggest a first step is to check which module version you have.  I have found the Wifi module is more reliable with some wifi frequency bands than with others.  Finally you could replace your wifi module with this [project](https://github.com/NorthernMan54/esp32_balboa_spa) which is likely to be more reliable.
+There's a fair amount of information on the internet of how the Balboa Wifi module is pretty unreliable.  In particular prior to the '-06' release of the '50350' module, it would regularly disconnect and then be unable to reconnect (without rebooting the power supply to the module).  With my own spa, the module is adequately reliable but even then does disconnect for a few minutes to an hour once every day or two, sometimes as often as a few times a day. But between the module and this plugin's reconnect capability, a reconnection does always ultimately happen.  If your Spa's module is less reliable, I would suggest a first step is to check which module version you have.  I have found the Wifi module is more reliable with some wifi frequency bands than with others - so experiment with yours - I found locking my router to Wifi channel 11 helped.  Finally you could replace your wifi module with this [project](https://github.com/NorthernMan54/esp32_balboa_spa) which is likely to be more reliable.
 
 Whilst the spa is disconnected, obviously all HomeKit and Matter control attempts will fail. However this plugin is clever enough to store the major ones (adjusting thermostat, hold, lock status) and will re-apply them once the connection is re-established. 
 This means that any timed automations you create, for example, should still mostly work.  For example if you have an automation to turn on "Eco Mode", but the Spa is disconnected when that automation triggers, the change will be stored and automatically applied once the Spa reconnects (typically in 20-30 minutes, based on my experience).

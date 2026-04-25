@@ -22,7 +22,6 @@
     },
     {
       "items": [
-        "debugUseDummySpa",
         "host"
       ]
     }
