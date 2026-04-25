@@ -240,18 +240,18 @@ export class SpaHomebridgePlatform implements DynamicPlatformPlugin {
   discoverDevices() {
     if (this.config.autoCreateAccessories && this.spa && this.spa.accurateConfigReadFromSpa) {
       this.log.info('Autocreating accessories...');
-      if (this.spa!.getIsLightOn(1) != undefined) {
+      if (this.spa!.getIsLightOn(1) !== undefined) {
         this.makeDevice('Spa Lights 1', 'Lights 1');
       }
-      if (this.spa!.getIsLightOn(2) != undefined) {
+      if (this.spa!.getIsLightOn(2) !== undefined) {
         this.makeDevice('Spa Lights 2', 'Lights 2');
       }
       for (let pump = 1; pump <=6; pump++) {
-        if (this.spa!.getPumpSpeedRange(pump) != 0) {
+        if (this.spa!.getPumpSpeedRange(pump) !== 0) {
           this.makeDevice('Spa Pump '+pump, 'Pump '+pump);
         }
       }
-      if (this.spa!.getPumpSpeedRange(0) != 0) {
+      if (this.spa!.getPumpSpeedRange(0) !== 0) {
         this.makeDevice('Spa Circulation Pump', 'Circulation Pump');
       }
       this.makeDevice('Spa Temperature Sensor', 'Temperature Sensor');
@@ -265,16 +265,16 @@ export class SpaHomebridgePlatform implements DynamicPlatformPlugin {
       this.makeDevice('Spa Settings', 'Spa Settings');
       this.makeDevice('Spa Panel', 'Spa Panel');
       this.makeDevice('Spa Heat Mode Ready', 'Spa Heat Mode Ready');
-      if (this.spa!.getBlowerSpeedRange() != 0) {
+      if (this.spa!.getBlowerSpeedRange() !== 0) {
         this.makeDevice('Spa Blower', 'Blower');
       }
-      if (this.spa!.getIsMisterOn() != undefined) {
+      if (this.spa!.getIsMisterOn() !== undefined) {
         this.makeDevice('Spa Mister', 'Mister');
       }
-      if (this.spa!.getIsAuxOn(1) != undefined) {
+      if (this.spa!.getIsAuxOn(1) !== undefined) {
         this.makeDevice('Spa Aux 1', 'Aux 1');
       }
-      if (this.spa!.getIsAuxOn(2) != undefined) {
+      if (this.spa!.getIsAuxOn(2) !== undefined) {
         this.makeDevice('Spa Aux 2', 'Aux 2');
       }
     }

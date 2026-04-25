@@ -349,13 +349,13 @@ export class SpaClient implements SpaController {
         break;
       }
       // We appear to have a full message, perhaps more than one.
-      if (chunk[0] == 0x7e && chunk[msgLength+1] == 0x7e) {
+      if (chunk[0] === 0x7e && chunk[msgLength+1] === 0x7e) {
         // All spa messages start and end with 0x7e
         if (msgLength > 0) {
           const thisMsg = chunk.slice(0, msgLength+2);
           const checksum = thisMsg[msgLength];
           // Seems like a good message. Check the checksum is ok
-          if (checksum != this.compute_checksum(new Uint8Array([msgLength]), thisMsg.slice(2,msgLength))) {
+          if (checksum !== this.compute_checksum(new Uint8Array([msgLength]), thisMsg.slice(2,msgLength))) {
             this.log.error('Bad checksum', checksum, 'for', this.prettify(thisMsg));
           } else {
             const somethingChanged = this.readAndActOnMessage(msgLength, checksum, thisMsg);
@@ -449,7 +449,7 @@ export class SpaClient implements SpaController {
     }
     // Not sure I understand enough about these sockets to be sure
     // of best way to clean them up.
-    if (this.socket != undefined) {
+    if (this.socket !== undefined) {
       this.socket.end();
       this.socket.destroy();
       this.socket = undefined;
@@ -524,7 +524,7 @@ export class SpaClient implements SpaController {
   }
 
   convertTempToC(temp: number) {
-    if (temp == undefined) {
+    if (temp === undefined) {
       return undefined;
     }
     if (this.getTempIsCorF() === CELSIUS) {
@@ -535,7 +535,7 @@ export class SpaClient implements SpaController {
   }
 
   convertTempFromC(temp: number) {
-    if (temp == undefined) {
+    if (temp === undefined) {
       return undefined;
     }
     if (this.getTempIsCorF() === CELSIUS) {
@@ -563,7 +563,7 @@ export class SpaClient implements SpaController {
     if ((this.misterIsOn === value)) {
       return;
     }
-    if (this.misterIsOn == undefined) {
+    if (this.misterIsOn === undefined) {
       this.log.error('Trying to set state of mister which doesn\'t exist');
       return;
     }
@@ -586,7 +586,7 @@ export class SpaClient implements SpaController {
     if ((this.auxIsOn[index] === value)) {
       return;
     }
-    if (this.auxIsOn[index] == undefined) {
+    if (this.auxIsOn[index] === undefined) {
       this.log.error('Trying to set state of aux',(index+1),'which doesn\'t exist');
       return;
     }
@@ -608,7 +608,7 @@ export class SpaClient implements SpaController {
   }
 
   setIsHold(value: boolean) {
-    if (this.hold == value) {
+    if (this.hold === value) {
       return;
     }
     this.send_toggle_message('Hold', 0x3c);
@@ -620,7 +620,7 @@ export class SpaClient implements SpaController {
   }
 
   setIsLocked(entirePanel: boolean, value: boolean) {
-    if (this.getIsLocked(entirePanel) == value) {
+    if (this.getIsLocked(entirePanel) === value) {
       return;
     }
     this.send_lock_settings(entirePanel, value);
@@ -644,7 +644,7 @@ export class SpaClient implements SpaController {
 
   // See below
   isHeatingModeAlwaysReady() {
-    return (this.heatingMode == 'Ready');
+    return (this.heatingMode === 'Ready');
   }
 
   /** 
@@ -656,8 +656,8 @@ export class SpaClient implements SpaController {
      * to avoid freezing.
      */
   setHeatingModeAlwaysReady(isAlwaysReady: boolean) {
-    const isSetToAlwaysReady = (this.heatingMode == 'Ready');
-    if (isSetToAlwaysReady == isAlwaysReady) {
+    const isSetToAlwaysReady = (this.heatingMode === 'Ready');
+    if (isSetToAlwaysReady === isAlwaysReady) {
       // Already set correctly
       return;
     }
@@ -670,7 +670,7 @@ export class SpaClient implements SpaController {
      * control panel. 
      */
   getCurrentTemp() {
-    if (this.currentTemp == undefined) {
+    if (this.currentTemp === undefined) {
       return undefined;
     } else {
       return this.convertSpaTemperatureToExternal(this.currentTemp);
@@ -683,7 +683,7 @@ export class SpaClient implements SpaController {
     if ((this.lightIsOn[index] === value)) {
       return;
     }
-    if (this.lightIsOn[index] == undefined) {
+    if (this.lightIsOn[index] === undefined) {
       this.log.error('Trying to set state of light',(index+1),'which doesn\'t exist');
       return;
     }
@@ -708,7 +708,7 @@ export class SpaClient implements SpaController {
   }
 
   getPumpSpeedRange(index: number) {
-    if (index == 0) {
+    if (index === 0) {
       return (this.hasCirculationPump ? 1 : 0);
     } else {
       return this.pumpsSpeedRange[index-1];
@@ -716,11 +716,11 @@ export class SpaClient implements SpaController {
   }
 
   static getSpeedAsString(range: number, speed: number) {
-    if (range == 1) {
+    if (range === 1) {
       return ['Off', 'High'][speed];
-    } else if (range == 2) {
+    } else if (range === 2) {
       return ['Off', 'Low', 'High'][speed];
-    } else if (range == 3) {
+    } else if (range === 3) {
       return ['Off', 'Low', 'Medium', 'High'][speed];
     } else {
       return undefined;
@@ -728,7 +728,7 @@ export class SpaClient implements SpaController {
   }
 
   getPumpSpeed(index: number) {
-    if (index == 0) {
+    if (index === 0) {
       if (this.hasCirculationPump) {
         return this.circulationPumpIsOn ? 1 : 0;
       } else {
@@ -738,7 +738,7 @@ export class SpaClient implements SpaController {
     }
     // Pumps are numbered 1,2,3,... by Balboa
     index--;
-    if (this.pumpsSpeedRange[index] == 0) {
+    if (this.pumpsSpeedRange[index] === 0) {
       this.log.error('Trying to get speed of pump',(index+1),'which doesn\'t exist');
       return 0;
     }
@@ -794,8 +794,8 @@ export class SpaClient implements SpaController {
      */
   setPumpSpeed(index: number, desiredSpeed: number) {
     // Pump 0 is the circulation pump, whose state cannot be set
-    if (index == 0) {
-      if (desiredSpeed == 0) {
+    if (index === 0) {
+      if (desiredSpeed === 0) {
         // Anytime we turn a pump off, ensure that all remembered state information
         // is forgotten, so the next information from the Spa will tell us what is
         // actually going on, and we'll update Home if necessary.
@@ -811,7 +811,7 @@ export class SpaClient implements SpaController {
       // No action needed if pump already at the desired speed
       return;
     }
-    if (this.pumpsSpeedRange[index] == 0) {
+    if (this.pumpsSpeedRange[index] === 0) {
       this.log.error('Trying to set speed of', pumpName, 'which doesn\'t exist');
       return;
     }
@@ -822,7 +822,7 @@ export class SpaClient implements SpaController {
     }
     // Toggle Pump1 = toggle '4', Pump2 = toggle '5', etc.
     const balboaPumpId = index+4;
-    if (this.pumpsSpeedRange[index] == 1) {
+    if (this.pumpsSpeedRange[index] === 1) {
       // It is a 1-speed pump
       // Any change requires just one toggle. It's either from off to high or high to off
       this.send_toggle_message(pumpName, balboaPumpId);
@@ -837,7 +837,7 @@ export class SpaClient implements SpaController {
       const newIdx = desiredSpeed;
       // For a 2-speed pump, we'll need to toggle either 1 or 2 times.
       let toggleCount = (numberOfStates + newIdx - oldIdx) % numberOfStates;
-      if (toggleCount == 2 && desiredSpeed === 1) {
+      if (toggleCount === 2 && desiredSpeed === 1) {
         // Deal with the edge-case complication remarked on above.  
         // Send one toggle message
         this.send_toggle_message(pumpName, balboaPumpId);
@@ -873,7 +873,7 @@ export class SpaClient implements SpaController {
     }
     // The other edge case where we try to turn a pump off
     // that cannot currently be turned off (scheduled filtering).
-    if (desiredSpeed == 0) {
+    if (desiredSpeed === 0) {
       // Anytime we turn a pump off, ensure that all remembered state information
       // is forgotten, so the next information from the Spa will tell us what is
       // actually going on, and we'll update Home if necessary.
@@ -1002,7 +1002,7 @@ export class SpaClient implements SpaController {
   }
 
   internalTemperatureToString(temperature? : number) {
-    if (temperature == undefined) {
+    if (temperature === undefined) {
       return 'Unknown';
     }
     if (this.temp_CorF === FAHRENHEIT) {
@@ -1044,8 +1044,8 @@ export class SpaClient implements SpaController {
         + (this.hasCirculationPump ? ', Circ Pump: ' + (this.circulationPumpIsOn ? 'On' : 'Off') : '')
         + ', Filtering: ' + FILTERSTATES[this.filtering]
         + ', Lights: [' + this.lightIsOn + ']'
-        + (this.blowerCurrentSpeed != undefined ? ', Blower: ' + this.blowerCurrentSpeed : '')
-        + (this.misterIsOn != undefined ? ', Mister: ' + this.misterIsOn : '')
+        + (this.blowerCurrentSpeed !== undefined ? ', Blower: ' + this.blowerCurrentSpeed : '')
+        + (this.misterIsOn !== undefined ? ', Mister: ' + this.misterIsOn : '')
         + ', Aux: [' + this.auxIsOn + ']'
         + (this.lockTheEntirePanel ? ', Panel locked' : '')
         + (this.lockTheSettings ? ', Settings locked' : '')
@@ -1064,7 +1064,7 @@ export class SpaClient implements SpaController {
      * Everything in between is the content.
      */
   readAndActOnMessage(length: number, checksum: number, chunk: Uint8Array) {
-    if (chunk[0] != 0x7e || chunk[1] != length || chunk[length] != checksum || chunk[length+1] != 0x7e || chunk.length != (length+2)) {
+    if (chunk[0] !== 0x7e || chunk[1] !== length || chunk[length] !== checksum || chunk[length+1] !== 0x7e || chunk.length !== (length+2)) {
       this.log.error('Bad internal data in message handling. Please report a bug:', 
         length, checksum, this.prettify(chunk));
       return false;
@@ -1151,7 +1151,7 @@ export class SpaClient implements SpaController {
     // Probably better to say the temperature is unknown, if homekit supports that.  The Balboa
     // app, for what it's worth, also is confused when current temp = 255.  We currently report
     // 'undefined' here, which our temperature accessory turns into a 'null' to send to Homekit.
-    this.currentTemp = (bytes[2] == 255 ? undefined : bytes[2]);
+    this.currentTemp = (bytes[2] === 255 ? undefined : bytes[2]);
     this.hour = bytes[3];
     this.minute = bytes[4];
     // Three possible states for heating mode. We can only set it to two states though.
@@ -1167,8 +1167,8 @@ export class SpaClient implements SpaController {
     this.time_12or24 = (((variousFlags & 2) === 0) ? '12 Hr' : '24 Hr');
     // Filtering mode we just put in the log. It has 4 states (off, cycle1, cycle2, cycle 1 and 2)
     this.filtering = (variousFlags & 0x0c) >> 2; // values of 0,1,2,3
-    this.lockTheSettings = (variousFlags & 0x10) != 0;
-    this.lockTheEntirePanel = (variousFlags & 0x20) != 0;
+    this.lockTheSettings = (variousFlags & 0x10) !== 0;
+    this.lockTheEntirePanel = (variousFlags & 0x20) !== 0;
     const moreFlags = bytes[10];
     // It seems some spas have 3 states for this, idle, heating, heat-waiting.
     // We merge the latter two into just "heating" - there are two bits here though.
@@ -1195,28 +1195,28 @@ export class SpaClient implements SpaController {
     // Not sure if this circ_pump index or logic is correct.
     this.circulationPumpIsOn = ((bytes[13] & 2) !== 0);
     // The lights are in the low order bites of 'bytes[14]'
-    if (this.lightIsOn[0] != undefined) {
+    if (this.lightIsOn[0] !== undefined) {
       this.lightIsOn[0] = ((bytes[14] & (1+2)) === (1+2));
     }
-    if (this.lightIsOn[1] != undefined) {
+    if (this.lightIsOn[1] !== undefined) {
       this.lightIsOn[1] = ((bytes[14] & (4+8)) === (4+8));
     }
         
     // Believe the following mister/blower/aux lines are correct, but no way to test on my spa
 
     // On/off for the mister device.
-    if (this.misterIsOn != undefined) {
-      this.misterIsOn = (bytes[15] & 0x01) != 0;
+    if (this.misterIsOn !== undefined) {
+      this.misterIsOn = (bytes[15] & 0x01) !== 0;
     }
     // Blowers can have 4 states: off, low, medium, high
-    if (this.blowerCurrentSpeed != undefined) {
+    if (this.blowerCurrentSpeed !== undefined) {
       this.blowerCurrentSpeed = (bytes[13] & 0x0c) >> 2;
     }
     // The two aux devices:
-    if (this.auxIsOn[0] != undefined) {
+    if (this.auxIsOn[0] !== undefined) {
       this.auxIsOn[0] = (bytes[15] & 0x08) !== 0;
     }
-    if (this.auxIsOn[1] != undefined) {
+    if (this.auxIsOn[1] !== undefined) {
       this.auxIsOn[1] = (bytes[15] & 0x10) !== 0;
     }
 
@@ -1229,7 +1229,7 @@ export class SpaClient implements SpaController {
     // byte[21] is also set to 8 when we activate any locks. See bytes[9] above for locks
     // We ignore it here, since we capture locks above.
     // byte[22] is set to 64 when we activate 'hold' mode. See bytes[10] above.
-    this.hold = (bytes[22] & 64) != 0;
+    this.hold = (bytes[22] & 64) !== 0;
     // byte[22] also apparently contains some further state: 0=Ok, 16=Spa not communicating,
     // 32=startup, 48=priming, 64=hold, 80=panel.
 
@@ -1237,12 +1237,12 @@ export class SpaClient implements SpaController {
     const oldBytes = this.lastStateBytes;
     this.lastStateBytes = new Uint8Array(bytes);
     // Return true if any values have changed
-    if (oldBytes.length != this.lastStateBytes.length) {
+    if (oldBytes.length !== this.lastStateBytes.length) {
       return true;
     }
     for (let i = 0; i < oldBytes.length; i++) {
       // Bytes 3,4 are the time
-      if (i != 3 && i != 4) {
+      if (i !== 3 && i !== 4) {
         if (oldBytes[i] !== this.lastStateBytes[i]) {
           return true;
         }
@@ -1280,7 +1280,7 @@ export class SpaClient implements SpaController {
       if (this.pumpsSpeedRange[idx] === 3) {
         this.log.error('3-speed pumps not fully supported.  Please test carefully and report bugs.');
       }
-      if (this.pumpsSpeedRange[idx] == 0) {
+      if (this.pumpsSpeedRange[idx] === 0) {
         this.pumpsCurrentSpeed[idx] = 0;
       } else {
         countPumps++;  
@@ -1288,24 +1288,24 @@ export class SpaClient implements SpaController {
       pumpFlags1to6 >>= 2;
     }
     this.log.info('Discovered', countPumps, 'pumps with speeds', this.pumpsSpeedRange);
-    const lights = [(bytes[2] & 0x03) != 0,(bytes[2] & 0xc0) != 0];
+    const lights = [(bytes[2] & 0x03) !== 0,(bytes[2] & 0xc0) !== 0];
     // Store 'undefined' if the light doesn't exist. Else store 'false' which will
     // soon be over-ridden with the correct light on/off state.
     this.lightIsOn[0] = lights[0] ? false : undefined;
     this.lightIsOn[1] = lights[1] ? false : undefined;
     const countLights = (lights[0] ? 1 : 0) + (lights[1] ? 1 : 0);
 
-    this.hasCirculationPump = (bytes[3] & 0x80) != 0;
+    this.hasCirculationPump = (bytes[3] & 0x80) !== 0;
     // 0 if it doesn't exist, else number of speeds
     this.blowerSpeedRange = (bytes[3] & 0x03);
     this.blowerCurrentSpeed = this.blowerSpeedRange > 0 ? 0 : undefined;
-    this.misterIsOn = (bytes[4] & 0x30) != 0 ? false : undefined;
+    this.misterIsOn = (bytes[4] & 0x30) !== 0 ? false : undefined;
 
-    const aux = [(bytes[4] & 0x01) != 0,(bytes[4] & 0x02) != 0];
+    const aux = [(bytes[4] & 0x01) !== 0,(bytes[4] & 0x02) !== 0];
     this.auxIsOn[0] = aux[0] ? false : undefined;
     this.auxIsOn[1] = aux[1] ? false : undefined;
 
-    this.log.info('Discovered',countLights,'light'+(countLights!=1?'s':''));
+    this.log.info('Discovered',countLights,'light'+(countLights!==1?'s':''));
     this.log.info('Discovered other components: circulation-pump',this.hasCirculationPump,
       ', blower', this.blowerSpeedRange,', mister',this.misterIsOn,', aux',aux);
     this.accurateConfigReadFromSpa = true;
@@ -1345,16 +1345,16 @@ export class SpaClient implements SpaController {
      */
   interpretControlPanelReply(id: number, contents: Uint8Array) {
     this.log.info('Control Panel reply ' + id + ':'+ this.prettify(contents));
-    if (id == 1) {
+    if (id === 1) {
       const filter1start = this.timeToString(contents[0], contents[1]);
       const filter1duration = this.timeToString(contents[2], contents[3]);
-      const filter2on = (contents[4] & 0x80) != 0;
+      const filter2on = (contents[4] & 0x80) !== 0;
       const filter2start = this.timeToString(contents[4]&0x7f, contents[5]);
       const filter2duration = this.timeToString(contents[6], contents[7]);
       this.log.info('First filter time from',filter1start,'for',filter1duration);
       this.log.info('Second filter time', (filter2on ? 'on' : 'off'), 
         'from',filter2start,'for',filter2duration);
-    } else if (id == 2) {
+    } else if (id === 2) {
       // bytes 0-3 tell us about the version of software running, which we format
       // in the same way as on the spa's screen.
       const softwareID = 'M' + contents[0] +'_'+contents[1]+' V'+contents[2]+'.' + contents[3];
@@ -1407,7 +1407,7 @@ export class SpaClient implements SpaController {
 
     if (daysAgo > 0) {
       message = 'No recent faults. Last fault';
-    } else if (code == 16 || code == 28) {
+    } else if (code === 16 || code === 28) {
       // These indicate a problem, where the spa and/or heater will temporarily shut 
       // down for 1-15 minutes. These generally indicate
       // the filter needs cleaning/change very soon. Important to alert the user
@@ -1417,7 +1417,7 @@ export class SpaClient implements SpaController {
       // a state of 'off' when water flow fails.
       message = 'Recent, alerted fault found';
       stateChanged = true;
-    } else if (code == 17 || code == 27 || code == 30) {
+    } else if (code === 17 || code === 27 || code === 30) {
       // These are all serious problems. The spa has been shut down. 
       // Hot tub will stop heating and therefore cool down without a change. 
       // Important to alert the user of them.
@@ -1450,7 +1450,7 @@ export class SpaClient implements SpaController {
   }
 
   equal(one: Uint8Array, two: Uint8Array) {
-    if (one.length != two.length) {
+    if (one.length !== two.length) {
       return false;
     }
     for (let i = 0; i < one.length; i++) {
@@ -1467,61 +1467,61 @@ export class SpaClient implements SpaController {
      * @param code 
      */
   faultCodeToString(code: number) {
-    if (code == 15) {
+    if (code === 15) {
       return 'sensors may be out of sync';
     }
-    if (code == 16) {
+    if (code === 16) {
       return 'the water flow is low';
     }
-    if (code == 17) {
+    if (code === 17) {
       return 'the water flow has failed';
     }
-    if (code == 19) {
+    if (code === 19) {
       return 'priming (this is not actually a fault - your Spa was recently turned on)';
     }
-    if (code == 20) {
+    if (code === 20) {
       return 'the clock has failed';
     }
-    if (code == 21) {
+    if (code === 21) {
       return 'the settings have been reset (persistent memory error)';
     }
-    if (code == 22) {
+    if (code === 22) {
       return 'program memory failure';
     }
-    if (code == 26) {
+    if (code === 26) {
       return 'sensors are out of sync -- call for service';
     }
-    if (code == 27) {
+    if (code === 27) {
       return 'the heater is dry';
     }
-    if (code == 28) {
+    if (code === 28) {
       return 'the heater may be dry';
     }
-    if (code == 29) {
+    if (code === 29) {
       return 'the water is too hot';
     }
-    if (code == 30) {
+    if (code === 30) {
       return 'the heater is too hot';
     }
-    if (code == 31) {
+    if (code === 31) {
       return 'sensor A fault';
     }
-    if (code == 32) {
+    if (code === 32) {
       return 'sensor B fault';
     }
-    if (code == 33) {
+    if (code === 33) {
       return 'safety trip - pump suction blockage';
     }
-    if (code == 34) {
+    if (code === 34) {
       return 'a pump may be stuck on';
     }
-    if (code == 35) {
+    if (code === 35) {
       return 'hot fault';
     }
-    if (code == 36) {
+    if (code === 36) {
       return 'the GFCI test failed';
     }
-    if (code == 37) {
+    if (code === 37) {
       return 'hold mode activated (this is not actually a fault)';
     }
     return 'unknown code - check Balboa spa manuals';

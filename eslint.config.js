@@ -6,7 +6,7 @@ module.exports = [
     ignores: ['dist/**'],
   },
   {
-    files: ['src/**/*.ts'],
+    files: ['src/**/*.ts','src/*.ts'],
     languageOptions: {
       parser: tsParser,
       ecmaVersion: 2022,
