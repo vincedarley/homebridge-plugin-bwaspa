@@ -166,11 +166,20 @@ Beyond the water-flow/leak-sensor notification which is an integral part of home
 
 Lights are simply on/off.  Balboa provide no current capability to control the colour.  So this limitation cannot be rectified, unless Balboa enhance their product.
 
+SwimSpas: it seems as if Balboa swim spas make use of the same Wifi module. However, it is not clear (a) what message tells us that the Spa is a SwimSpa (b) what message we could send to the Spa to control the Swimming jets (0-100 control).  If you
+have such a SwimSpa and are able to do the technical work to understand these two topics, it would likely be easy to extend
+this plugin to handle it.  A similar situation applies to the "Clim8zone" heat-pump which Balboa provide as an option.
+
 If the water flow sensor discovers a fault (which it checks for every ten minutes), and you then fix the issue (change or clean filters, etc), the spa does not actually notify that the fault has been corrected. However if you either use hold mode or turn the spa off and on again, then a hold or priming event will take precedence and the fault will no longer be reported through the plugin. If you do neither of those actions, then the fault will only be reset on the following day.
+
+The plugin reads the time of day you have programmed for the 2 filter cycles your Spa runs, and could theoretically also
+adjust those. However we do not currently expose this information or controls to Matter/HomeKit.  If there is a good
+device match for timed filter controls in Matter we could potentially add this in the future - for example through the
+"Air Purifier" device.
 
 ## Reliability
 
-There's a fair amount of information on the internet of how the Balboa Wifi module is pretty unreliable.  In particular prior to the '-06' release of the '50350' module, it would regularly disconnect and then be unable to reconnect (without rebooting the power supply to the module).  With my own spa, the module is adequately reliable but even then does disconnect for a few minutes to an hour once every day or two, sometimes as often as a few times a day. But between the module and this plugin's reconnect capability, a reconnection does always ultimately happen.  If your Spa's module is less reliable, I would suggest a first step is to check which module version you have.  I have found the Wifi module is more reliable with some wifi frequency bands than with others - so experiment with yours - I found locking my router to Wifi channel 11 helped.  Finally you could replace your wifi module with this [project](https://github.com/NorthernMan54/esp32_balboa_spa) which is likely to be more reliable.
+There's a fair amount of information on the internet of how the Balboa Wifi module is pretty unreliable.  In particular prior to the '-06' release of the '50350' module, it would regularly disconnect and then be unable to reconnect (without rebooting the power supply to the module).  With my own spa, the module is adequately reliable but even then does disconnect for a few minutes to an hour once every day or two, sometimes as often as a few times a day. But between the module and this plugin's reconnect capability, a reconnection does always ultimately happen.  If your Spa's module is less reliable, I would suggest a first step is to check which module version you have.  I have found the Wifi module is more reliable with some wifi frequency bands than with others - so experiment with yours - I found locking my router to Wifi channel 11 helped a LOT.  Finally you could replace your wifi module with this [project](https://github.com/NorthernMan54/esp32_balboa_spa) which is likely to be more reliable.
 
 Whilst the spa is disconnected, obviously all HomeKit and Matter control attempts will fail. However this plugin is clever enough to store the major ones (adjusting thermostat, hold, lock status) and will re-apply them once the connection is re-established. 
 This means that any timed automations you create, for example, should still mostly work.  For example if you have an automation to turn on "Eco Mode", but the Spa is disconnected when that automation triggers, the change will be stored and automatically applied once the Spa reconnects (typically in 20-30 minutes, based on my experience).
