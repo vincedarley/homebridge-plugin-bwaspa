@@ -2,10 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
-## 3.0.0-beta.48 (24.04.2026)
+## 3.0.0-beta.57 (24.04.2026)
 - More thorough testing on Matter. Fixing a bunch of small problems (race conditions, etc).
 - Simplifications and cleanup of some logging (taking some suggestions from user 'muchadoabout' - thank you)
 - Fix a variety of small 'lint' warnings in the code.
+- Fixed some "This plugin generated a warning from the characteristic..." HomeKit errors in the log.
+- Add Matter accessory types to the plugin schema so that users can manually choose which accessories they
+  want if desired (although the "auto" setting is much simpler!)
+- Unknown message errors are only logged once per message type; avoids polluting the log.
 
 ## 3.0.0-beta.38 (23.04.2026)
 - Matter is working on both Apple Home and Home Assistant in my testing

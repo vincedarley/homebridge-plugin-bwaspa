@@ -27,10 +27,11 @@ The default behaviour is to discover your spa automatically on the network, quer
   <a href="https://github.com/vincedarley/homebridge-plugin-bwaspa"><img src="https://raw.githubusercontent.com/vincedarley/homebridge-plugin-bwaspa/master/graphics/lights.png" height="400"></a>
 </p>
 
-Please note if your spa is controlled by Balboa's "Control My Spa" app, hardware and cloud-service, then this plugin is not compatible, and likely never will be. It works with spas that use Balboa wifi receiver module and the Balboa Worldwide App (BWA app).  Also usage of this [project](https://github.com/NorthernMan54/esp32_balboa_spa) to create your own WiFi module is supported.
+Please note if your spa is controlled by Balboa's "Control My Spa" app, hardware and cloud-service, then this plugin is not compatible, and likely never will be. It works with spas that use Balboa wifi receiver module and the Balboa Worldwide App (BWA app).  Also usage of this [project](https://github.com/NorthernMan54/esp32_balboa_spa) to create your own WiFi module is supported.  
 
-Note the plugin during 2023-2025 wasn't updated because it simply works well. No meaningful bugs have been reported.  The only meaningful recent changes are to add Matter support via Homebridge 2.0's matter capabilities.  And even this has not required changing the code
-which communicates with the Spa, nor the HomeKit specific code.
+Finally, the fact that Balboa have begun charging for Balboa cloud connect (for use of their BWA App) is irrelevant to
+this plugin. It communicates with your Spa purely over your local network.  You are of course able to leverage Matter/HomeKit's 
+capabilities to control the Spa remotely without involving Balboa's cloud services.
 
 # Getting started
 

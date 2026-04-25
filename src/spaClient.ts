@@ -122,6 +122,8 @@ export class SpaClient implements SpaController {
   lastFaultBytes = new Uint8Array();
 
   temperatureHistory : (number|undefined)[] = new Array();
+  // Track unknown message types to avoid log spam (log each type only once)
+  seenUnknownMessageTypes = new Set<string>();
 
   constructor(public readonly log: Logger, public readonly host: string, 
       public readonly spaConfigurationKnownCallback: () => void, 
@@ -497,7 +499,7 @@ export class SpaClient implements SpaController {
      * @param message the bytes
      */
   prettify(message: Uint8Array) {
-    return Buffer.from(message).toString('hex').match(/.{1,2}/g);
+    return Buffer.from(message).toString('hex').match(/.{1,2}/g)?.join(',') ?? 'null';
   }
 
   getTargetTemp() {
@@ -1109,9 +1111,13 @@ export class SpaClient implements SpaController {
       // Various messages about controls, filters, etc. In theory we could
       // choose to implement more things here, but limited value in it.
       if (!recognised) {
-        this.log.info('Not understood a received spa message', 
-          '(nothing critical, but please do report this):' + this.prettify(msgType), 
-          ' contents: '+ this.prettify(contents));
+        const msgTypeKey = this.prettify(msgType);
+        if (!this.seenUnknownMessageTypes.has(msgTypeKey)) {
+          this.seenUnknownMessageTypes.add(msgTypeKey);
+          this.log.info('Not understood a received spa message', 
+            '(nothing critical, but please do report this):' + msgTypeKey, 
+            ' contents: '+ this.prettify(contents) + '. Further occurences of ' + msgTypeKey + ' will be ignored.');
+        }
       }
     }
     if (this.devMode && avoidHighFreqDevMessage) {

@@ -127,7 +127,7 @@
                   ]
                 },
                 {
-                  "title": "Temperature Control",
+                  "title": "Temperature Control (HomeKit only)",
                   "enum": [
                     "Thermostat"
                   ]
@@ -190,6 +190,30 @@
                   "title": "Circulation Pump",
                   "enum": [
                     "Circulation Pump"
+                  ]
+                },
+                {
+                  "title": "Primary Thermostat (Matter only)",
+                  "enum": [
+                    "Primary Thermostat"
+                  ]
+                },
+                {
+                  "title": "Eco Thermostat (Matter only)",
+                  "enum": [
+                    "Eco Thermostat"
+                  ]
+                },
+                {
+                  "title": "Eco Mode Switch (Matter only)",
+                  "enum": [
+                    "Eco Mode"
+                  ]
+                },
+                {
+                  "title": "Water Flow Low Sensor (Matter only)",
+                  "enum": [
+                    "Water Flow Low Sensor"
                   ]
                 }
               ]
