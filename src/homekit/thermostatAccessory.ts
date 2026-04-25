@@ -281,8 +281,14 @@ export class ThermostatAccessory {
       ', current:', temperature,'(='+tempVal+'C), is high:', mode, 
       ', is heating:', heating, ', flow state:', flowState);
 
-    this.service.getCharacteristic(this.platform.Characteristic.CurrentTemperature).updateValue(tempVal);
-    this.service.getCharacteristic(this.platform.Characteristic.TargetTemperature).updateValue(targetTempVal);
+    // Only update temperature characteristics when we have valid values (not null/undefined/NaN)
+    // This prevents warnings on startup before the first spa status message is received
+    if (typeof tempVal === 'number' && !isNaN(tempVal)) {
+      this.service.getCharacteristic(this.platform.Characteristic.CurrentTemperature).updateValue(tempVal);
+    }
+    if (typeof targetTempVal === 'number' && !isNaN(targetTempVal)) {
+      this.service.getCharacteristic(this.platform.Characteristic.TargetTemperature).updateValue(targetTempVal);
+    }
     this.service.getCharacteristic(this.platform.Characteristic.TargetHeatingCoolingState).updateValue(
       flowState !== FLOW_GOOD ? this.platform.Characteristic.TargetHeatingCoolingState.OFF : 
         (mode ? this.platform.Characteristic.TargetHeatingCoolingState.HEAT : this.platform.Characteristic.TargetHeatingCoolingState.COOL),
