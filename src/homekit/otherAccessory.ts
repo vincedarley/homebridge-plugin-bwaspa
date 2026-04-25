@@ -64,12 +64,12 @@ export class OtherAccessory {
 
   spaConfigurationKnown() {
     if (this.type === 0) {
-      if (this.platform.spa!.getIsMisterOn() == undefined) {
+      if (this.platform.spa!.getIsMisterOn() === undefined) {
         // The mister doesn't exist.
         this.platform.log.warn('Nonexistent mister accessory declared.');
       }
     } else {
-      if (this.platform.spa!.getIsAuxOn(this.type) == undefined) {
+      if (this.platform.spa!.getIsAuxOn(this.type) === undefined) {
         // This aux device doesn't exist.
         this.platform.log.warn('Nonexistent aux', this.type, 'accessory declared.');
       }
@@ -84,13 +84,13 @@ export class OtherAccessory {
     }
     if (this.type === 0) {
       const isOn = this.platform.spa!.getIsMisterOn();
-      if (isOn != undefined) {
+      if (isOn !== undefined) {
         this.platform.log.debug('Mister updating to',isOn ? 'On' : 'Off');
         this.service.getCharacteristic(this.platform.Characteristic.On).updateValue(isOn);
       }
     } else {
       const isOn = this.platform.spa!.getIsAuxOn(this.type);
-      if (isOn != undefined) {
+      if (isOn !== undefined) {
         this.platform.log.debug('Aux',this.type,'updating to',isOn ? 'On' : 'Off');
         this.service.getCharacteristic(this.platform.Characteristic.On).updateValue(isOn);
       }

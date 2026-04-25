@@ -60,7 +60,7 @@ export class TemperatureAccessory {
 
       // Seems as if Homekit interprets null as something simply to be ignored, hence Homekit
       // just uses the previous known value.
-      const val = (temperature == undefined ? null : this.platform.spa!.convertTempToC(temperature!));
+      const val = (temperature === undefined ? null : this.platform.spa!.convertTempToC(temperature!));
       this.platform.log.debug('Get Temperature <-', val, this.platform.status());
       callback(null, val);
     }
@@ -78,7 +78,7 @@ export class TemperatureAccessory {
     }
 
     const temperature = this.platform.spa!.getCurrentTemp();
-    const val = (temperature == undefined ? null : this.platform.spa!.convertTempToC(temperature!)!);
+    const val = (temperature === undefined ? null : this.platform.spa!.convertTempToC(temperature!)!);
     this.platform.log.debug('Temperature updating to',val);
     if (val) {
       this.service.getCharacteristic(this.platform.Characteristic.CurrentTemperature).updateValue(val);

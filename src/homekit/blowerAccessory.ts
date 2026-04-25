@@ -97,7 +97,7 @@ export class BlowerAccessory {
     if (!this.platform.isCurrentlyConnected()) {
       callback(this.platform.connectionProblem);
     } else {
-      const isOn = this.getSpeed() != 0;
+      const isOn = this.getSpeed() !== 0;
       this.platform.log.debug('Get Blower','<-',isOn?'On':'Off', this.platform.status());
       
       callback(null, isOn);
@@ -148,7 +148,7 @@ export class BlowerAccessory {
   }
 
   spaConfigurationKnown() {
-    if (this.platform.spa!.getBlowerSpeed() == undefined) {
+    if (this.platform.spa!.getBlowerSpeed() === undefined) {
       // The blower doesn't exist.
       this.platform.log.warn('Nonexistent blower accessory declared.');
       return;
@@ -169,7 +169,7 @@ export class BlowerAccessory {
       return;
     }
     const speed = this.getSpeed();
-    const isOn = speed != 0;
+    const isOn = speed !== 0;
     const speedValue = (100.0*speed)/this.numSpeedSettings;
     
     this.platform.log.debug('Blower updating to',isOn ? 'On' : 'Off','and',speed, 'which is', 
@@ -208,7 +208,7 @@ export class BlowerAccessory {
     this.platform.log.debug('Blower actually setting speed to',speed,'which is', 
       SpaClient.getSpeedAsString(this.numSpeedSettings, speed), this.platform.status());
     this.platform.spa!.setBlowerSpeed(speed);
-    if (speed != 0) {
+    if (speed !== 0) {
       this.lastNonZeroSpeed = speed;
     }
   }

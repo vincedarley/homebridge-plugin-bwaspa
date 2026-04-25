@@ -59,7 +59,7 @@ export class LightsAccessory {
   }
 
   spaConfigurationKnown() {
-    if (this.platform.spa!.getIsLightOn(this.lightNumber) == undefined) {
+    if (this.platform.spa!.getIsLightOn(this.lightNumber) === undefined) {
       // This light doesn't exist.
       this.platform.log.warn('Nonexistent light', this.lightNumber, 'accessory declared.');
     }
@@ -72,7 +72,7 @@ export class LightsAccessory {
       return;
     }
     const isOn = this.platform.spa!.getIsLightOn(this.lightNumber);
-    if (isOn != undefined) {
+    if (isOn !== undefined) {
       this.platform.log.debug('Light',this.lightNumber,'updating to',isOn ? 'On' : 'Off');
       this.service.getCharacteristic(this.platform.Characteristic.On).updateValue(isOn);
     }

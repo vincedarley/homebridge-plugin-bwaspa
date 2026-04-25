@@ -45,7 +45,7 @@ export class PumpAccessory {
     this.service.setCharacteristic(this.platform.Characteristic.Name, accessory.context.device.name);
     // until it is set automatically
     this.numSpeedSettings = 0;
-    this.name = (pumpNumber == 0 ? 'Circulation Pump' : 'Pump ' + pumpNumber);
+    this.name = (pumpNumber === 0 ? 'Circulation Pump' : 'Pump ' + pumpNumber);
 
     // Important note: Home/Siri call both the "on" and the "setRotationSpeed" together when the pump
     // is turned from off to on. I've observed that using Siri the speed is set first, then 'on', and
@@ -104,7 +104,7 @@ export class PumpAccessory {
     if (!this.platform.isCurrentlyConnected()) {
       callback(this.platform.connectionProblem);
     } else {
-      const isOn = this.getSpeed() != 0;
+      const isOn = this.getSpeed() !== 0;
       this.platform.log.debug('Get', this.name, '<-', isOn ? 'On' : 'Off', this.platform.status());
 
       callback(null, isOn);
@@ -175,7 +175,7 @@ export class PumpAccessory {
       return;
     }
     const speed = this.getSpeed();
-    const isOn = speed != 0;
+    const isOn = speed !== 0;
     const speedValue = (100.0 * speed) / this.numSpeedSettings;
     if (this.numSpeedSettings) {
       this.platform.log.debug(this.name, 'updating to', isOn ? 'On' : 'Off', 'and', speed, 'which is',
@@ -215,7 +215,7 @@ export class PumpAccessory {
     this.platform.log.debug(this.name, 'actually setting speed to', speed, 'which is',
       SpaClient.getSpeedAsString(this.numSpeedSettings, speed), this.platform.status());
     this.platform.spa!.setPumpSpeed(this.pumpNumber, speed);
-    if (speed != 0) {
+    if (speed !== 0) {
       this.lastNonZeroSpeed = speed;
     }
   }
