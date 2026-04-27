@@ -57,6 +57,10 @@ if ! npm whoami >/dev/null 2>&1; then
   exit 1
 fi
 
+echo "==> Running quality gates"
+npm run lint
+npm run build
+
 echo "==> Auto-committing pending changes (if any)"
 if [[ -n "$(git status --porcelain)" ]]; then
   git add -A
@@ -64,10 +68,6 @@ if [[ -n "$(git status --porcelain)" ]]; then
     git commit -m "$AUTO_COMMIT_MSG"
   fi
 fi
-
-echo "==> Running quality gates"
-npm run lint
-npm run build
 
 echo "==> Previewing version bump"
 CURRENT_VERSION="$(node -p "require('./package.json').version")"
