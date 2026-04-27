@@ -2,6 +2,9 @@
 
 All notable changes to this project will be documented in this file.
 
+## 3.0.0 (27.04.2026)
+- First release compatible with both HomeKit and Matter, and requiring HomeBridge 2.0.0
+
 ## 3.0.0-beta.57 (24.04.2026)
 - More thorough testing on Matter. Fixing a bunch of small problems (race conditions, etc).
 - Simplifications and cleanup of some logging (taking some suggestions from user 'muchadoabout' - thank you)

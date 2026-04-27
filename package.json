@@ -13,7 +13,7 @@
   },
   "engines": {
     "node": "^22 || ^24",
-    "homebridge": ">=2.0.0-beta.85"
+    "homebridge": ">=2.0.0-beta.100"
   },
   "main": "dist/index.js",
   "files": [
@@ -28,6 +28,7 @@
     "watch": "npm run build && npm link && nodemon",
     "build": "rimraf ./dist && tsc",
     "prepublishOnly": "npm run lint && npm run build",
+    "release": "bash ./scripts/release.sh",
     "release:beta": "bash ./scripts/release-beta.sh"
   },
   "keywords": [
@@ -44,7 +45,7 @@
     "@typescript-eslint/eslint-plugin": "^8.58.1",
     "@typescript-eslint/parser": "^8.58.1",
     "eslint": "^9.39.1",
-    "homebridge": "^2.0.0-beta.86",
+    "homebridge": "^2.0.0-beta.100",
     "nodemon": "^3.1.14",
     "rimraf": "^6.1.3",
     "ts-node": "^10.9.2",

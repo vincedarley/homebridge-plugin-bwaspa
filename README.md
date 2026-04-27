@@ -36,7 +36,7 @@ capabilities to control the Spa remotely without involving Balboa's cloud servic
 # Getting started
 
 Install everything:
-1. Install Homebridge 2.0.0-beta.85 or later and run it on Node 22 or Node 24.
+1. Install Homebridge 2.0.0-beta.100 or later and run it on Node 22 or Node 24.
 2. Follow the step-by-step instructions on the [Homebridge Config UI X](https://github.com/oznu/homebridge-config-ui-x/wiki) to install Homebridge Config UI X.
 3. Install homebridge-balboa-spa using: `npm install -g homebridge-balboa-spa` or search for `Balboa Spa` in Config UI X.
 
