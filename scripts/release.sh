@@ -71,7 +71,7 @@ fi
 
 echo "==> Previewing version bump"
 CURRENT_VERSION="$(node -p "require('./package.json').version")"
-PREVIEW_VERSION="$(npm version "$VERSION_TYPE" --no-git-tag-version --dry-run 2>&1 | grep -o 'v[0-9].*' | sed 's/^v//' || echo 'unknown')"
+PREVIEW_VERSION="$(node -e "const semver = require('semver'); console.log(semver.inc('$CURRENT_VERSION', '$VERSION_TYPE'))")"
 
 echo ""
 echo "Current version: $CURRENT_VERSION"
