@@ -1,3 +1,4 @@
+import { MatterStatus } from 'homebridge';
 import { FLOW_FAILED, FLOW_GOOD } from '../spaClient';
 import { BaseMatterSpaAccessory } from './baseMatterSpaAccessory';
 import type { SpaHomebridgePlatform } from '../platform';
@@ -247,7 +248,7 @@ export class MatterThermostatAccessory extends BaseMatterSpaAccessory {
 
   private async setSystemMode(mode: number) {
     if (!this.platform.isCurrentlyConnected()) {
-      throw this.platform.connectionProblem;
+      throw new MatterStatus.Failure('Spa temporarily offline');
     }
 
     const flowState = this.platform.spa!.getFlowState();
@@ -289,7 +290,7 @@ export class MatterThermostatAccessory extends BaseMatterSpaAccessory {
       return;
     }
     if (!this.platform.isCurrentlyConnected()) {
-      throw this.platform.connectionProblem;
+      throw new MatterStatus.Failure('Spa temporarily offline');
     }
 
     let tempC = setpoint / 100.0;

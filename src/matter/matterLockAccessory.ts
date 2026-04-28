@@ -1,3 +1,4 @@
+import { MatterStatus } from 'homebridge';
 import { BaseMatterSpaAccessory } from './baseMatterSpaAccessory';
 import type { SpaHomebridgePlatform } from '../platform';
 
@@ -58,7 +59,7 @@ export class MatterLockAccessory extends BaseMatterSpaAccessory {
   private async setLocked(value: boolean) {
     if (!this.platform.isCurrentlyConnected()) {
       this.platform.recordAction(this.setLocked.bind(this, value));
-      throw this.platform.connectionProblem;
+      throw new MatterStatus.Failure('Spa temporarily offline');
     }
     this.platform.spa!.setIsLocked(this.entireSpa, value);
     this.platform.log.debug('Matter set Locked Spa', this.entireSpa ? 'Panel' : 'Settings', '->', value);

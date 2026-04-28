@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## 3.0.1 (28.04.2026)
+- Use a matter-native mechanism for handling the situation where Matter tries to 
+  change the state of something, but the Spa has temporarily. We now throw 
+  "MatterStatus.Failure()" messages instead.
+
 ## 3.0.0 (27.04.2026)
 - First release compatible with both HomeKit and Matter, and requiring HomeBridge 2.0.0
 

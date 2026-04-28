@@ -1,3 +1,4 @@
+import { MatterStatus } from 'homebridge';
 import { BaseMatterSpaAccessory } from './baseMatterSpaAccessory';
 import type { SpaHomebridgePlatform } from '../platform';
 
@@ -54,7 +55,7 @@ export class MatterLightsAccessory extends BaseMatterSpaAccessory {
 
   private async setOn(value: boolean) {
     if (!this.platform.isCurrentlyConnected()) {
-      throw this.platform.connectionProblem;
+      throw new MatterStatus.Failure('Spa temporarily offline');
     }
     this.platform.spa!.setLightState(this.lightNumber, value);
     this.platform.log.debug('Matter set Lights', this.lightNumber, 'On ->', value);

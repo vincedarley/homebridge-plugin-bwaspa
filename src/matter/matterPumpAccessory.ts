@@ -1,3 +1,4 @@
+import { MatterStatus } from 'homebridge';
 import { SpaClient } from '../spaClient';
 import { BaseMatterSpaAccessory } from './baseMatterSpaAccessory';
 import type { SpaHomebridgePlatform } from '../platform';
@@ -102,7 +103,7 @@ export class MatterPumpAccessory extends BaseMatterSpaAccessory {
     this.platform.log.debug('Matter set', this.displayName, '->', value ? 'On' : 'Off', this.platform.status());
 
     if (!this.platform.isCurrentlyConnected()) {
-      throw this.platform.connectionProblem;
+      throw new MatterStatus.Failure('Spa temporarily offline');
     }
 
     if (value) {
@@ -114,7 +115,7 @@ export class MatterPumpAccessory extends BaseMatterSpaAccessory {
 
   private async setSpeedPercent(percent: number) {
     if (!this.platform.isCurrentlyConnected()) {
-      throw this.platform.connectionProblem;
+      throw new MatterStatus.Failure('Spa temporarily offline');
     }
 
     const maxSpeed = this.getMaxSpeed();
@@ -133,7 +134,7 @@ export class MatterPumpAccessory extends BaseMatterSpaAccessory {
       return;
     }
     if (!this.platform.isCurrentlyConnected()) {
-      throw this.platform.connectionProblem;
+      throw new MatterStatus.Failure('Spa temporarily offline');
     }
 
     if (mode === this.getFanModeOff()) {

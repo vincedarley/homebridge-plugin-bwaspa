@@ -1,3 +1,4 @@
+import { MatterStatus } from 'homebridge';
 import { BaseMatterSpaAccessory } from './baseMatterSpaAccessory';
 import type { SpaHomebridgePlatform } from '../platform';
 
@@ -96,7 +97,7 @@ export class MatterSwitchAccessory extends BaseMatterSpaAccessory {
       if (this.kind === 'hold' || this.kind === 'heatingReady' || this.kind === 'ecoMode') {
         this.platform.recordAction(this.setOn.bind(this, value));
       }
-      throw this.platform.connectionProblem;
+      throw new MatterStatus.Failure('Spa temporarily offline');
     }
 
     switch (this.kind) {
