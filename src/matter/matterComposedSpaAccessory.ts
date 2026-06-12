@@ -146,7 +146,7 @@ export class MatterComposedSpaAccessory implements MatterAccessory {
     // The presetTypes attribute has a constraint of 1–7 entries, so we provide
     // one minimal entry to satisfy state validation during endpoint initialization.
     // We do not use presets functionally; this entry is required by the cluster schema.
-    const minimalPresetTypes = [{ presetScenario: 1, numberOfPresets: 1, presetTypeFeatures: 0 }];
+    const minimalPresetTypes = [{ presetScenario: 1, numberOfPresets: 1, presetTypeFeatures: {} }];
 
     for (const [mode, id, name] of [
       ['primary', 'thermostat-primary', 'Primary Thermostat'],
