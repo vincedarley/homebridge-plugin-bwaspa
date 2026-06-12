@@ -44,8 +44,9 @@ function applyHeatingOnlyNoPresetFeatures(matterDeviceType: any, log: Logger) {
     return;
   }
 
+  // Only patch the writable cluster metadata that Homebridge reads.
+  // thermostatBehavior.features can be read-only in some runtime builds.
   thermostatBehavior.cluster.supportedFeatures = features;
-  thermostatBehavior.features = features;
 
   log.debug('[Matter Thermostat] Forced supportedFeatures to heating-only without presets:', JSON.stringify(features));
 }
