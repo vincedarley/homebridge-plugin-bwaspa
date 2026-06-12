@@ -142,19 +142,28 @@ export class MatterComposedSpaAccessory implements MatterAccessory {
   }
 
   private addThermostatParts(parts: EndpointPart[]) {
-    const primaryController = new MatterThermostatAccessory(
-      this.platform,
-      { name: 'Primary Thermostat', deviceType: 'Primary Thermostat' },
-      'primary',
-    );
-    this.registerPart(parts, 'thermostat-primary', primaryController);
+    // HomebridgeThermostatServer inherits Presets from its internal base class.
+    // The presetTypes attribute has a constraint of 1–7 entries, so we provide
+    // one minimal entry to satisfy state validation during endpoint initialization.
+    // We do not use presets functionally; this entry is required by the cluster schema.
+    const minimalPresetTypes = [{ presetScenario: 1, numberOfPresets: 1, presetTypeFeatures: 0 }];
 
-    const ecoController = new MatterThermostatAccessory(
-      this.platform,
-      { name: 'Eco Thermostat', deviceType: 'Eco Thermostat' },
-      'eco',
-    );
-    this.registerPart(parts, 'thermostat-eco', ecoController);
+    for (const [mode, id, name] of [
+      ['primary', 'thermostat-primary', 'Primary Thermostat'],
+      ['eco', 'thermostat-eco', 'Eco Thermostat'],
+    ] as const) {
+      const controller = new MatterThermostatAccessory(
+        this.platform,
+        { name, deviceType: name },
+        mode,
+      );
+      // Inject presetTypes into the thermostat cluster state before registering the part.
+      (controller.clusters as any).thermostat = {
+        ...(controller.clusters as any).thermostat,
+        presetTypes: minimalPresetTypes,
+      };
+      this.registerPart(parts, id, controller);
+    }
   }
 
   private addFlowParts(parts: EndpointPart[]) {
