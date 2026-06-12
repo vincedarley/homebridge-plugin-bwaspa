@@ -20,6 +20,7 @@ import { MatterFlowAccessory } from './matter/matterFlowAccessory';
 import { MatterLockAccessory } from './matter/matterLockAccessory';
 import { MatterBlowerAccessory } from './matter/matterBlowerAccessory';
 import { MatterThermostatAccessory } from './matter/matterThermostatAccessory';
+import { MatterComposedSpaAccessory } from './matter/matterComposedSpaAccessory';
 import { SpaClient } from './spaClient';
 import { DummySpaClient } from './dummySpaClient';
 import type { SpaController } from './spaController';
@@ -238,6 +239,8 @@ export class SpaHomebridgePlatform implements DynamicPlatformPlugin {
    * We get all accessories either from the spa itself or from the config.json file.
     */
   discoverDevices() {
+    this.ensureComposedMatterDeviceRequested();
+
     if (this.config.autoCreateAccessories && this.spa && this.spa.accurateConfigReadFromSpa) {
       this.log.info('Autocreating accessories...');
       if (this.spa!.getIsLightOn(1) !== undefined) {
@@ -302,7 +305,8 @@ export class SpaHomebridgePlatform implements DynamicPlatformPlugin {
     if (deviceType === 'Water Flow Low Sensor' 
         || deviceType === 'Eco Mode'
         || deviceType === 'Primary Thermostat'
-        || deviceType === 'Eco Thermostat') {
+        || deviceType === 'Eco Thermostat'
+        || deviceType === 'Spa Controller') {
       return;
     }
 
@@ -341,6 +345,14 @@ export class SpaHomebridgePlatform implements DynamicPlatformPlugin {
   private async makeMatterDevice(name: string, deviceType: string) {
     const matter = (this.api as any).matter;
     if (!matter) {
+      return;
+    }
+
+    if (this.shouldUseSingleMatterDevice()) {
+      if (deviceType !== 'Spa Controller') {
+        return;
+      }
+      await this.makeSingleMatterSpaDevice(name, deviceType);
       return;
     }
 
@@ -397,6 +409,49 @@ export class SpaHomebridgePlatform implements DynamicPlatformPlugin {
       || deviceType === 'Temperature Sensor'
       || deviceType === 'Water Flow Problem Sensor'
       || deviceType === 'Water Flow Low Sensor';
+  }
+
+  private shouldUseSingleMatterDevice() {
+    return Boolean((this.config as any).useSingleMatterDevice);
+  }
+
+  private ensureComposedMatterDeviceRequested() {
+    if (!this.shouldUseSingleMatterDevice()) {
+      return;
+    }
+
+    if (!this.spa || !this.spa.accurateConfigReadFromSpa) {
+      return;
+    }
+
+    this.makeDevice(this.name || 'Spa', 'Spa Controller');
+  }
+
+  private async makeSingleMatterSpaDevice(name: string, deviceType: string) {
+    const matter = (this.api as any).matter;
+    const uuid = matter.uuid.generate(deviceType);
+    if (this.matterDeviceObjects.some((d: any) => d.UUID === uuid)) {
+      return;
+    }
+
+    const controller = new MatterComposedSpaAccessory(this, { name, deviceType });
+    if (!this.matterAccessories.has(uuid)) {
+      this.log.info('Registering composed matter spa accessory:', name);
+    }
+
+    try {
+      await matter.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [controller]);
+      this.matterAccessories.set(uuid, controller);
+      this.matterDeviceObjects.push(controller);
+      if (this.spa?.accurateConfigReadFromSpa) {
+        setTimeout(() => {
+          controller.spaConfigurationKnown();
+        }, 1000);
+      }
+    } catch (error) {
+      this.log.warn('Could not register composed matter accessory', name, 'because:', error);
+      this.matterAccessories.delete(uuid);
+    }
   }
 
   private isMatterPumpType(deviceType: string) {

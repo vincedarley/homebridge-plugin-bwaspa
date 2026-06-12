@@ -7,6 +7,7 @@
     {
       "items": [
         "autoCreateAccessories",
+        "useSingleMatterDevice",
         "name"
       ]
     },
@@ -40,6 +41,13 @@
         "type": "boolean",
         "default": true,
         "required": true
+      },
+      "useSingleMatterDevice": {
+        "title": "Matter: Expose Single Composed Spa Device",
+        "type": "boolean",
+        "default": false,
+        "required": false,
+        "description": "When enabled, Matter accessories are exposed as one spa device with multiple endpoints. Requires unpair/re-pair when toggled."
       },
       "host": {
         "title": "Spa IP Address",

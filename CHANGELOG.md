@@ -2,9 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## 3.1.0-beta1 (12.06.2026)
+- Optionally create all matter accessories as part of a single Matter device.
+
 ## 3.0.1 (28.04.2026)
 - Use a matter-native mechanism for handling the situation where Matter tries to 
-  change the state of something, but the Spa has temporarily. We now throw 
+  change the state of something, but the Spa has temporarily disconnected. We now throw 
   "MatterStatus.Failure()" messages instead.
 
 ## 3.0.0 (27.04.2026)

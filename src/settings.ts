@@ -8,4 +8,4 @@ export const PLATFORM_NAME = 'Balboa-Spa';
  */
 export const PLUGIN_NAME = 'homebridge-balboa-spa';
 
-export const VERSION = '3.0.0';
+export const VERSION = '3.1.0-beta1';
