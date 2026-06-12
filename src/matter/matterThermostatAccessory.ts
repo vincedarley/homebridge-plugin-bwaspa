@@ -2,6 +2,7 @@ import { MatterStatus } from 'homebridge';
 import { FLOW_FAILED, FLOW_GOOD } from '../spaClient';
 import { BaseMatterSpaAccessory } from './baseMatterSpaAccessory';
 import type { SpaHomebridgePlatform } from '../platform';
+import { createHeatingOnlyThermostatDeviceType } from './thermostatDeviceType';
 
 /*
  * The Spa's heating control works in a very specific way. First there is a primary mode "High" which we will refer to as "Heat" or the
@@ -56,47 +57,8 @@ export class MatterThermostatAccessory extends BaseMatterSpaAccessory {
       throw new Error('Matter Thermostat enums are unavailable: Off/Heat/SystemSequence HeatingOnly are required.');
     }
 
-    // Create thermostat with Heating feature only
-    // - Heating: core functionality for spa heating control
-    // - NO Occupancy: using two separate thermostat instances instead
-    // - NO AutoMode: no deadband constraint between heating/cooling setpoints
-    // - NO Cooling: heating-only spa behavior (spa cannot cool, only heat)
-    // - NO Presets: we don't use preset schedules
-    const thermostatType = matter.deviceTypes.Thermostat;
-    if (typeof thermostatType?.with !== 'function') {
-      throw new Error('Matter Thermostat device type does not support .with().');
-    }
-
-    const thermostatRequirement = thermostatType?.requirements?.Thermostat
-      ?? thermostatType?.requirements?.ThermostatServer;
-    if (typeof thermostatRequirement?.with !== 'function') {
-      throw new Error('Matter Thermostat requirement does not support .with(Heating).');
-    }
-
-    const matterDeviceType = thermostatType.with(thermostatRequirement.with('Heating'));
-    
-    // WORKAROUND: Homebridge bug - it reads behavior.cluster.supportedFeatures instead of behavior.features
-    // We need to set cluster.supportedFeatures so Homebridge can detect our custom features.  The homebridge-matter
-    // sample Thermostat accessory code is very simple and just uses defaults. Unfortunately therefore it doesn't
-    // help us understanding how to correctly code a thermostat with particular configured features.
-    // For that we need to look at homebridge and/or matter source code and documentation.
-    // This code below solves or works around the problem of having thermostat with Off/Heat states only.
-    // But it still leads to Presets issues.  We need to diagnose those further.
-    const behaviorsStructure = (matterDeviceType as any)?.behaviors;
-    if (behaviorsStructure) {
-      const behaviorsArray = Array.isArray(behaviorsStructure) 
-        ? behaviorsStructure 
-        : Object.values(behaviorsStructure);
-      const thermostatBehavior = behaviorsArray.find((b: any) => 
-        b?.cluster?.id === 0x201 || b?.id === 'thermostat',
-      );
-      
-      if (thermostatBehavior && thermostatBehavior.cluster && thermostatBehavior.features) {
-        thermostatBehavior.cluster.supportedFeatures = thermostatBehavior.features;
-        platform.log.debug('[Matter Thermostat] Set cluster.supportedFeatures for Homebridge detection:', 
-          JSON.stringify(thermostatBehavior.features));
-      }
-    }
+    // Heating-only thermostat, with presets explicitly disabled.
+    const matterDeviceType = createHeatingOnlyThermostatDeviceType(matter, platform.log);
     
     // Set temperature limits based on mode
     // Primary (high range): 26.5-40°C = 2650-4000 (in hundredths)

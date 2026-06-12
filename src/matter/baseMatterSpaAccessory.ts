@@ -25,6 +25,8 @@ export abstract class BaseMatterSpaAccessory implements MatterAccessory {
   public handlers?: MatterAccessory['handlers'];
 
   protected readonly matter: any;
+  private stateUpdater: ((cluster: string, attributes: Record<string, unknown>) => Promise<void>) | undefined;
+  private stateReader: ((cluster: string) => Promise<Record<string, unknown> | undefined>) | undefined;
 
   protected constructor(
     protected readonly platform: SpaHomebridgePlatform,
@@ -46,11 +48,26 @@ export abstract class BaseMatterSpaAccessory implements MatterAccessory {
     this.context = { device };
   }
 
+  public setStateTransport(
+    updater: (cluster: string, attributes: Record<string, unknown>) => Promise<void>,
+    reader: (cluster: string) => Promise<Record<string, unknown> | undefined>,
+  ) {
+    this.stateUpdater = updater;
+    this.stateReader = reader;
+  }
+
   protected async updateState(cluster: string, attributes: Record<string, unknown>): Promise<void> {
+    if (this.stateUpdater) {
+      await this.stateUpdater(cluster, attributes);
+      return;
+    }
     await (this.platform.api as any).matter.updateAccessoryState(this.UUID, cluster, attributes);
   }
 
   protected async readState(cluster: string): Promise<Record<string, unknown> | undefined> {
+    if (this.stateReader) {
+      return this.stateReader(cluster);
+    }
     return (this.platform.api as any).matter.getAccessoryState(this.UUID, cluster);
   }
 

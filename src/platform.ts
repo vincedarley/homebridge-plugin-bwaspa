@@ -356,6 +356,12 @@ export class SpaHomebridgePlatform implements DynamicPlatformPlugin {
       return;
     }
 
+    await this.makeLegacyMatterDevice(name, deviceType);
+  }
+
+  private async makeLegacyMatterDevice(name: string, deviceType: string) {
+    const matter = (this.api as any).matter;
+
     if (!this.isMatterEnabledDeviceType(deviceType)) {
       return;
     }
