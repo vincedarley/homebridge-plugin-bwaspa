@@ -53,8 +53,14 @@ export class MatterThermostatAccessory extends BaseMatterSpaAccessory {
     const systemModeOff = matter.types.Thermostat?.SystemMode?.Off;
     const systemModeHeat = matter.types.Thermostat?.SystemMode?.Heat;
     const controlSequenceHeatingOnly = matter.types.Thermostat?.ControlSequenceOfOperation?.HeatingOnly;
-    if (systemModeOff === undefined || systemModeHeat === undefined || controlSequenceHeatingOnly === undefined) {
-      throw new Error('Matter Thermostat enums are unavailable: Off/Heat/SystemSequence HeatingOnly are required.');
+    const presetScenarioOccupied = matter.types.Thermostat?.PresetScenario?.Occupied;
+    if (
+      systemModeOff === undefined
+      || systemModeHeat === undefined
+      || controlSequenceHeatingOnly === undefined
+      || presetScenarioOccupied === undefined
+    ) {
+      throw new Error('Matter Thermostat enums are unavailable: Off/Heat/HeatingOnly/PresetScenario.Occupied are required.');
     }
 
     // Heating-only thermostat, with presets explicitly disabled.
@@ -81,7 +87,17 @@ export class MatterThermostatAccessory extends BaseMatterSpaAccessory {
           maxHeatSetpointLimit: maxLimit,
           systemMode: systemModeHeat,
           controlSequenceOfOperation: controlSequenceHeatingOnly,
-        },
+          presetTypes: [
+            {
+              presetScenario: presetScenarioOccupied,
+              numberOfPresets: 1,
+              presetTypeFeatures: {},
+            },
+          ],
+          numberOfPresets: 1,
+          activePresetHandle: null,
+          persistedPresets: [],
+        } as any,
       },
       {
         thermostat: {
