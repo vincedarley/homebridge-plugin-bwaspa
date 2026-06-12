@@ -337,57 +337,15 @@ export class MatterComposedSpaAccessory implements MatterAccessory {
   }
 
   private addThermostatParts(parts: EndpointPart[]) {
-    const thermostatType = this.matter.deviceTypes.Thermostat;
-    if (typeof thermostatType?.with !== 'function') {
-      this.platform.log.warn('Matter Thermostat device type does not support .with(); skipping thermostat parts.');
-      return;
-    }
-
-    const thermostatRequirement = thermostatType?.requirements?.Thermostat
-      ?? thermostatType?.requirements?.ThermostatServer;
-    if (typeof thermostatRequirement?.with !== 'function') {
-      this.platform.log.warn('Matter Thermostat requirement does not support .with(Heating); skipping thermostat parts.');
-      return;
-    }
-
-    const matterDeviceType = thermostatType.with(thermostatRequirement.with('Heating'));
-    this.applyThermostatSupportedFeaturesWorkaround(matterDeviceType);
-
-    const definitions: Array<{ id: string; displayName: string; mode: ThermostatMode; min: number; max: number; initial: number }> = [
-      { id: 'thermostat-primary', displayName: 'Primary Thermostat', mode: 'primary', min: 2650, max: 4000, initial: 3850 },
-      { id: 'thermostat-eco', displayName: 'Eco Thermostat', mode: 'eco', min: 1000, max: 3600, initial: 3000 },
-    ];
-
-    for (const def of definitions) {
-      parts.push({
-        id: def.id,
-        displayName: def.displayName,
-        deviceType: matterDeviceType,
-        clusters: {
-          thermostat: {
-            localTemperature: 2000,
-            occupiedHeatingSetpoint: def.initial,
-            absMinHeatSetpointLimit: 700,
-            absMaxHeatSetpointLimit: 4000,
-            minHeatSetpointLimit: def.min,
-            maxHeatSetpointLimit: def.max,
-            systemMode: this.getSystemModeHeat(),
-            controlSequenceOfOperation: this.getControlSequenceHeatingOnly(),
-          },
-        },
-        handlers: {
-          thermostat: {
-            occupiedHeatingSetpointChange: async (request, context) => {
-              await this.handleThermostatSetpointChange(context?.partId ?? def.id, request?.occupiedHeatingSetpoint);
-            },
-            systemModeChange: async (request, context) => {
-              await this.handleThermostatSystemModeChange(context?.partId ?? def.id, request?.systemMode);
-            },
-          },
-        },
-      });
-      this.partMetadata.set(def.id, { kind: 'thermostat', mode: def.mode });
-    }
+    void parts;
+    // Temporary safety guard: Homebridge/Matter thermostat behavior currently
+    // enforces presetTypes (1..7) for this composed endpoint path and aborts
+    // the entire accessory registration if not provided.
+    // Until the thermostat preset model is implemented correctly, skip thermostat
+    // child endpoints so all other Spa endpoints can register reliably.
+    this.platform.log.warn(
+      'Composed Matter mode: skipping thermostat endpoints due to presetTypes constraint in current Homebridge/Matter thermostat behavior.',
+    );
   }
 
   private addFlowParts(parts: EndpointPart[]) {
